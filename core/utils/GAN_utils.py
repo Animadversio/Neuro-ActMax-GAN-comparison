@@ -261,12 +261,12 @@ class BigGAN_wrapper(): #nn.Module
     def __init__(self, BigGAN, ):
         self.BigGAN = BigGAN
 
-    def sample_vector(self, sampn=1, class_id=None, device="cuda"):
+    def sample_vector(self, sampn=1, class_id=None, device="cuda", noise_std=0.7):
         if class_id is None:
-            refvec = torch.cat((0.7 * torch.randn(128, sampn).to(device),
+            refvec = torch.cat((noise_std * torch.randn(128, sampn).to(device),
                                 self.BigGAN.embeddings.weight[:, torch.randint(1000, size=(sampn,))].to(device),)).T
         else:
-            refvec = torch.cat((0.7 * torch.randn(128, sampn).to(device),
+            refvec = torch.cat((noise_std * torch.randn(128, sampn).to(device),
                                 self.BigGAN.embeddings.weight[:, (class_id*torch.ones(sampn)).long()].to(device),)).T
         return refvec
 
