@@ -15,8 +15,7 @@ import matplotlib as mpl
 import matplotlib.pylab as plt
 from scipy.stats import ttest_rel, ttest_ind
 from PIL import Image
-from core.utils import make_grid_np, saveallforms, crop_from_montage
-from stats_utils import summary_by_block
+from core.utils import make_grid_np, saveallforms, crop_from_montage, summary_by_block
 def load_data_from_row(row, imgid=-1):
     npzpath = join(dataroot, row.unitstr, 'scores%s_%05d.npz' % (row.optimizer, row.RND))
     imgtrajpath = glob(join(dataroot, row.unitstr, "besteachgen%s_%05d.jpg" % (row.optimizer, row.RND)))[0]
