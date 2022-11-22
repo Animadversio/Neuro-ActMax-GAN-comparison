@@ -6,7 +6,7 @@ Quantify naturalness of generated images.
 ! pip install pytorch-gan-metrics
 ! pip install pytorch-pretrained-biggan
 """
-
+import sys
 import os
 from os.path import join
 import torch
@@ -16,7 +16,10 @@ from pytorch_gan_metrics.utils import ImageDataset
 from pytorch_gan_metrics.core  import torch_cov, get_inception_feature, calculate_inception_score, calculate_frechet_distance
 from torchvision.transforms import Compose, Resize, ToTensor, CenterCrop
 from torch.utils.data import DataLoader
-savedir = r"E:\OneDrive - Harvard University\GAN_imgstats_cmp\Inception"
+if sys.platform == "linux" and os.getlogin() == 'binxuwang':
+    savedir = "/home/binxuwang/DL_Projects/GAN-fids"
+else:
+    savedir = r"E:\OneDrive - Harvard University\GAN_imgstats_cmp\Inception"
 #%%
 img_size = 256
 INroot = r"E:\Datasets\imagenet-valid\valid"
@@ -98,6 +101,11 @@ with np.load(join(savedir, f"{'FC6_std4'}_IS_stats.npz")) as f:
     IS_std = f["IS_std"]
     print(IS, IS_std)
 #%%
+imageset_str = 'INet'
+with np.load(join(savedir, f"{imageset_str}_inception_stats.npz")) as f:
+    mu_INet = f["mu"]
+    sigma_INet = f["sigma"]
+#%%
 imageset_str = 'FC6_std4'
 with np.load(join(savedir, f"{imageset_str}_inception_stats.npz")) as f:
     mu1 = f["mu"]
@@ -173,4 +181,19 @@ inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
 np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
 torch.save({"acts": acts, "probs":probs}, join(savedir, f"{imageset_str}_act_prob.pt"))
 print(inception_score, IS_std)
+#%%
+imageset_str = "white_noise"
+wnoise_fun = lambda batch_size: torch.rand(batch_size, 3, 256, 256)
+wnoise_loader = GANDataloader(wnoise_fun, batch_size=80, total_imgnum=50000)
+with torch.no_grad():
+    acts, probs = get_inception_feature(wnoise_loader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(savedir, f"{imageset_str}_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
+torch.save({"acts": acts, "probs":probs}, join(savedir, f"{imageset_str}_act_prob.pt"))
+print("IS+-std ", inception_score, IS_std)
+fid = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet)
+print("Fid", fid)
 #%%
