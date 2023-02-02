@@ -232,19 +232,18 @@ else:
 
 print("Target setting network %s layer %s, center pos"%(args.net, args.layer), cent_pos)
 # rf Mapping,
-if args.RFresize:
-    if "fc" in args.layer:
-        imgsize = (256, 256)
-        corner = (0, 0)
-        Xlim = (corner[0], corner[0] + imgsize[0])
-        Ylim = (corner[1], corner[1] + imgsize[1])
-    else:
-        print("Computing RF by direct backprop: ")
-        gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
-                                      device="cuda", show=False, reps=30, batch=1)
-        Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
-        corner = (Xlim[0], Ylim[0])
-        imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
+if args.RFresize and not "fc" in args.layer:
+    print("Computing RF by direct backprop: ")
+    gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
+                                  device="cuda", show=False, reps=30, batch=1)
+    Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
+    corner = (Xlim[0], Ylim[0])
+    imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
+else:
+    imgsize = (256, 256)
+    corner = (0, 0)
+    Xlim = (corner[0], corner[0] + imgsize[0])
+    Ylim = (corner[1], corner[1] + imgsize[1])
 
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 
