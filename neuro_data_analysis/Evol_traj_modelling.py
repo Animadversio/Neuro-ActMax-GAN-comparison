@@ -46,7 +46,7 @@ recmodule_dict = {"layer1": model.layer1,
 #%%
 plot_err_dict = {}
 Animal = "Both"
-for Expi in tqdm(range(1, 191)):
+for Expi in tqdm(range(70, 191)):
     for thread in range(2):
         try:
             imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi,
@@ -58,8 +58,8 @@ for Expi in tqdm(range(1, 191)):
                          "Evol", thread=thread, stimdrive="N:", output_fmt="vec")
             except Exception as e2:
                 print(f"Exp {Expi} thread {thread} failed to load")
-                plot_err_dict[(Expi, thread)] = e
-                continue
+            plot_err_dict[(Expi, thread)] = e
+            continue
         if len(imgfps) == 0:
             continue
         # create a dataloader for the image response pairs
@@ -87,7 +87,47 @@ for Expi in tqdm(range(1, 191)):
         plt.close(figh)
 #%%
 
+plot_err_dict_cmb = {}
+Animal = "Both"
+for Expi in tqdm(range(1, 191)):
+    try:
+        imgfps1, resp_vec1, bsl_vec1, gen_vec1 = load_img_resp_pairs(BFEStats, Expi,
+                     "Evol", thread=0, stimdrive="S:", output_fmt="vec")
+        imgfps2, resp_vec2, bsl_vec2, gen_vec2 = load_img_resp_pairs(BFEStats, Expi,
+                     "Evol", thread=1, stimdrive="S:", output_fmt="vec")
+        imgfps = imgfps1 + imgfps2
+        resp_vec = np.concatenate((resp_vec1, resp_vec2), axis=0)
+        bsl_vec = np.concatenate((bsl_vec1, bsl_vec2), axis=0)
+        gen_vec = np.concatenate((gen_vec1, gen_vec2), axis=0)
+    except Exception as e:
+        print(f"Exp {Expi} failed to load")
+        plot_err_dict_cmb[Expi] = e
+        continue
+    if len(imgfps) == 0:
+        continue
+    # create a dataloader for the image response pairs
+    evol_ds = ImagePathDataset(imgfps, resp_vec, transform=None, img_dim=(224, 224))
+    evol_dl = DataLoader(evol_ds, batch_size=60, shuffle=False, num_workers=0)
 
+    fetcher = Corr_Feat_Machine()
+    fetcher.register_module_hooks(recmodule_dict, verbose=False)
+    fetcher.init_corr()
+    for i, (imgtsr, resps) in tqdm(enumerate(evol_dl)):
+        with torch.no_grad():
+            model(imgtsr.cuda())
+        fetcher.update_corr(resps.float())
+
+    fetcher.calc_corr()
+    fetcher.clear_hook()
+    savedict = fetcher.make_savedict()
+
+    np.savez(join(saveroot, f"{Animal}_Exp{Expi:02d}_Evol_thr{'_cmb'}_res-robust_corrTsr.npz"),
+             **savedict)
+
+    titstr = get_expstr(BFEStats, Expi)
+    figh = visualize_cctsr(fetcher, ["layer1", "layer2", "layer3", "layer4"], None, Expi,
+                   "Both", f"BigGAN_Evol_thr{'_cmb'}_res-robust", titstr, figdir=figroot)
+    plt.close(figh)
 
 
 
@@ -140,12 +180,14 @@ import re
 import glob
 import shutil
 from pathlib import Path
-for Expi in range(107, 111):
+for Expi in [66, 78]: #range(107, 111):
     print(Expi, )
     refimgfns = _get_ref_img(BFEStats, Expi)
-    for refimgfn in refimgfns:
-        imgfn_strip = re.sub("_thread\d\d\d_nat", "", refimgfn)
-        fplist = glob.glob("S:\\Stimuli\\2019-Selectivity\\*\\"+glob.escape(imgfn_strip)+".bmp")
+    imgfn_strips = [re.sub("_thread\d\d\d_nat", "", refimgfn) for refimgfn in refimgfns]
+    imgfn_strips = set(imgfn_strips)
+    for imgfn_strip in imgfn_strips:
+        # imgfn_strip = re.sub("_thread\d\d\d_nat", "", refimgfn)
+        fplist = glob.glob("S:\\Stimuli\\2019-Selectivity\\*\\"+glob.escape(imgfn_strip)+".*")
         if len(fplist) == 0:
             print(imgfn_strip)
         else:
