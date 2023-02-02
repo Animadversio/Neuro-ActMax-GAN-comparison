@@ -1,6 +1,7 @@
 """ Cluster version of BigGAN Evol """
-import os
 import sys
+sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
+import os
 import tqdm
 import numpy as np
 from os.path import join
