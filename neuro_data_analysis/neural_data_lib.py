@@ -49,6 +49,8 @@ def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", outpu
     stimpath = stimpath.replace("N:", stimdrive)
     imglist = S['imageName']
     imgfps_all, refimgfp_dict = _map_evol_imglist_2_imgfps(imglist, stimpath, sfx="bmp")
+    if S["evol"] is None:
+        return [], [], [], []
     if ExpType == "Evol":
         # % load the resp and stim
         psth_thread = S["evol"]["psth"][thread]
@@ -56,24 +58,27 @@ def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", outpu
         resp_arr = []
         bsl_arr = []
         imgidx_arr = []
+        gen_arr = []
         for blocki in range(len(psth_thread)):
             psth_arr = _format_psth_arr(psth_thread[blocki])  # time x images
             resp_arr.append(psth_arr[rsp_wdw, :].mean(axis=0))
             bsl_arr.append(psth_arr[bsl_wdw, :].mean(axis=0))
             idx_arr = _format_idx_arr(imgidx_thread[blocki])
             imgidx_arr.append(idx_arr)
+            gen_arr.append((blocki+1) * np.ones_like(idx_arr))
 
         resp_vec = np.concatenate(resp_arr, axis=0)
         bsl_vec = np.concatenate(bsl_arr, axis=0)
         imgidx_vec = np.concatenate(imgidx_arr, axis=0)
+        gen_vec = np.concatenate(gen_arr, axis=0)
         # % load the image full path
         # note to change the index to python convention
         imgfps_arr = [[imgfps_all[idx - 1] for idx in imgids] for imgids in imgidx_arr]
         imgfps_vec = [imgfps_all[idx - 1] for idx in imgidx_vec]
         if output_fmt == "vec":
-            return imgfps_vec, resp_vec, bsl_vec
+            return imgfps_vec, resp_vec, bsl_vec, gen_vec
         elif output_fmt == "arr":
-            return imgfps_arr, resp_arr, bsl_arr
+            return imgfps_arr, resp_arr, bsl_arr, gen_arr
         else:
             raise ValueError("output_fmt should be vec or arr")
     elif ExpType == "natref":
@@ -151,7 +156,7 @@ if __name__ == "__main__":
     BFEStats_merge, BFEStats = load_neural_data()
     #%%
     Expi = 12
-    imgfps, resp_vec, bsl_vec = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, stimdrive="S:", output_fmt="vec")
+    imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, stimdrive="S:", output_fmt="vec")
     #%%
-    imgfps_arr, resp_arr, bsl_arr = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, stimdrive="S:", output_fmt="arr")
+    imgfps_arr, resp_arr, bsl_arr, gen_arr = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, stimdrive="S:", output_fmt="arr")
     #%%
