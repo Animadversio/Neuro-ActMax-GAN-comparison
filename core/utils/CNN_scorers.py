@@ -447,8 +447,15 @@ def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, ti
         plt.show()
     return figh
 
+try:
+    from skimage.transform import resize, rescale
+except:
+    print("Warning: skimage.transform is not available. Will use scipy.misc.imresize instead.")
+    from PIL import Image
+    def resize(img, size):
+        return np.array(Image.fromarray(img).resize(size, Image.Resampling(2)))
 
-from skimage.transform import resize, rescale
+
 def resize_and_pad(img_list, size, offset, canvas_size=(227, 227), scale=1.0):
     '''Resize and Pad a list of images to list of images
     Note this function is assuming the image is in (0,1) scale so padding with 0.5 as gray background.
