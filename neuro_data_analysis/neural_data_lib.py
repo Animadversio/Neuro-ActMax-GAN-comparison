@@ -38,7 +38,7 @@ def load_neural_data():
     """
     BFEStats_merge = pickle.load(open(join(matroot, "Both_BigGAN_FC6_Evol_Stats.pkl"), "rb"))
     BFEStats = pickle.load(open(join(matroot, "Both_BigGAN_FC6_Evol_Stats_expsep.pkl"), "rb"))
-    return BFEStats_merge["BFEStats"], BFEStats
+    return BFEStats_merge, BFEStats
 
 
 def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", output_fmt="vec",
@@ -136,7 +136,13 @@ def _map_evol_imglist_2_imgfps(imglist, stimpath, sfx="bmp"):
         if len(refimgfp) == 0:
             print(f"Warning: {imgfn_strip} does not exist in {Path(stimpath).parent}.")
         elif len(refimgfp) > 1:
-            print(f"Warning: {imgfn_strip} has more than one file.\n {refimgfp}")
+            # if multiple matches. AB matches ABC!
+            refimgfp = sorted(refimgfp, key=lambda s: len(s.stem)) # shortest to longest
+            refimgfp_stems = [s.stem for s in refimgfp]
+            if all([refimgfp_stems[0] in stem for stem in refimgfp_stems]):
+                pass
+            else:
+                print(f"Warning: {imgfn_strip} has more than one file.\n {refimgfp}")
         refimgfp_dict[refimgfn] = str(refimgfp[0])
 
     imgfps_all = []
