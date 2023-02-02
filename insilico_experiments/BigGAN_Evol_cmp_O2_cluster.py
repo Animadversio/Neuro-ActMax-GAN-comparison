@@ -15,57 +15,15 @@ from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
 from core.utils.grad_RF_estim import grad_RF_estimate, gradmap2RF_square
 from core.utils.layer_hook_utils import get_module_names, layername_dict, register_hook_by_module_names
 from core.utils.Optimizers import CholeskyCMAES, HessCMAES, ZOHA_Sphere_lr_euclid
-# from ZO_HessAware_Optimizers import CholeskyCMAES, HessCMAES
-# from insilico_Exp import TorchScorer, ExperimentEvolve
-# def get_BigGAN(version="biggan-deep-256"):
-#     cache_path = "/scratch/binxu/torch/"
-#     cfg = BigGANConfig.from_json_file(join(cache_path, "%s-config.json" % version))
-#     BGAN = BigGAN(cfg)
-#     BGAN.load_state_dict(torch.load(join(cache_path, "%s-pytorch_model.bin" % version)))
-#     return BGAN
 
 #%%
-def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, title_str=""):
-    """ Visualize the Score Trajectory """
-    gen_slice = np.arange(min(generations), max(generations) + 1)
-    AvgScore = np.zeros_like(gen_slice)
-    MaxScore = np.zeros_like(gen_slice)
-    for i, geni in enumerate(gen_slice):
-        AvgScore[i] = np.mean(scores_all[generations == geni])
-        MaxScore[i] = np.max(scores_all[generations == geni])
-    figh, ax1 = plt.subplots()
-    ax1.scatter(generations, scores_all, s=16, alpha=0.6, label="all score")
-    ax1.plot(gen_slice, AvgScore, color='black', label="Average score")
-    ax1.plot(gen_slice, MaxScore, color='red', label="Max score")
-    ax1.set_xlabel("generation #")
-    ax1.set_ylabel("CNN unit score")
-    plt.legend()
-    if codes_arr is not None:
-        ax2 = ax1.twinx()
-        if codes_arr.shape[1] == 256: # BigGAN
-            nos_norm = np.linalg.norm(codes_arr[:, :128], axis=1)
-            cls_norm = np.linalg.norm(codes_arr[:, 128:], axis=1)
-            ax2.scatter(generations, nos_norm, s=5, color="orange", label="noise", alpha=0.2)
-            ax2.scatter(generations, cls_norm, s=5, color="magenta", label="class", alpha=0.2)
-        elif codes_arr.shape[1] == 4096: # FC6GAN
-            norms_all = np.linalg.norm(codes_arr[:, :], axis=1)
-            ax2.scatter(generations, norms_all, s=5, color="magenta", label="all", alpha=0.2)
-        ax2.set_ylabel("L2 Norm", color="red", fontsize=14)
-        plt.legend()
-    plt.title("Optimization Trajectory of Score\n" + title_str)
-    plt.legend()
-    if show:
-        plt.show()
-    return figh
-
-
 if sys.platform == "linux":
     # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
     # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
     # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
     # Newer cluster interface
     import os
-    scratchdir = os.environ['SCRATCH1']
+    scratchdir = "/n/scratch3/users/b/biw905" # os.environ['SCRATCH1']
     rootdir = join(scratchdir, "GAN_Evol_cmp")
     Hdir_BigGAN = join(scratchdir, "Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
     Hdir_fc6 = join(scratchdir, "Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
@@ -87,19 +45,10 @@ parser.add_argument("--steps", type=int, default=100, help="")
 parser.add_argument("--reps", type=int, default=2, help="")
 parser.add_argument("--RFresize", type=bool, default=False, help="")
 args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
-if args.G == "BigGAN":
-    Hdata = np.load(Hdir_BigGAN)
-elif args.G == "fc6":
-    Hdata = np.load(Hdir_fc6)
-else:
-    print("Hessian not found for the specified GAN")
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
 #%% Select GAN
 if args.G == "BigGAN":
-    # if sys.platform == "linux":
-    #     BGAN = get_BigGAN(version="biggan-deep-256")
-    # else:
     BGAN = BigGAN.from_pretrained("biggan-deep-256")
     BGAN.eval().cuda()
     for param in BGAN.parameters():
@@ -110,9 +59,22 @@ elif args.G == "fc6":
     G.eval().cuda()
     for param in G.parameters():
         param.requires_grad_(False)
-#%%
-# net = tv.alexnet(pretrained=True)
+else:
+    raise ValueError("Unknown GAN model")
+#%% Select Hessian
+try:
+    if args.G == "BigGAN":
+        Hdata = np.load(Hdir_BigGAN)
+    elif args.G == "fc6":
+        Hdata = np.load(Hdir_fc6)
+    else:
+        raise ValueError("Unknown GAN model")
+except:
+    print("Hessian not found for the specified GAN")
+    Hdata = None
+#%% Select vision model as scorer
 scorer = TorchScorer(args.net)
+# net = tv.alexnet(pretrained=True)
 # scorer.select_unit(("alexnet", "fc6", 2))
 # imgs = G.visualize(torch.randn(3, 256).cuda()).cpu()
 # scores = scorer.score_tsr(imgs)
@@ -134,7 +96,7 @@ class fix_param_wrapper:
         """pre True means fix the initial part of code, False means last part"""
         self.optim = optim
         self.fix_code = fixed_code
-        self.pre = pre  # if the fix code in in the first part
+        self.pre = pre  # if the fix code is in the first part
         self.sep = fixed_code.shape[1]
 
     def step_simple(self, scores, codes):
@@ -147,7 +109,7 @@ class fix_param_wrapper:
 
 
 #%% Optimizer from label, Use this to translate string labels to optimizer
-def label2optimizer(methodlabel, init_code, GAN="BigGAN", ): # TODO add default init_code
+def label2optimizer(methodlabel, init_code, GAN="BigGAN", ):  # TODO add default init_code
     """ Input a label output an grad-free optimizer """
     if GAN == "BigGAN":
         if methodlabel == "CholCMA":
@@ -201,18 +163,57 @@ def label2optimizer(methodlabel, init_code, GAN="BigGAN", ): # TODO add default 
             optim_cust = HessCMAES(space_dimen=4096, cutoff=500, init_code=init_code, init_sigma=0.4, )
             optim_cust.set_Hessian(eigvals=eva, eigvects=evc, cutoff=500, expon=1 / 4)
     return optim_cust
-#%%
-method_col = args.optim
 
-#%%
+
 def resize_and_pad(imgs, corner, size):
     pad_img = torch.ones_like(imgs) * 0.5
     rsz_img = F.interpolate(imgs, size=size, align_corners=True, mode="bilinear")
     pad_img[:,:,corner[0]:corner[0]+size[0],corner[1]:corner[1]+size[1]] = rsz_img
     return pad_img
 
-# optimizer_col = [label2optimizer(methodlabel, np.random.randn(1, 256), GAN=args.G) for methodlabel in method_col]
+
+def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, title_str=""):
+    """ Visualize the Score Trajectory """
+    gen_slice = np.arange(min(generations), max(generations) + 1)
+    AvgScore = np.zeros_like(gen_slice)
+    MaxScore = np.zeros_like(gen_slice)
+    for i, geni in enumerate(gen_slice):
+        AvgScore[i] = np.mean(scores_all[generations == geni])
+        MaxScore[i] = np.max(scores_all[generations == geni])
+    figh, ax1 = plt.subplots()
+    ax1.scatter(generations, scores_all, s=16, alpha=0.6, label="all score")
+    ax1.plot(gen_slice, AvgScore, color='black', label="Average score")
+    ax1.plot(gen_slice, MaxScore, color='red', label="Max score")
+    ax1.set_xlabel("generation #")
+    ax1.set_ylabel("CNN unit score")
+    plt.legend()
+    if codes_arr is not None:
+        ax2 = ax1.twinx()
+        if codes_arr.shape[1] == 256: # BigGAN
+            nos_norm = np.linalg.norm(codes_arr[:, :128], axis=1)
+            cls_norm = np.linalg.norm(codes_arr[:, 128:], axis=1)
+            ax2.scatter(generations, nos_norm, s=5, color="orange", label="noise", alpha=0.2)
+            ax2.scatter(generations, cls_norm, s=5, color="magenta", label="class", alpha=0.2)
+        elif codes_arr.shape[1] == 4096: # FC6GAN
+            norms_all = np.linalg.norm(codes_arr[:, :], axis=1)
+            ax2.scatter(generations, norms_all, s=5, color="magenta", label="all", alpha=0.2)
+        ax2.set_ylabel("L2 Norm", color="red", fontsize=14)
+        plt.legend()
+    plt.title("Optimization Trajectory of Score\n" + title_str)
+    plt.legend()
+    if show:
+        plt.show()
+    else:
+        plt.close(figh)
+    return figh
 #%%
+method_col = args.optim
+
+#%% Select the Optimizer
+
+# optimizer_col = [label2optimizer(methodlabel, np.random.randn(1, 256), GAN=args.G) for methodlabel in method_col]
+
+#%% Set recording location and image size and position.
 pos_dict = {"conv5": (7, 7), "conv4": (7, 7), "conv3": (7, 7), "conv2": (14, 14), "conv1": (28, 28)}
 
 # Get the center position of the feature map.
@@ -237,19 +238,6 @@ if args.RFresize:
         Xlim = (corner[0], corner[0] + imgsize[0])
         Ylim = (corner[1], corner[1] + imgsize[1])
     else:
-        # if args.net in layername_dict:
-        #     from torch_net_utils import receptive_field, receptive_field_for_unit
-        #     print("Computing RF by RF arithmetics: ")
-        #     rf_dict = receptive_field(scorer.model.features, (3, 227, 227), device="cuda")
-        #     layername = layername_dict[args.net]
-        #     layer_name_map = {layer: str(i+1) for i, layer in enumerate(layername)}  # map layer to numbering
-        #
-        #     rf_pos = receptive_field_for_unit(rf_dict, layer_name_map[args.layer], cent_pos)
-        #     imgsize = (int((rf_pos[0][1] - rf_pos[0][0]) / 227 * 256 + 1), int((rf_pos[1][1] - rf_pos[1][0]) / 227 * 256 + 1))
-        #     corner = (int(rf_pos[0][0] / 227 * 256 - 1), int(rf_pos[1][0] / 227 * 256 - 1))
-        #     Xlim = (corner[0], corner[0]+imgsize[0])
-        #     Ylim = (corner[1], corner[1]+imgsize[1])
-        # else:
         print("Computing RF by direct backprop: ")
         gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
                                       device="cuda", show=False, reps=30, batch=1)
@@ -259,7 +247,7 @@ if args.RFresize:
 
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 
-# Start iterating through channels.
+#%% Start iterating through channels.
 for unit_id in range(args.chans[0], args.chans[1]):
     if "fc" in args.layer:
         unit = (args.net, args.layer, unit_id)
@@ -272,9 +260,10 @@ for unit_id in range(args.chans[0], args.chans[1]):
     else:
         savedir = join(rootdir, r"%s_%s_%d_%d_%d" % unit[:5])
 
-    if args.RFresize: savedir+="_RFrsz"
+    if args.RFresize: savedir += "_RFrsz"
     os.makedirs(savedir, exist_ok=True)
     for triali in range(args.reps):
+        # generate initial code.
         if args.G == "BigGAN":
             fixnoise = 0.7 * truncated_noise_sample(1, 128)
             init_code = np.concatenate((fixnoise, np.zeros((1, 128))), axis=1)
