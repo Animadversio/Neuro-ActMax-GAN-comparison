@@ -48,7 +48,7 @@ outdir = r"O:\ThesisProposal\BigGAN"
 summarydir = join(figdir, "summary")
 os.makedirs(summarydir, exist_ok=True)
 
-# load the table that indexing all experiments
+# load the table that indexing all insilico_experiments
 exptab = pd.read_csv(join(summarydir, "optim_raw_score_tab.csv"))
 exptab.suffix.fillna("", inplace=True)  # substitute nan as ""
 exptab.suffix = exptab.suffix.astype(str)

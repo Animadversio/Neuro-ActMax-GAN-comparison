@@ -1,8 +1,9 @@
 """
-Quantify naturalness of generated images.
+Quantify naturalness of generated images. through FID and IS.
     Compare the BigGAN and FC6 GAN images in terms of FID score.
     and Fourier power spectrum.
 
+Requirements
 ! pip install pytorch-gan-metrics
 ! pip install pytorch-pretrained-biggan
 """
