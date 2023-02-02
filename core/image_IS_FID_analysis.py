@@ -7,7 +7,7 @@ Requirements
 ! pip install pytorch-gan-metrics
 ! pip install pytorch-pretrained-biggan
 """
-
+import sys
 import os
 from os.path import join
 
@@ -19,8 +19,10 @@ from pytorch_gan_metrics.utils import ImageDataset
 from pytorch_gan_metrics.core  import torch_cov, get_inception_feature, calculate_inception_score, calculate_frechet_distance
 from torchvision.transforms import Compose, Resize, ToTensor, CenterCrop
 from torch.utils.data import DataLoader
-savedir = r"E:\OneDrive - Harvard University\GAN_imgstats_cmp\Inception"
-savedir = "/home/binxuwang/DL_Projects/GAN-fids"
+if sys.platform == "linux" and os.getlogin() == 'binxuwang':
+    savedir = "/home/binxuwang/DL_Projects/GAN-fids"
+else:
+    savedir = r"E:\OneDrive - Harvard University\GAN_imgstats_cmp\Inception"
 #%%
 img_size = 256
 INroot = r"E:\Datasets\imagenet-valid\valid"
@@ -209,21 +211,22 @@ inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
 np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
 torch.save({"acts": acts, "probs":probs}, join(savedir, f"{imageset_str}_act_prob.pt"))
 print(inception_score, IS_std)
-# BigGAN class vs INet: 17.85
-# Inception Score 68.50184631347656 1.6187756061553955
 #%%
-"""Sample class vector from 1000 clasees, and noise vector with std = 1.0. worse than 0.7 """
 imageset_str = "white_noise"
-wnoise_fun = lambda batch_size: torch.rand(batch_size, 3, 256, 256, device="cuda")
-wn_loader = GANDataloader(wnoise_fun, batch_size=100, total_imgnum=50000)
+wnoise_fun = lambda batch_size: torch.rand(batch_size, 3, 256, 256)
+wnoise_loader = GANDataloader(wnoise_fun, batch_size=80, total_imgnum=50000)
 with torch.no_grad():
-    acts, probs = get_inception_feature(wn_loader, dims=[2048, 1008], use_torch=True, verbose=True)
+    acts, probs = get_inception_feature(wnoise_loader, dims=[2048, 1008], use_torch=True, verbose=True)
 mu = torch.mean(acts, dim=0).cpu().numpy()
 sigma = torch_cov(acts, rowvar=False).cpu().numpy()
 np.savez_compressed(join(savedir, f"{imageset_str}_inception_stats.npz"), mu=mu, sigma=sigma)
 inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
 np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
 torch.save({"acts": acts, "probs":probs}, join(savedir, f"{imageset_str}_act_prob.pt"))
+print("IS+-std ", inception_score, IS_std)
+fid = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet)
+print("Fid", fid)
+#%%
 print(inception_score, IS_std)
 
 #%% Summary stats for all GANs
