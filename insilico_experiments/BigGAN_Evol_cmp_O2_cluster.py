@@ -315,8 +315,9 @@ for unit_id in range(args.chans[0], args.chans[1]):
             best_imgs = []
             for i in range(args.steps,):
                 codes_all.append(new_codes.copy())
-                imgs = G.visualize_batch_np(new_codes) # B=1
                 latent_code = torch.from_numpy(np.array(new_codes)).float()
+                # imgs = G.visualize_batch_np(new_codes) # B=1
+                imgs = G.visualize(latent_code).cpu()
                 if args.RFresize: imgs = resize_and_pad(imgs, corner, imgsize)
                 scores = scorer.score_tsr(imgs)
                 if args.G == "BigGAN":
@@ -334,8 +335,12 @@ for unit_id in range(args.chans[0], args.chans[1]):
             codes_all = np.concatenate(tuple(codes_all), axis=0)
             scores_all = np.array(scores_all)
             generations = np.array(generations)
-            save_imgrid(imgs, join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())), nrow=7)
-            save_imgrid(best_imgs, join(savedir, "bestgen%s_%05d.jpg" % (methodlab, RND, )), nrow=10)
+            mtg_exp = ToPILImage()(make_grid(best_imgs, nrow=10))
+            mtg_exp.save(join(savedir, "besteachgen%s_%05d.jpg" % (methodlab, RND,)))
+            mtg = ToPILImage()(make_grid(imgs, nrow=7))
+            mtg.save(join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
+            # save_imgrid(imgs, join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())), nrow=7)
+            # save_imgrid(best_imgs, join(savedir, "bestgen%s_%05d.jpg" % (methodlab, RND, )), nrow=10)
             if args.G == "fc6":
                 np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)),
                  generations=generations, scores_all=scores_all, codes_fin=codes_all[-80:, :])
