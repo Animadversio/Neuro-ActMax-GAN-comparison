@@ -317,7 +317,7 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 codes_all.append(new_codes.copy())
                 latent_code = torch.from_numpy(np.array(new_codes)).float()
                 # imgs = G.visualize_batch_np(new_codes) # B=1
-                imgs = G.visualize(latent_code).cpu()
+                imgs = G.visualize(latent_code.cuda()).cpu()
                 if args.RFresize: imgs = resize_and_pad(imgs, corner, imgsize)
                 scores = scorer.score_tsr(imgs)
                 if args.G == "BigGAN":
