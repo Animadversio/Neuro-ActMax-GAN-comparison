@@ -16,18 +16,17 @@ from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
 from core.utils.grad_RF_estim import grad_RF_estimate, gradmap2RF_square
 from core.utils.layer_hook_utils import get_module_names, layername_dict, register_hook_by_module_names
 from core.utils.Optimizers import CholeskyCMAES, HessCMAES, ZOHA_Sphere_lr_euclid
-
+from core.utils.plot_utils import saveallforms, save_imgrid
 #%%
 if sys.platform == "linux":
     # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
     # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
     # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
-    # Newer cluster interface
-    import os
-    scratchdir = "/n/scratch3/users/b/biw905" # os.environ['SCRATCH1']
+    # O2 path interface
+    scratchdir = "/n/scratch3/users/b/biw905"  # os.environ['SCRATCH1']
     rootdir = join(scratchdir, "GAN_Evol_cmp")
-    Hdir_BigGAN = join(scratchdir, "Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
-    Hdir_fc6 = join(scratchdir, "Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
+    Hdir_BigGAN = join("/home/biw905/Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
+    Hdir_fc6 = join("/home/biw905/Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
 else:
     # rootdir = r"E:\OneDrive - Washington University in St. Louis\BigGAN_Optim_Tune_tmp"
     rootdir = r"D:\Cluster_Backup\GAN_Evol_cmp" #r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
@@ -48,43 +47,54 @@ parser.add_argument("--RFresize", type=bool, default=False, help="")
 args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
 #%%
 """with a correct cmaes or initialization, BigGAN can match FC6 activation."""
+
 #%% Select GAN
-if args.G == "BigGAN":
-    BGAN = BigGAN.from_pretrained("biggan-deep-256")
-    BGAN.eval().cuda()
-    for param in BGAN.parameters():
-        param.requires_grad_(False)
-    G = BigGAN_wrapper(BGAN)
-elif args.G == "fc6":
-    G = upconvGAN("fc6")
-    G.eval().cuda()
-    for param in G.parameters():
-        param.requires_grad_(False)
-else:
-    raise ValueError("Unknown GAN model")
-#%% Select Hessian
-try:
-    if args.G == "BigGAN":
-        Hdata = np.load(Hdir_BigGAN)
-    elif args.G == "fc6":
-        Hdata = np.load(Hdir_fc6)
+def load_GAN(name):
+    if name == "BigGAN":
+        BGAN = BigGAN.from_pretrained("biggan-deep-256")
+        BGAN.eval().cuda()
+        for param in BGAN.parameters():
+            param.requires_grad_(False)
+        G = BigGAN_wrapper(BGAN)
+    elif name == "fc6":
+        G = upconvGAN("fc6")
+        G.eval().cuda()
+        for param in G.parameters():
+            param.requires_grad_(False)
     else:
         raise ValueError("Unknown GAN model")
-except:
-    print("Hessian not found for the specified GAN")
-    Hdata = None
-#%% Select vision model as scorer
-scorer = TorchScorer(args.net)
-# net = tv.alexnet(pretrained=True)
-# scorer.select_unit(("alexnet", "fc6", 2))
-# imgs = G.visualize(torch.randn(3, 256).cuda()).cpu()
-# scores = scorer.score_tsr(imgs)
+    return G
+
+
+def load_Hessian(name):
+    # Select Hessian
+    try:
+        if name == "BigGAN":
+            H = np.load(Hdir_BigGAN)
+        elif name == "fc6":
+            H = np.load(Hdir_fc6)
+        else:
+            raise ValueError("Unknown GAN model")
+    except:
+        print("Hessian not found for the specified GAN")
+        H = None
+    return H
+
+
 #%% Wrap the optimizers, like concatenate 2 or concatenate one with a fixed code
 class concat_wrapper:
+    """ Concatenate 2 gradient free optimizers
+    each optimize a different part of the latent code
+    latent code space dim = self.optim1.space_dim + self.optim2.space_dim
+
+    optim1: gradient free optimizer
+    optim2: gradient free optimizer
+    """
     def __init__(self, optim1, optim2):
         self.optim1 = optim1
         self.optim2 = optim2
         self.sep = self.optim1.space_dimen
+        self.space_dimen = self.optim1.space_dimen + self.optim2.space_dimen
 
     def step_simple(self, scores, codes):
         new_codes1 = self.optim1.step_simple(scores, codes[:,:self.sep])
@@ -93,20 +103,31 @@ class concat_wrapper:
 
 
 class fix_param_wrapper:
+    """ Fixe part of parameters, and optimize the rest
+    latent code space dim = self.optim.space_dim + self.fix_code.shape[1]
+
+    optim: gradient free optimizer
+    fix_code: fixed part of the latent code
+    pre: whether fix_code is before or after the optimizable part
+    """
     def __init__(self, optim, fixed_code, pre=True):
-        """pre True means fix the initial part of code, False means last part"""
         self.optim = optim
         self.fix_code = fixed_code
         self.pre = pre  # if the fix code is in the first part
         self.sep = fixed_code.shape[1]
+        self.space_dimen = self.optim.space_dimen + self.sep
 
     def step_simple(self, scores, codes):
         if self.pre:
+            """fix the first part of code, optimize the latter part"""
             new_codes1 = self.optim.step_simple(scores, codes[:, self.sep:])
-            return np.concatenate((np.repeat(self.fix_code, new_codes1.shape[0], axis=0), new_codes1), axis=1)
+            freezed_codes = np.repeat(self.fix_code, new_codes1.shape[0], axis=0)
+            return np.concatenate((freezed_codes, new_codes1), axis=1)
         else:
+            """fix the last part of code, optimize the first part"""
             new_codes1 = self.optim.step_simple(scores, codes[:, :-self.sep])
-            return np.concatenate((new_codes1, np.repeat(self.fix_code, new_codes1.shape[0], axis=0)), axis=1)
+            freezed_codes = np.repeat(self.fix_code, new_codes1.shape[0], axis=0)
+            return np.concatenate((new_codes1, freezed_codes), axis=1)
 
 
 #%% Optimizer from label, Use this to translate string labels to optimizer
@@ -114,7 +135,7 @@ def label2optimizer(methodlabel, init_code, GAN="BigGAN", ):  # TODO add default
     """ Input a label output an grad-free optimizer """
     if GAN == "BigGAN":
         if methodlabel == "CholCMA":
-            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2,)
+            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2,)  # FIXME: sigma may be too large
         elif methodlabel == "CholCMA_class":
             optim = CholeskyCMAES(space_dimen=128, init_code=init_code[:, 128:], init_sigma=0.06,)
             optim_cust = fix_param_wrapper(optim, init_code[:, :128], pre=True)
@@ -126,7 +147,7 @@ def label2optimizer(methodlabel, init_code, GAN="BigGAN", ):  # TODO add default
             optim2 = CholeskyCMAES(space_dimen=128, init_code=init_code[:, 128:], init_sigma=0.06,)
             optim_cust = concat_wrapper(optim1, optim2)
         elif methodlabel == "CholCMA_noA":
-            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2, Aupdate_freq=102)
+            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2, Aupdate_freq=102)  # FIXME: sigma may be too large
         elif methodlabel == "HessCMA":
             eva = Hdata['eigvals_avg'][::-1]
             evc = Hdata['eigvects_avg'][:, ::-1]
@@ -167,9 +188,13 @@ def label2optimizer(methodlabel, init_code, GAN="BigGAN", ):  # TODO add default
 
 
 def resize_and_pad(imgs, corner, size):
+    """ Resize and pad images to a square with a given corner and size
+    Background is gray.
+    Assume image is float, range [0, 1]
+    """
     pad_img = torch.ones_like(imgs) * 0.5
     rsz_img = F.interpolate(imgs, size=size, align_corners=True, mode="bilinear")
-    pad_img[:,:,corner[0]:corner[0]+size[0],corner[1]:corner[1]+size[1]] = rsz_img
+    pad_img[:, :, corner[0]:corner[0]+size[0], corner[1]:corner[1]+size[1]] = rsz_img
     return pad_img
 
 
@@ -190,12 +215,12 @@ def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, ti
     plt.legend()
     if codes_arr is not None:
         ax2 = ax1.twinx()
-        if codes_arr.shape[1] == 256: # BigGAN
+        if codes_arr.shape[1] == 256:  # BigGAN
             nos_norm = np.linalg.norm(codes_arr[:, :128], axis=1)
             cls_norm = np.linalg.norm(codes_arr[:, 128:], axis=1)
             ax2.scatter(generations, nos_norm, s=5, color="orange", label="noise", alpha=0.2)
             ax2.scatter(generations, cls_norm, s=5, color="magenta", label="class", alpha=0.2)
-        elif codes_arr.shape[1] == 4096: # FC6GAN
+        elif codes_arr.shape[1] == 4096:  # FC6GAN
             norms_all = np.linalg.norm(codes_arr[:, :], axis=1)
             ax2.scatter(generations, norms_all, s=5, color="magenta", label="all", alpha=0.2)
         ax2.set_ylabel("L2 Norm", color="red", fontsize=14)
@@ -207,13 +232,20 @@ def visualize_trajectory(scores_all, generations, codes_arr=None, show=False, ti
     else:
         plt.close(figh)
     return figh
-#%%
-method_col = args.optim
 
+
+
+G = load_GAN(args.G)
+Hdata = load_Hessian(args.G)
+#%% Select vision model as scorer
+scorer = TorchScorer(args.net)
+# net = tv.alexnet(pretrained=True)
+# scorer.select_unit(("alexnet", "fc6", 2))
+# imgs = G.visualize(torch.randn(3, 256).cuda()).cpu()
+# scores = scorer.score_tsr(imgs)
 #%% Select the Optimizer
-
+method_col = args.optim
 # optimizer_col = [label2optimizer(methodlabel, np.random.randn(1, 256), GAN=args.G) for methodlabel in method_col]
-
 #%% Set recording location and image size and position.
 pos_dict = {"conv5": (7, 7), "conv4": (7, 7), "conv3": (7, 7), "conv2": (14, 14), "conv1": (28, 28)}
 
@@ -274,7 +306,7 @@ for unit_id in range(args.chans[0], args.chans[1]):
         optimizer_col = [label2optimizer(methodlabel, init_code, args.G) for methodlabel in method_col]
         for methodlab, optimizer in zip(method_col, optimizer_col):
             if args.G == "fc6":  methodlab += "_fc6"  # add space notation as suffix to optimizer
-            # One single evolution! 
+            # core evolution code
             new_codes = init_code
             # new_codes = init_code + np.random.randn(25, 256) * 0.06
             scores_all = []
@@ -297,19 +329,19 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 new_codes = optimizer.step_simple(scores, new_codes, )
                 scores_all.extend(list(scores))
                 generations.extend([i] * len(scores))
-                # best_imgs.append(imgs[scores.argmax(),:,:,:])
+                best_imgs.append(imgs[scores.argmax(),:,:,:])
 
             codes_all = np.concatenate(tuple(codes_all), axis=0)
             scores_all = np.array(scores_all)
             generations = np.array(generations)
-            # mtg_exp = ToPILImage()(make_grid(best_imgs, nrow=10))
-            # mtg_exp.save(join(savedir, "besteachgen%s_%05d.jpg" % (methodlab, RND,)))
-            mtg = ToPILImage()(make_grid(imgs, nrow=7))
-            mtg.save(join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
+            save_imgrid(imgs, join(savedir, "lastgen%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())), nrow=7)
+            save_imgrid(best_imgs, join(savedir, "bestgen%s_%05d.jpg" % (methodlab, RND, )), nrow=10)
             if args.G == "fc6":
-                np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)), generations=generations, scores_all=scores_all, codes_fin=codes_all[-80:,:])
+                np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)),
+                 generations=generations, scores_all=scores_all, codes_fin=codes_all[-80:, :])
             else:
-                np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)), generations=generations, scores_all=scores_all, codes_all=codes_all)
+                np.savez(join(savedir, "scores%s_%05d.npz" % (methodlab, RND)),
+                 generations=generations, scores_all=scores_all, codes_all=codes_all)
             visualize_trajectory(scores_all, generations, codes_arr=codes_all, title_str=methodlab).savefig(
                 join(savedir, "traj%s_%05d_score%.1f.jpg" % (methodlab, RND, scores.mean())))
 
