@@ -56,10 +56,10 @@ echo "$unit_name"
 
 module load gcc/6.2.0
 module load cuda/10.2
-module load conda2/4.2.13
+#module load conda2/4.2.13
 
 #conda init bash
 source  activate torch
 
 cd ~/Github/Neuro-ActMax-GAN-comparison
-python insilico_experiments/BigGAN_Evol_cmp_O2_cluster.py  $unit_name
+python3 insilico_experiments/BigGAN_Evol_cmp_O2_cluster.py  $unit_name
