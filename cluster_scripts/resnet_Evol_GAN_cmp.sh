@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH -n 1
 #SBATCH -p gpu_quad
+#SBATCH -t 8:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --pty -t 8:00:00
 #SBATCH --array=1-2
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o BigGANresnet_evol_%j.out
