@@ -51,13 +51,14 @@ param_list=\
 --chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500  --rep 10
 '
 
-export unit_name="$(echo "$param_list" | head -n $LSB_JOBINDEX | tail -1)"
+export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
 echo "$unit_name"
 
 module load gcc/6.2.0
 module load cuda/10.2
 module load conda2/4.2.13
 
+conda init bash
 conda activate torch
 
 cd ~/Github/Neuro-ActMax-GAN-comparison
