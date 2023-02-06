@@ -21,9 +21,12 @@ import matplotlib.pylab as plt
 cov_root = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN"
 Animal = "Both"
 Expi = 111
-for Expi in range(23, 191):
+for Expi in range(29, 191):
     # thread =  "_cmb"
-    explabel = get_expstr(BFEStats, Expi)
+    try:
+        explabel = get_expstr(BFEStats, Expi)
+    except:
+        continue
     showfig = True
     for thread in [0, 1, "_cmb"]:
         try:

@@ -173,6 +173,9 @@ class upconvGAN(nn.Module):
                     SDnew[name] = W
             self.G.load_state_dict(SDnew)
 
+    def sample_vector(self, sampn=1, device="cuda", noise_std=1.0):
+        return torch.randn(sampn, self.codelen, device=device) * noise_std
+
     def forward(self, x):
         return self.G(x)[:, [2, 1, 0], :, :]
 
