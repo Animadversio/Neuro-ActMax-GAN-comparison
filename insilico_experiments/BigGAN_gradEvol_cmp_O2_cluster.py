@@ -182,18 +182,28 @@ def grad_evolution(scorer, optim_constructor, z_init, hess_param:bool, evc=None,
 
 
 def visualize_gradevol(score_traj, z_traj, savedir, savestr="", titlestr=""):
-    noise_norm = z_traj[:, :, :128].norm(dim=-1)
-    class_norm = z_traj[:, :, 128:].norm(dim=-1)
-    figh, axs = plt.subplots(1, 3, figsize=(10, 4))
-    plt.subplot(1, 3, 1)
-    plt.plot(score_traj)
-    plt.title("score traj")
-    plt.subplot(1, 3, 2)
-    plt.plot(noise_norm)
-    plt.title("noise norm")
-    plt.subplot(1, 3, 3)
-    plt.plot(class_norm)
-    plt.title("class norm")
+    if z_traj.shape[-1] == 256:
+        noise_norm = z_traj[:, :, :128].norm(dim=-1)
+        class_norm = z_traj[:, :, 128:].norm(dim=-1)
+        figh, axs = plt.subplots(1, 3, figsize=(10, 4))
+        plt.subplot(1, 3, 1)
+        plt.plot(score_traj)
+        plt.title("score traj")
+        plt.subplot(1, 3, 2)
+        plt.plot(noise_norm)
+        plt.title("noise norm")
+        plt.subplot(1, 3, 3)
+        plt.plot(class_norm)
+        plt.title("class norm")
+    elif z_traj.shape[-1] == 4096:
+        noise_norm = z_traj.norm(dim=-1)
+        figh, axs = plt.subplots(1, 2, figsize=(8, 4))
+        plt.subplot(1, 2, 1)
+        plt.plot(score_traj)
+        plt.title("score traj")
+        plt.subplot(1, 2, 2)
+        plt.plot(noise_norm)
+        plt.title("noise norm")
     plt.suptitle(titlestr)
     plt.tight_layout()
     saveallforms(savedir, savestr + "score_traj", figh, ["png", "pdf"])
@@ -205,7 +215,10 @@ def get_optimizer_constructor(optim_name):
         hess_param = True
     else:
         hess_param = False
-    if optim_name in ["Adam001", "Adam001Hess"]:
+    if optim_name in ["Adam01", "Adam01Hess"]:
+        def optim_constructor(params):
+            return Adam(params, lr=0.1)
+    elif optim_name in ["Adam001", "Adam001Hess"]:
         def optim_constructor(params):
             return Adam(params, lr=0.01)
     elif optim_name in ["Adam0003", "Adam0003Hess"]:
@@ -234,8 +247,11 @@ input_size = (3, 227, 227)
 G = load_GAN(args.G)
 Hdata = load_Hessian(args.G)
 scorer = TorchScorer(args.net, imgpix=227)
-evc = torch.tensor(Hdata["eigvects_avg"]).cuda()
-#%
+if args.G == "BigGAN":
+    evc = torch.tensor(Hdata["eigvects_avg"]).cuda()
+elif args.G == "fc6":
+    evc = torch.tensor(Hdata["eigvect_avg"]).float().cuda()
+
 cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args.layer,
                                           input_size=input_size, device="cuda")
 print("Target setting network %s layer %s, center pos" % (args.net, args.layer), cent_pos)
@@ -259,12 +275,12 @@ for unit_id in range(args.chans[0], args.chans[1]):
         RND = np.random.randint(1E5)
         np.save(join(savedir, "init_code_%05d.npy"%RND), z_init.cpu().numpy())
         for methodlab in args.optim: # "Adam0001", "Adam0001Hess","SGD0001", "SGD0001Hess"]:
+            optim_constructor, hess_param = get_optimizer_constructor(methodlab)
             if args.G == "fc6":
                 methodlab += "_fc6"
-            optim_constructor, hess_param = get_optimizer_constructor(methodlab)
             img, img_traj, z_traj, score_traj = grad_evolution(scorer, optim_constructor, z_init,
-                               hess_param=hess_param, evc=evc, steps=args.steps,
-                               RFresize=args.RFresize, corner=corner, imgsize=imgsize)
+                                                               hess_param=hess_param, evc=evc, steps=args.steps,
+                                                               RFresize=args.RFresize, corner=corner, imgsize=imgsize)
             visualize_gradevol(score_traj, z_traj, savedir, savestr="traj%s_%05d"%(methodlab, RND, ),
                                titlestr=f"{unit} - {methodlab}\nRND{RND}, rep{repi}")
             save_imgrid(img, join(savedir, "imglastgen%s_%05d.jpg" % (methodlab, RND, )), nrow=5)
