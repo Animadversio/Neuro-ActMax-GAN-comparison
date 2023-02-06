@@ -120,7 +120,6 @@ for i in range(100):
     score = scorer.score_tsr_wgrad(img)
     score_traj.append(score.detach().cpu())
     z_traj.append(z.detach().cpu())
-
     loss = - score.sum()
     loss.backward()
     optim.step()
@@ -138,11 +137,11 @@ scorer.cleanup()
 idx = torch.argsort(score.detach().cpu(), descending=True)
 score_traj = torch.stack(score_traj)
 z_traj = torch.stack(z_traj)
-z_traj = z_traj[:,idx,:]
-score_traj = score_traj[:,idx]
+img = img.detach()[idx]
+z_traj = z_traj[:, idx, :]  # sort the sample
+score_traj = score_traj[:, idx]   # sort the sample
 noise_norm = z_traj[:, :, :128].norm(dim=-1)
 class_norm = z_traj[:, :, 128:].norm(dim=-1)
-img = img.detach()[idx]
 #%%
 figh, axs = plt.subplots(1, 3, figsize=(10, 4))
 plt.subplot(1, 3, 1)
