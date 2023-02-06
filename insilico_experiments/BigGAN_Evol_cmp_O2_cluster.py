@@ -191,7 +191,7 @@ def resize_and_pad(imgs, corner, size):
     """ Resize and pad images to a square with a given corner and size
     Background is gray.
     Assume image is float, range [0, 1]
-    """
+    """ # FIXME: this should depend on the input size of image, add canvas size parameter
     pad_img = torch.ones_like(imgs) * 0.5
     rsz_img = F.interpolate(imgs, size=size, align_corners=True, mode="bilinear")
     pad_img[:, :, corner[0]:corner[0]+size[0], corner[1]:corner[1]+size[1]] = rsz_img
@@ -318,7 +318,7 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 latent_code = torch.from_numpy(np.array(new_codes)).float()
                 # imgs = G.visualize_batch_np(new_codes) # B=1
                 imgs = G.visualize(latent_code.cuda()).cpu()
-                if args.RFresize: imgs = resize_and_pad(imgs, corner, imgsize)
+                if args.RFresize: imgs = resize_and_pad(imgs, corner, imgsize) # Bug: imgs are resized to 256x256 and it will be further resized in score_tsr
                 scores = scorer.score_tsr(imgs)
                 if args.G == "BigGAN":
                     print("step %d score %.3f (%.3f) (norm %.2f noise norm %.2f)" % (
