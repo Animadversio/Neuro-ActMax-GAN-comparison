@@ -108,22 +108,22 @@ parser.add_argument("--G", type=str, default="BigGAN", help="")
 parser.add_argument("--optim", type=str, nargs='+', default=["Adam001Hess", "Adam0003Hess", "Adam0001"], help="")
 parser.add_argument("--steps", type=int, default=100, help="")
 parser.add_argument("--reps", type=int, default=10, help="")
-parser.add_argument("--batch", type=int, default=5, help="")
+parser.add_argument("--batch", type=int, default=4, help="")
 parser.add_argument("--RFresize", type=bool, default=False, help="")
 args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
 
-from easydict import EasyDict as edict
-args = edict()
-args.net = "resnet50"
-args.layer = ".layer3"
-args.G = "BigGAN"
-args.batch = 4
-args.steps = 100
-args.reps = 2
-args.optim = ["Adam001", "Adam001Hess", "Adam0003", "Adam0003Hess",
-              "Adam0001", "Adam0001Hess", "SGD001", "SGD001Hess",
-              "SGD0003", "SGD0003Hess", "SGD0001", "SGD0001Hess", ]
-args.RFresize = True
+# from easydict import EasyDict as edict
+# args = edict()
+# args.net = "resnet50"
+# args.layer = ".layer3"
+# args.G = "BigGAN"
+# args.batch = 4
+# args.steps = 100
+# args.reps = 2
+# args.optim = ["Adam001", "Adam001Hess", "Adam0003", "Adam0003Hess",
+#               "Adam0001", "Adam0001Hess", "SGD001", "SGD001Hess",
+#               "SGD0003", "SGD0003Hess", "SGD0001", "SGD0001Hess", ]
+# args.RFresize = True
 #%%
 def resize_and_pad_canvas(imgs, corner, size, input_size):
     """ Resize and pad images to a square with a given corner and size
