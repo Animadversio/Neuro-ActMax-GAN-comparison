@@ -28,7 +28,7 @@ if platform == "linux": # cluster
         torchhome = join(scratchdir, "torch/checkpoints")  # RIS
     else:
         # torchhome = torch.hub._get_torch_home()
-        torchhome = torch.hub.get_dir()  # torch.hub._get_torch_home()
+        torchhome = join(torch.hub.get_dir(), "checkpoints")  # torch.hub._get_torch_home()
 else:
     if os.environ['COMPUTERNAME'] == 'DESKTOP-9DDE2RH':  # PonceLab-Desktop 3
         torchhome = r"E:\Cluster_Backup\torch"
