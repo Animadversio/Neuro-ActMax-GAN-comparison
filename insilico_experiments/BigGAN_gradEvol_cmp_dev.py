@@ -51,10 +51,28 @@ def load_Hessian(name):
         H = None
     return H
 
+#%%
+if sys.platform == "linux":
+    # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
+    # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
+    # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
+    # O2 path interface
+    scratchdir = "/n/scratch3/users/b/biw905"  # os.environ['SCRATCH1']
+    rootdir = join(scratchdir, "GAN_gradEvol_cmp")
+    Hdir_BigGAN = join("/home/biw905/Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
+    Hdir_fc6 = join("/home/biw905/Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
+else:
+    # rootdir = r"E:\OneDrive - Washington University in St. Louis\BigGAN_Optim_Tune_tmp"
+    rootdir = r"D:\Cluster_Backup\GAN_gradEvol_cmp" #r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
+    Hdir_BigGAN = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\BigGAN\H_avg_1000cls.npz"
+    Hdir_fc6 = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\fc6GAN\Evolution_Avg_Hess.npz"
+
+
 
 def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda"):
     if not "fc" in layer:
-        module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
+        module_names, module_types, module_spec = get_module_names(model, input_size=input_size,
+                                                                   device=device, show=True)
         layer_key = [k for k, v in module_names.items() if v == layer][0]
         feat_outshape = module_spec[layer_key]['outshape']
         assert len(feat_outshape) == 3  # fc layer will fail
@@ -78,58 +96,37 @@ def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda")
 
     return cent_pos, corner, imgsize, Xlim, Ylim
 #%%
-if sys.platform == "linux":
-    # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
-    # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
-    # Hdir_fc6 = r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
-    # O2 path interface
-    scratchdir = "/n/scratch3/users/b/biw905"  # os.environ['SCRATCH1']
-    rootdir = join(scratchdir, "GAN_gradEvol_cmp")
-    Hdir_BigGAN = join("/home/biw905/Hessian", "H_avg_1000cls.npz")  #r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
-    Hdir_fc6 = join("/home/biw905/Hessian", "Evolution_Avg_Hess.npz")  #r"/scratch/binxu/GAN_hessian/FC6GAN/summary/Evolution_Avg_Hess.npz"
-    import matplotlib as mpl
-    mpl.use('agg')
-else:
-    # rootdir = r"E:\OneDrive - Washington University in St. Louis\BigGAN_Optim_Tune_tmp"
-    # rootdir = r"D:\Cluster_Backup\GAN_gradEvol_cmp" #r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
-    rootdir = r"F:\insilico_exps\GAN_gradEvol_cmp" #r"E:\Monkey_Data\BigGAN_Optim_Tune_tmp"
-    Hdir_BigGAN = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\BigGAN\H_avg_1000cls.npz"
-    Hdir_fc6 = r"E:\OneDrive - Washington University in St. Louis\Hessian_summary\fc6GAN\Evolution_Avg_Hess.npz"
-
-
-
-#%%
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--net", type=str, default="alexnet", help="Network model to use for Image distance computation")
 parser.add_argument("--layer", type=str, default="fc6", help="Network model to use for Image distance computation")
 parser.add_argument("--chans", type=int, nargs='+', default=[0, 25], help="")
 parser.add_argument("--G", type=str, default="BigGAN", help="")
-parser.add_argument("--optim", type=str, nargs='+', default=["Adam001Hess", "Adam0003Hess", "Adam0001"], help="")
+parser.add_argument("--optim", type=str, nargs='+', default=["HessCMA", "HessCMA_class", "CholCMA", "CholCMA_prod", "CholCMA_class"], help="")
 parser.add_argument("--steps", type=int, default=100, help="")
 parser.add_argument("--reps", type=int, default=10, help="")
 parser.add_argument("--batch", type=int, default=5, help="")
 parser.add_argument("--RFresize", type=bool, default=False, help="")
 args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
 
+#%%
 from easydict import EasyDict as edict
 args = edict()
 args.net = "resnet50"
 args.layer = ".layer3"
 args.G = "BigGAN"
-args.batch = 4
+args.batch = 2
 args.steps = 100
-args.reps = 2
-args.optim = ["Adam001", "Adam001Hess", "Adam0003", "Adam0003Hess",
-              "Adam0001", "Adam0001Hess", "SGD001", "SGD001Hess",
-              "SGD0003", "SGD0003Hess", "SGD0001", "SGD0001Hess", ]
+args.reps = 10
+args.optim = ["HessCMA", "HessCMA_class", "CholCMA", "CholCMA_prod", "CholCMA_class"]
 args.RFresize = True
+batch = args.batch
 #%%
 def resize_and_pad_canvas(imgs, corner, size, input_size):
     """ Resize and pad images to a square with a given corner and size
     Background is gray.
     Assume image is float, range [0, 1]
-    """  # FIXED: this should depend on the input size of image
+    """  # FIXME: this should depend on the input size of image
     pad_img = torch.ones((imgs.shape[0], *input_size), dtype=imgs.dtype, device=imgs.device) * 0.5
     rsz_img = F.interpolate(imgs, size=size, align_corners=True, mode="bilinear")
     pad_img[:, :, corner[0]:corner[0]+size[0], corner[1]:corner[1]+size[1]] += rsz_img - 0.5
@@ -171,6 +168,7 @@ def grad_evolution(scorer, optim_constructor, z_init, hess_param:bool, evc=None,
         print("  ".join(["%.2f" % s for s in score.detach()]))
         img_traj.append(img.detach().cpu().clone())
 
+    scorer.cleanup()
     idx = torch.argsort(score.detach().cpu(), descending=True)
     score_traj = torch.stack(score_traj)
     z_traj = torch.stack(z_traj)
@@ -200,6 +198,22 @@ def visualize_gradevol(score_traj, z_traj, savedir, savestr="", titlestr=""):
     plt.show()
 
 
+#%%
+from torch.optim import SGD, Adam
+input_size = (3, 227, 227)
+G = load_GAN(args.G)
+Hdata = load_Hessian(args.G)
+scorer = TorchScorer(args.net, imgpix=227)
+evc = torch.tensor(Hdata["eigvects_avg"]).cuda()
+#%%
+cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args.layer,
+                                          input_size=input_size, device="cuda")
+print("Target setting network %s layer %s, center pos" % (args.net, args.layer), cent_pos)
+print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
+#%%
+RND = 1
+savedir = r"F:\insilico_exps\GAN_gradEvol_cmp\tmp"
+#%%
 def get_optimizer_constructor(optim_name):
     if optim_name.endswith("Hess"):
         hess_param = True
@@ -228,54 +242,40 @@ def get_optimizer_constructor(optim_name):
 
     return optim_constructor, hess_param
 #%%
-#%%
-from torch.optim import SGD, Adam
-input_size = (3, 227, 227)
-G = load_GAN(args.G)
-Hdata = load_Hessian(args.G)
-scorer = TorchScorer(args.net, imgpix=227)
-evc = torch.tensor(Hdata["eigvects_avg"]).cuda()
-#%
-cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args.layer,
-                                          input_size=input_size, device="cuda")
-print("Target setting network %s layer %s, center pos" % (args.net, args.layer), cent_pos)
-print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
-#%%
-for unit_id in range(15, 18):
-    if "fc" in args.layer or cent_pos is None:
-        unit = (args.net, args.layer, unit_id)
-        savedir = join(rootdir, r"%s_%s_%d" % unit[:3])
-    else:
-        unit = (args.net, args.layer, unit_id, *cent_pos)
-        savedir = join(rootdir, r"%s_%s_%d_%d_%d" % unit[:5])
+# methodlab = "SGD00005_rsz"
+# optimCls = SGD
+# optimCfg = {"lr": 0.0005}
+# hess_param = True
+methodlab = "SGD00005_rsz"
 
-    scorer.select_unit(unit, allow_grad=True)
-    # Save directory named after the unit. Add RFrsz as suffix if resized
-    if args.RFresize:
-        savedir += "_RFrsz"
-    os.makedirs(savedir, exist_ok=True)
-    for repi in range(args.reps):
-        z_init = G.sample_vector(args.batch).cuda()
-        RND = np.random.randint(1E5)
-        np.save(join(savedir, "init_code_%05d.npy"%RND), z_init.cpu().numpy())
-        for methodlab in args.optim: # "Adam0001", "Adam0001Hess","SGD0001", "SGD0001Hess"]:
-            if args.G == "fc6":
-                methodlab += "_fc6"
-            optim_constructor, hess_param = get_optimizer_constructor(methodlab)
-            img, img_traj, z_traj, score_traj = grad_evolution(scorer, optim_constructor, z_init,
-                               hess_param=hess_param, evc=evc, steps=args.steps,
-                               RFresize=args.RFresize, corner=corner, imgsize=imgsize)
-            visualize_gradevol(score_traj, z_traj, savedir, savestr="traj%s_%05d"%(methodlab, RND, ),
-                               titlestr=f"{unit} - {methodlab}\nRND{RND}, rep{repi}")
-            save_imgrid(img, join(savedir, "imglastgen%s_%05d.jpg" % (methodlab, RND, )), nrow=5)
-            for tri in range(z_init.shape[0]):
-                img_traj_trial = img_traj[:, tri, ]  # (steps, 3, 227, 227)
-                save_imgrid(img_traj_trial, join(savedir, "imgtraj%s_%05d_%d.jpg" % (methodlab, RND, tri, )), nrow=10)
-            torch.save({"z_traj": z_traj, "score_traj": score_traj,},
-                       join(savedir, "optimdata_%s_%05d.pt"%(methodlab, RND)))
 
-    scorer.cleanup()
+unit_id = 15
+if "fc" in args.layer or cent_pos is None:
+    unit = (args.net, args.layer, unit_id)
+    savedir = join(rootdir, r"%s_%s_%d" % unit[:3])
+else:
+    unit = (args.net, args.layer, unit_id, *cent_pos)
+    savedir = join(rootdir, r"%s_%s_%d_%d_%d" % unit[:5])
+
+scorer.select_unit(unit, allow_grad=True)
+# Save directory named after the unit. Add RFrsz as suffix if resized
+if args.RFresize:
+    savedir += "_RFrsz"
+os.makedirs(savedir, exist_ok=True)
+
+z_init = G.sample_vector(args.batch).cuda()
+img, img_traj, z_traj, score_traj = grad_evolution(scorer, optimCls, optimCfg, z_init,
+                                   hess_param=hess_param, evc=evc, steps=args.steps,
+                                   RFresize=args.RFresize, corner=corner, imgsize=imgsize)
+visualize_gradevol(score_traj, z_traj, savedir, savestr="traj%s_%05d.jpg"%(methodlab, RND, ),
+                   titlestr="")
 #%%
+save_imgrid(img, join(savedir, "imglastgen%s_%05d.jpg" % (methodlab, RND, )), nrow=5)
+for tri in range(z_init.shape[0]):
+    img_traj_trial = img_traj[:, tri, ]  # (steps, 3, 227, 227)
+    save_imgrid(img_traj_trial, join(savedir, "imgtraj%s_%05d_%d.jpg" % (methodlab, RND, tri, )), nrow=10)
+torch.save({"z_traj": z_traj, "score_traj": score_traj, "optimCfg": optimCfg},
+           "optimdata_%s_%05d.pt"%(methodlab, RND))
 
 
 
