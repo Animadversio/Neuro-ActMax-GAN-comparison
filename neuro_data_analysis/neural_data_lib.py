@@ -41,6 +41,15 @@ def load_neural_data():
     return BFEStats_merge, BFEStats
 
 
+def get_expstr(BFEStats, Expi):
+    S = BFEStats[Expi - 1]  # Expi follows matlab convention, starts from 1
+    expstr = f"Exp {Expi:03d} {S['meta']['ephysFN']} Pref chan{int(S['evol']['pref_chan'][0])} U{int(S['evol']['unit_in_pref_chan'][0])}" \
+             f"\nimage size {S['evol']['imgsize']} deg  pos {S['evol']['imgpos'][0]}" \
+             f"\nEvol thr0: {S['evol']['space_names'][0][0]}" \
+             f"   thr1: {S['evol']['space_names'][1][0]}"
+    return expstr
+
+
 def load_img_resp_pairs(BFEStats, Expi, ExpType, thread=0, stimdrive="S:", output_fmt="vec",
                         rsp_wdw = range(50, 200), bsl_wdw = range(0, 45)):
     S = BFEStats[Expi - 1].copy()  # Expi follows matlab convention, starts from 1
