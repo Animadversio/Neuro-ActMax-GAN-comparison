@@ -89,8 +89,15 @@ def get_module_names(model, input_size, device="cpu", show=True):
             # during forward pass, this hook will append the ReceptiveField information to `receptive_field`
             # if a module is called several times, this hook will append several times as well.
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
+            if (isinstance(module, nn.Sequential)
+                    or isinstance(module, nn.ModuleList)
+                    or isinstance(module, nn.Container)):
+                module_name = prefix + "." + name
+            else:
+                module_name = prefix + "." + class_name + name
+
             module_idx = len(module_names)
-            module_names[str(module_idx)] = prefix + "." + class_name + name
+            module_names[str(module_idx)] = module_name
             module_types[str(module_idx)] = class_name
             module_spec[str(module_idx)] = OrderedDict()
             if isinstance(input[0], torch.Tensor):
@@ -102,8 +109,9 @@ def get_module_names(model, input_size, device="cpu", show=True):
             else:
                 module_spec[str(module_idx)]["outshape"] = (None,)
         if (
-                not isinstance(module, nn.Sequential)
-                and not isinstance(module, nn.ModuleList)
+                True
+                # not isinstance(module, nn.Sequential)
+                # and not isinstance(module, nn.ModuleList)
                 # and not (module == model)
         ):
             hooks.append(module.register_forward_hook(hook))
@@ -173,7 +181,12 @@ def register_hook_by_module_names(target_name, target_hook, model, input_size=(3
             # during forward pass, this hook will append the ReceptiveField information to `receptive_field`
             # if a module is called several times, this hook will append several times as well.
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
-            module_name = prefix + "." + class_name + name
+            if (isinstance(module, nn.Sequential)
+                    or isinstance(module, nn.ModuleList)
+                    or isinstance(module, nn.Container)):
+                module_name = prefix + "." + name
+            else:
+                module_name = prefix + "." + class_name + name
             module_idx = len(module_names)
             module_names[str(module_idx)] = module_name
             module_types[str(module_idx)] = class_name
@@ -181,8 +194,9 @@ def register_hook_by_module_names(target_name, target_hook, model, input_size=(3
                 h = module.register_forward_hook(target_hook)
                 target_hook_h.append(h)
         if (
-                not isinstance(module, nn.Sequential)
-                and not isinstance(module, nn.ModuleList)
+                True
+                # not isinstance(module, nn.Sequential)
+                # and not isinstance(module, nn.ModuleList)
                 # and not (module == model)
         ):
             hooks.append(module.register_forward_hook(hook))

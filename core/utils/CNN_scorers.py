@@ -287,29 +287,30 @@ class TorchScorer:
         """preprocess single image array or a list (minibatch) of images
         This includes Normalize using RGB mean and std and resize image to (227, 227)
         """
+        imgsize = self.inputsize[-2:]  # 227, 227 # add this setting @Feb.05 2022
         # could be modified to support batch processing. Added batch @ July. 10, 2020
         # test and optimize the performance by permute the operators. Use CUDA acceleration from preprocessing
         if type(img) is list: # the following lines have been optimized for speed locally.
             img_tsr = torch.stack(tuple(torch.from_numpy(im) for im in img)).cuda().float().permute(0, 3, 1, 2) / input_scale
             img_tsr = (img_tsr - self.RGBmean) / self.RGBstd
-            resz_out_tsr = F.interpolate(img_tsr, (227, 227), mode='bilinear',
+            resz_out_tsr = F.interpolate(img_tsr, imgsize, mode='bilinear',
                                          align_corners=True)
             return resz_out_tsr
         elif type(img) is torch.Tensor:
             img_tsr = (img.cuda() / input_scale - self.RGBmean) / self.RGBstd
-            resz_out_tsr = F.interpolate(img_tsr, (227, 227), mode='bilinear',
+            resz_out_tsr = F.interpolate(img_tsr, imgsize, mode='bilinear',
                                          align_corners=True)
             return resz_out_tsr
         elif type(img) is np.ndarray and img.ndim == 4:
             img_tsr = torch.tensor(img / input_scale).float().permute(0,3,1,2).cuda()
             img_tsr = (img_tsr - self.RGBmean) / self.RGBstd
-            resz_out_tsr = F.interpolate(img_tsr, (227, 227), mode='bilinear',
+            resz_out_tsr = F.interpolate(img_tsr, imgsize, mode='bilinear',
                                          align_corners=True)
             return resz_out_tsr
         elif type(img) is np.ndarray and img.ndim in [2, 3]:  # assume it's individual image
             img_tsr = transforms.ToTensor()(img / input_scale).float()
             img_tsr = self.normalize(img_tsr).unsqueeze(0)
-            resz_out_img = F.interpolate(img_tsr, (227, 227), mode='bilinear',
+            resz_out_img = F.interpolate(img_tsr, imgsize, mode='bilinear',
                                          align_corners=True)
             return resz_out_img
         else:
