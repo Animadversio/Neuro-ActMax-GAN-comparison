@@ -4,7 +4,7 @@
 #SBATCH -t 8:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=1-12
+#SBATCH --array=13-24
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o gradBigGANresnet_evol_%j.out
 
@@ -23,6 +23,18 @@ param_list=\
 --chans 0 10 --G BigGAN --net resnet50_linf8 --layer .layer3 --optim Adam001 Adam001Hess Adam0003 Adam0003Hess Adam0001 Adam0001Hess SGD001 SGD001Hess SGD0003 SGD0003Hess SGD0001 SGD0001Hess --rep 10 --RFresize 1
 --chans 0 10 --G BigGAN --net resnet50_linf8 --layer .layer4 --optim Adam001 Adam001Hess Adam0003 Adam0003Hess Adam0001 Adam0001Hess SGD001 SGD001Hess SGD0003 SGD0003Hess SGD0001 SGD0001Hess --rep 10
 --chans 0 10 --G BigGAN --net resnet50_linf8 --layer .Linearfc --optim Adam001 Adam001Hess Adam0003 Adam0003Hess Adam0001 Adam0001Hess SGD001 SGD001Hess SGD0003 SGD0003Hess SGD0001 SGD0001Hess --rep 10
+--chans 0 10 --G fc6 --net resnet50 --layer .layer1 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50 --layer .layer2 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50 --layer .layer2 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 10 --G fc6 --net resnet50 --layer .layer3 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50 --layer .layer4 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 10 --G fc6 --net resnet50 --layer .Linearfc --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer1 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer2 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer2 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer3 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer4 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 10 --G fc6 --net resnet50_linf8 --layer .Linearfc --optim Adam01 Adam01Hess --rep 10 --batch 10
 '
 
 
