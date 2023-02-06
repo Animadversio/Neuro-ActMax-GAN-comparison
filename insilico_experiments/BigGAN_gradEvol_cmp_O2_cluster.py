@@ -241,7 +241,7 @@ cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args
 print("Target setting network %s layer %s, center pos" % (args.net, args.layer), cent_pos)
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
 #%%
-for unit_id in range(15, 18):
+for unit_id in range(args.chans[0], args.chans[1]):
     if "fc" in args.layer or cent_pos is None:
         unit = (args.net, args.layer, unit_id)
         savedir = join(rootdir, r"%s_%s_%d" % unit[:3])
