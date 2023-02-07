@@ -4,7 +4,7 @@
 #SBATCH -t 8:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=13-24
+#SBATCH --array=25-48
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o gradBigGANresnet_evol_%j.out
 
@@ -35,6 +35,30 @@ param_list=\
 --chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer3 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
 --chans 0 10 --G fc6 --net resnet50_linf8 --layer .layer4 --optim Adam01 Adam01Hess --rep 10 --batch 10
 --chans 0 10 --G fc6 --net resnet50_linf8 --layer .Linearfc --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G BigGAN --net resnet50 --layer .layer1.Bottleneck1 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G BigGAN --net resnet50 --layer .layer3.Bottleneck5 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50 --layer .layer4.Bottleneck2 --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G BigGAN --net resnet50 --layer .Linearfc --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim Adam001 Adam001Hess --rep 10 --RFresize 1
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G BigGAN --net resnet50_linf8 --layer .Linearfc --optim Adam001 Adam001Hess --rep 10
+--chans 0 25 --G fc6 --net resnet50 --layer .layer1.Bottleneck1 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50 --layer .layer2.Bottleneck3 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50 --layer .layer2.Bottleneck3 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G fc6 --net resnet50 --layer .layer3.Bottleneck5 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50 --layer .layer4.Bottleneck2 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G fc6 --net resnet50 --layer .Linearfc --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim Adam01 Adam01Hess --rep 10 --batch 10 --RFresize 1
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim Adam01 Adam01Hess --rep 10 --batch 10
+--chans 0 25 --G fc6 --net resnet50_linf8 --layer .Linearfc --optim Adam01 Adam01Hess --rep 10 --batch 10
 '
 
 
