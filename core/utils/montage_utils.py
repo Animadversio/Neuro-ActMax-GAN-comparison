@@ -313,9 +313,11 @@ def crop_from_montage(img, imgid: Union[Tuple, int] = (0,0), imgsize=256, pad=2)
     return img_crop
 
 
-def crop_all_from_montage(img, totalnum, imgsize=512, pad=2):
+def crop_all_from_montage(img, totalnum=None, imgsize=512, pad=2):
     """Return all crops from a montage image"""
     nrow, ncol = (img.shape[0] - pad) // (imgsize + pad), (img.shape[1] - pad) // (imgsize + pad)
+    if totalnum is None:
+        totalnum = nrow * ncol
     imgcol = []
     for imgid in range(totalnum):
         ri, ci = np.unravel_index(imgid, (nrow, ncol))

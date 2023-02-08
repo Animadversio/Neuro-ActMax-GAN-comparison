@@ -38,7 +38,7 @@ for unitdir in tqdm(unitdirs):
     # print(unit_match)
     print(unit_match, "=", netname, layer, unitid, x, y, RFresize)
     unitdict = edict(netname=netname, layer=layer, unitid=unitid, x=x, y=y, RFresize=RFresize)
-    #%%
+    #%
     savefiles = list(unitdir.glob("optimdata*.pt"))
     savefn_pat = re.compile("optimdata_([^_]*)(_fc6)?_(\d\d\d\d\d).pt$")
     for savefn in tqdm(savefiles):
