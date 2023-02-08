@@ -6,6 +6,7 @@ from CorrFeatTsr_visualize_lib import tsr_posneg_factorize, visualize_cctsr_simp
 from core.utils.CNN_scorers import load_featnet
 from core.utils.GAN_utils import upconvGAN
 from neuro_data_analysis.neural_data_lib import get_expstr, load_neural_data
+import torch
 _, BFEStats = load_neural_data()
 #%%
 # G = None
@@ -21,7 +22,7 @@ import matplotlib.pylab as plt
 cov_root = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN"
 Animal = "Both"
 Expi = 111
-for Expi in range(29, 191):
+for Expi in range(160, 191):
     # thread =  "_cmb"
     try:
         explabel = get_expstr(BFEStats, Expi)
@@ -102,3 +103,4 @@ for Expi in range(29, 191):
                                                **pix_optim_cfg, **save_cfg)
         finimgs_col, mtg_col, score_traj_col = vis_featvec_wmaps(ccfactor, Hmaps, net, None, layer, netname=netname, featnet=featnet,
                                          bdr=bdr, **pix_optim_cfg, **save_cfg)
+    torch.cuda.empty_cache()
