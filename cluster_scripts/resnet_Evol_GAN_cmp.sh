@@ -49,6 +49,10 @@ param_list=\
 --chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500  --rep 10
 --chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA500 --rep 10
 --chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500  --rep 10
+--chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10
+--chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10
+--chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
+--chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
 '
 
 export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"

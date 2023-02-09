@@ -81,6 +81,32 @@ def load_Hessian(name):
     return H
 
 
+def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda"):
+    if not "fc" in layer:
+        module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
+        layer_key = [k for k, v in module_names.items() if v == layer][0]
+        feat_outshape = module_spec[layer_key]['outshape']
+        assert len(feat_outshape) == 3  # fc layer will fail
+        cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
+    else:
+        cent_pos = None
+
+    # rf Mapping,
+    if not "fc" in layer:
+        print("Computing RF by direct backprop: ")
+        gradAmpmap = grad_RF_estimate(model, layer, (slice(None), *cent_pos), input_size=input_size,
+                                      device=device, show=False, reps=30, batch=1)
+        Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
+        corner = (Xlim[0], Ylim[0])
+        imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
+    else:
+        imgsize = input_size[-2:]
+        corner = (0, 0)
+        Xlim = (corner[0], corner[0] + imgsize[0])
+        Ylim = (corner[1], corner[1] + imgsize[1])
+
+    return cent_pos, corner, imgsize, Xlim, Ylim
+
 #%% Wrap the optimizers, like concatenate 2 or concatenate one with a fixed code
 class concat_wrapper:
     """ Concatenate 2 gradient free optimizers
@@ -250,49 +276,52 @@ method_col = args.optim
 pos_dict = {"conv5": (7, 7), "conv4": (7, 7), "conv3": (7, 7), "conv2": (14, 14), "conv1": (28, 28)}
 
 # Get the center position of the feature map.
-if not "fc" in args.layer:
-    if not args.net in layername_dict:  # TODO:Check the logic
-        module_names, module_types, module_spec = get_module_names(scorer.model, input_size=(3, 227, 227), device="cuda")
-        layer_key = [k for k, v in module_names.items() if v == args.layer][0]
-        feat_outshape = module_spec[layer_key]['outshape']
-        assert len(feat_outshape) == 3  # fc layer will fail
-        cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
-    else:
-        cent_pos = pos_dict[args.layer]
-else:
-    cent_pos = None
-
-print("Target setting network %s layer %s, center pos"%(args.net, args.layer), cent_pos)
-# rf Mapping,
-if args.RFresize and not "fc" in args.layer:
-    print("Computing RF by direct backprop: ")
-    gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
-                                  device="cuda", show=False, reps=30, batch=1)
-    Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
-    corner = (Xlim[0], Ylim[0])
-    imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
-else:
-    imgsize = (256, 256)
-    corner = (0, 0)
-    Xlim = (corner[0], corner[0] + imgsize[0])
-    Ylim = (corner[1], corner[1] + imgsize[1])
-
+# if not "fc" in args.layer:
+#     if not args.net in layername_dict:  # TODO:Check the logic
+#         module_names, module_types, module_spec = get_module_names(scorer.model, input_size=(3, 227, 227), device="cuda")
+#         layer_key = [k for k, v in module_names.items() if v == args.layer][0]
+#         feat_outshape = module_spec[layer_key]['outshape']
+#         assert len(feat_outshape) == 3  # fc layer will fail
+#         cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
+#     else:
+#         cent_pos = pos_dict[args.layer]
+# else:
+#     cent_pos = None
+#
+# print("Target setting network %s layer %s, center pos"%(args.net, args.layer), cent_pos)
+# # rf Mapping,
+# if args.RFresize and not "fc" in args.layer:
+#     print("Computing RF by direct backprop: ")
+#     gradAmpmap = grad_RF_estimate(scorer.model, args.layer, (slice(None), *cent_pos), input_size=(3, 227, 227),
+#                                   device="cuda", show=False, reps=30, batch=1)
+#     Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
+#     corner = (Xlim[0], Ylim[0])
+#     imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
+# else:
+#     imgsize = (256, 256)
+#     corner = (0, 0)
+#     Xlim = (corner[0], corner[0] + imgsize[0])
+#     Ylim = (corner[1], corner[1] + imgsize[1])
+#
+# print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
+input_size = (3, 227, 227)
+cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, args.layer,
+                                          input_size=input_size, device="cuda")
+print("Target setting network %s layer %s, center pos" % (args.net, args.layer), cent_pos)
 print("Xlim %s Ylim %s \n imgsize %s corner %s" % (Xlim, Ylim, imgsize, corner))
-
 #%% Start iterating through channels.
 for unit_id in range(args.chans[0], args.chans[1]):
-    if "fc" in args.layer:
+    if "fc" in args.layer or cent_pos is None:
         unit = (args.net, args.layer, unit_id)
-    else:
-        unit = (args.net, args.layer, unit_id, *cent_pos)
-    scorer.select_unit(unit)
-    # Save directory named after the unit. Add RFrsz as suffix if resized
-    if cent_pos is None:
         savedir = join(rootdir, r"%s_%s_%d" % unit[:3])
     else:
+        unit = (args.net, args.layer, unit_id, *cent_pos)
         savedir = join(rootdir, r"%s_%s_%d_%d_%d" % unit[:5])
+    scorer.select_unit(unit, allow_grad=True)
+    # Save directory named after the unit. Add RFrsz as suffix if resized
+    if args.RFresize:
+        savedir += "_RFrsz"
 
-    if args.RFresize: savedir += "_RFrsz"
     os.makedirs(savedir, exist_ok=True)
     for triali in range(args.reps):
         # generate initial code.
@@ -318,7 +347,8 @@ for unit_id in range(args.chans[0], args.chans[1]):
                 latent_code = torch.from_numpy(np.array(new_codes)).float()
                 # imgs = G.visualize_batch_np(new_codes) # B=1
                 imgs = G.visualize(latent_code.cuda()).cpu()
-                if args.RFresize: imgs = resize_and_pad(imgs, corner, imgsize) # Bug: imgs are resized to 256x256 and it will be further resized in score_tsr
+                if args.RFresize:
+                    imgs = resize_and_pad(imgs, corner, imgsize)  #  Bug: imgs are resized to 256x256 and it will be further resized in score_tsr
                 scores = scorer.score_tsr(imgs)
                 if args.G == "BigGAN":
                     print("step %d score %.3f (%.3f) (norm %.2f noise norm %.2f)" % (
