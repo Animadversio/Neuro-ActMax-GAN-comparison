@@ -11,6 +11,7 @@ from os.path import join
 from easydict import EasyDict as edict
 #%%
 rootdir = r"F:\insilico_exps\GAN_gradEvol_cmp"
+rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
 rootpath = Path(rootdir)
 datalist = glob.glob(join(rootdir, "*", "*.pt"))
 #%%
@@ -68,7 +69,7 @@ df = pd.DataFrame(df_col)
 df = df.astype({"GANname": str, "layer": str, "optimmethod": str, "netname": str,
                 "score": float, "maxscore": float, "maxstep": int, "batchi": int})
 #%%
-df.to_csv(join(rootdir, "raw_summary.csv"))
+df.to_csv(join(rootdir, "summary", "raw_summary_grad.csv"))
 #%%
 # df.groupby(["netname", "layer", "RFresize", "optimmethod", "GANname"]).mean().to_csv(join(rootdir, "summary_mean.csv"))
 meansumdf = df.groupby(["netname", "layer", "RFresize", "optimmethod", "GANname"])\
