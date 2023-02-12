@@ -227,11 +227,62 @@ print("IS+-std ", inception_score, IS_std)
 fid = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet)
 print("Fid", fid)
 #%%
+amp = torch.fft.fft2(torch.rand(3, 256, 256))
+freq1d = torch.fft.fftfreq(256)
+freq2d = torch.sqrt(freq1d[:, None]**2 + freq1d[None, :]**2)
+freq2d[0, 0] = 1
+amp = amp / freq2d
+amp[0, 0] = 0
+pinknoise = torch.fft.ifft2(amp).real #()
+pinknoise = (pinknoise - pinknoise.mean(dim=(-3, -2, -1))) / pinknoise.std(dim=(-3, -2, -1), keepdim=True) * 0.2 + 0.5
+pinknoise = pinknoise.clamp(0, 1)
+plt.imshow(pinknoise.permute(1, 2, 0))
+plt.show()
+#%%
+
+
+from core.utils.plot_utils import show_imgrid, save_imgrid
+show_imgrid(pink_noise(16), nrow=4, padding=2)
+#%%
+plt.figure()
+plt.imshow(pinknoise)
+plt.show()
+#%%
+imageset_str = "pink_noise"
+def pink_noise(batch_size):
+    amp = torch.fft.fft2(torch.rand(batch_size, 3, 256, 256))
+    freq1d = torch.fft.fftfreq(256)
+    freq2d = torch.sqrt(freq1d[:, None] ** 2 + freq1d[None, :] ** 2)
+    freq2d[0, 0] = 1
+    amp = amp / freq2d
+    amp[0, 0] = 0
+    pinknoise = torch.fft.ifft2(amp).real  # ()
+    pinknoise = (pinknoise - pinknoise.mean(dim=(-3, -2, -1), keepdim=True)) / \
+                pinknoise.std(dim=(-3, -2, -1), keepdim=True) * 0.2 + 0.5
+    pinknoise = pinknoise.clamp(0, 1)
+    return pinknoise
+
+
+pnoise_loader = GANDataloader(pink_noise, batch_size=80, total_imgnum=50000)
+with torch.no_grad():
+    acts, probs = get_inception_feature(pnoise_loader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(savedir, f"{imageset_str}_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
+torch.save({"acts": acts, "probs":probs}, join(savedir, f"{imageset_str}_act_prob.pt"))
+print("IS+-std ", inception_score, IS_std)
+fid = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet)
+print("Fid", fid)
+
+#%%
 print(inception_score, IS_std)
 
 #%% Summary stats for all GANs
 import pandas as pd
 import seaborn as sns
+#%%
 with np.load(join(savedir, f"{'INet'}_inception_stats.npz")) as f:
     mu_INet = f["mu"]
     sigma_INet = f["sigma"]
@@ -252,6 +303,9 @@ for imgset_lab in ["INet", 'FC6_std4',
 df = pd.DataFrame(df)
 df = df.astype({"imgset": str, "FID": float, "IS": float, "IS_std": float})
 df.to_csv(join(savedir, "GAN_FID_IS.csv"))
+#%%
+df = pd.read_csv(join(savedir, "GAN_FID_IS.csv"))
+#%%
 #%%
 import matplotlib.pyplot as plt
 from core.utils import saveallforms, showimg, show_imgrid
@@ -275,8 +329,47 @@ plt.tight_layout()
 saveallforms(savedir, "GAN_IS_barplot")
 plt.show()
 #%%
-imgtsrs_tmp = BG.visualize(1.2*torch.randn(20, 256, device="cuda"))
+plot_rows = ["INet", "BigGAN_1000cls_std07", "BigGAN_norm_std008", "FC6_std4", "pink_noise", "white_noise"]
+df_val = df.copy()
+df_val["FID"].iloc[0] = np.nan  # INet is not a GAN, so no FID
+plt.figure(figsize=(5, 7))
+sns.barplot(x="imgset", y="FID", order=plot_rows, data=df_val)
+plt.ylabel("Frechet Inception Distance")
+plt.xticks(rotation=45)
+plt.tight_layout()
+saveallforms(savedir, "GAN_FID_barplot_selective")
+plt.show()
+plt.figure(figsize=(5, 7))
+sns.barplot(x="imgset", y="IS", order=plot_rows, data=df_val)
+plt.errorbar(x=np.arange(len(plot_rows)), y=df_val.set_index("imgset").loc[plot_rows]['IS'],
+            yerr=df_val.set_index("imgset").loc[plot_rows]['IS_std'], fmt='none', c= 'black', capsize = 2)
+plt.ylabel("Inception Score")
+plt.xticks(rotation=45)
+plt.tight_layout()
+saveallforms(savedir, "GAN_IS_barplot_selective")
+plt.show()
+#%%
+# "INet": image net images
+# "BigGAN_1000cls_std07": samples from BigGAN using the trained random vectors
+# "BigGAN_norm_std008": samples from BigGAN using Gaussian random latent vectors. (like in evolution)
+# "FC6_std4": DeepSim FC6.
+# "pink_noise": 1/f noise  (matching natural image mean, std and spectrum)
+# "white_noise": i.i.d. uniform noise
+#%%
+imgtsrs_tmp = BG.visualize(0.08*torch.randn(20, 256, device="cuda"))
 mtg = show_imgrid(imgtsrs_tmp, nrow=5,)
+save_imgrid(imgtsrs_tmp, join(savedir, "BigGAN_norm_std008_samples.jpg"), nrow=5)
+plt.figure(figsize=(10, 8))
+showimg(plt.gca(), mtg)
+plt.tight_layout()
+plt.show()
+#%%
+imgtsrs_tmp = BG.visualize(torch.cat(
+    (torch.randn(128, 20, device="cuda"),
+    BG.BigGAN.embeddings.weight[:, torch.randint(1000, size=(20,), device="cuda")],)).T
+)
+mtg = show_imgrid(imgtsrs_tmp, nrow=5,)
+save_imgrid(imgtsrs_tmp, join(savedir, "BigGAN_1000cls_std10_samples.jpg"), nrow=5)
 plt.figure(figsize=(10, 8))
 showimg(plt.gca(), mtg)
 plt.tight_layout()
@@ -284,6 +377,7 @@ plt.show()
 #%%
 imgtsrs_tmp = BG.visualize(BG.sample_vector(20, class_id=None))
 mtg = show_imgrid(imgtsrs_tmp, nrow=5,)
+save_imgrid(imgtsrs_tmp, join(savedir, "BigGAN_1000cls_std07_samples.jpg"), nrow=5)
 plt.figure(figsize=(10, 8))
 showimg(plt.gca(), mtg)
 plt.tight_layout()
@@ -291,7 +385,17 @@ plt.show()
 #%%
 imgtsrs_tmp = FG.visualize(4 * torch.randn(20, 4096, device="cuda"))
 mtg = show_imgrid(imgtsrs_tmp, nrow=5,)
+save_imgrid(imgtsrs_tmp, join(savedir, "FC6_std4_samples.jpg"), nrow=5)
 plt.figure(figsize=(10, 8))
 showimg(plt.gca(), mtg)
 plt.tight_layout()
 plt.show()
+#%%
+imgtsrs_tmp = pink_noise(20,)
+mtg = show_imgrid(imgtsrs_tmp, nrow=5,)
+save_imgrid(imgtsrs_tmp, join(savedir, "pink_noise_samples.jpg"), nrow=5)
+plt.figure(figsize=(10, 8))
+showimg(plt.gca(), mtg)
+plt.tight_layout()
+plt.show()
+
