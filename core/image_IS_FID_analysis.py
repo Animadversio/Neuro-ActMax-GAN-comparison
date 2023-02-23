@@ -19,6 +19,8 @@ from pytorch_gan_metrics.utils import ImageDataset
 from pytorch_gan_metrics.core  import torch_cov, get_inception_feature, calculate_inception_score, calculate_frechet_distance
 from torchvision.transforms import Compose, Resize, ToTensor, CenterCrop
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+from core.utils import saveallforms, showimg, show_imgrid, save_imgrid
 if sys.platform == "linux" and os.getlogin() == 'binxuwang':
     savedir = "/home/binxuwang/DL_Projects/GAN-fids"
 else:
@@ -241,7 +243,6 @@ plt.show()
 #%%
 
 
-from core.utils.plot_utils import show_imgrid, save_imgrid
 show_imgrid(pink_noise(16), nrow=4, padding=2)
 #%%
 plt.figure()
@@ -249,8 +250,8 @@ plt.imshow(pinknoise)
 plt.show()
 #%%
 imageset_str = "pink_noise"
-def pink_noise(batch_size):
-    amp = torch.fft.fft2(torch.rand(batch_size, 3, 256, 256))
+def pink_noise(batch_size, generator=None):
+    amp = torch.fft.fft2(torch.rand(batch_size, 3, 256, 256, generator=generator))
     freq1d = torch.fft.fftfreq(256)
     freq2d = torch.sqrt(freq1d[:, None] ** 2 + freq1d[None, :] ** 2)
     freq2d[0, 0] = 1
@@ -307,8 +308,6 @@ df.to_csv(join(savedir, "GAN_FID_IS.csv"))
 df = pd.read_csv(join(savedir, "GAN_FID_IS.csv"))
 #%%
 #%%
-import matplotlib.pyplot as plt
-from core.utils import saveallforms, showimg, show_imgrid
 df_val = df.copy()
 df_val["FID"].iloc[0] = np.nan  # INet is not a GAN, so no FID
 plt.figure(figsize=(5, 7))
@@ -399,3 +398,23 @@ showimg(plt.gca(), mtg)
 plt.tight_layout()
 plt.show()
 
+#%% Generate samples
+outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\GAN_image_statistics\samples"
+mtg = save_imgrid(INdataset[42], join(outdir, "ImageNet_samples.jpg"), nrow=1)
+#%%
+img = FG.visualize(4 * torch.randn(1, 4096, device="cuda", generator=torch.cuda.manual_seed(42)))
+mtg = save_imgrid(img, join(outdir, "DeePSim_std4_samples.jpg"), nrow=1)
+#%%
+#%%
+# torch.random.manual_seed(100)
+img = BG.visualize(BG.sample_vector(1, class_id=None))
+mtg = save_imgrid(img, join(outdir, "BigGAN_1000cls_samples.jpg"), nrow=1)
+#%%
+img = BG.visualize(0.08 * torch.randn(1, 256, device="cuda", generator=torch.cuda.manual_seed(0)))
+mtg = save_imgrid(img, join(outdir, "BigGAN_norm_std008_samples.jpg"), nrow=1)
+#%%
+mtg = save_imgrid(pink_noise(1, generator=torch.cuda.manual_seed(42)),
+                  join(outdir, "pinknoise_samples.jpg"), nrow=1)
+#%%
+mtg = save_imgrid(torch.rand(3,256,256, generator=torch.cuda.manual_seed(42)),
+                  join(outdir, "whitenoise_samples.jpg"), nrow=1)
