@@ -110,7 +110,6 @@ saveallforms(figdir, "score_norm_by_optim_GAN_bar")
 plt.show()
 
 #%%
-
 rootdir = r"E:\Cluster_Backup\GAN_Evol_cmp"
 os.makedirs(join(rootdir, "summary"), exist_ok=True)
 figdir = join(rootdir, "summary")
