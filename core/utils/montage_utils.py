@@ -323,5 +323,7 @@ def crop_all_from_montage(img, totalnum=None, imgsize=512, pad=2):
         ri, ci = np.unravel_index(imgid, (nrow, ncol))
         img_crop = img[pad + (pad + imgsize) * ri:pad + imgsize + (pad + imgsize) * ri, \
                pad + (pad + imgsize) * ci:pad + imgsize + (pad + imgsize) * ci, :]
+        if np.allclose(img_crop, np.zeros(1)):
+            break
         imgcol.append(img_crop)
     return imgcol
