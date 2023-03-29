@@ -46,7 +46,7 @@ recmodule_dict = {"layer1": model.layer1,
 #%%
 plot_err_dict = {}
 Animal = "Both"
-for Expi in tqdm(range(70, 191)):
+for Expi in [66]: #tqdm(range(70, 191)):
     for thread in range(2):
         try:
             imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi,

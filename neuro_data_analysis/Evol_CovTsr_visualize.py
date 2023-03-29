@@ -22,7 +22,7 @@ import matplotlib.pylab as plt
 cov_root = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN"
 Animal = "Both"
 Expi = 111
-for Expi in range(160, 191):
+for Expi in  [66]:#range(160, 191):
     # thread =  "_cmb"
     try:
         explabel = get_expstr(BFEStats, Expi)
@@ -84,6 +84,7 @@ for Expi in range(160, 191):
         DR_Wtsr = pad_factor_prod(Hmaps, ccfactor, bdr=bdr)
         #%%
         save_cfg = dict(Bsize=5, figdir=figdir, savestr="", imshow=False)
+        # Visualize the preferred features optimizing in the GAN space
         GAN_optim_cfg = dict(lr=0.05, MAXSTEP=150, use_adam=True, langevin_eps=0,)
         finimgs, mtg, score_traj = vis_feattsr(covtsr, net, G, layer, netname=netname, featnet=featnet,
                                                **save_cfg, **GAN_optim_cfg)
@@ -94,6 +95,7 @@ for Expi in range(160, 191):
         finimgs_col, mtg_col, score_traj_col = vis_featvec_wmaps(ccfactor, Hmaps, net, G, layer, netname=netname, featnet=featnet,
                                              bdr=bdr, **save_cfg, **GAN_optim_cfg)
 
+        # Visualize the preferred features optimizing in the pixel space
         pix_optim_cfg = dict(lr=0.02, MAXSTEP=150, use_adam=False, langevin_eps=0.00)
         finimgs, mtg, score_traj = vis_feattsr(covtsr, net, None, layer, netname=netname, featnet=featnet,
                                                **pix_optim_cfg, **save_cfg)
