@@ -35,7 +35,7 @@ matplotlib.use('agg')
 attr_root = r"E:\Network_Data_Sync\BigGAN_FeatAttribution"
 protosumdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSummary"
 #%%
-# Exp 66
+# Exp 66 fixed.
 #%%
 from core.utils.montage_utils import crop_all_from_montage, make_grid_np, build_montages
 from os.path import join
@@ -101,7 +101,7 @@ for Expi in tqdm(range(1, len(BFEStats)+1)):  # 66 is not good
     white_img = np.ones_like(proto_max_img_0)
     reevol_img_all = [proto_max_img_0, proto_avg_img_0, reevol_img_col[0, "G"], reevol_img_col[0, "pix"],
                       proto_max_img_1, proto_avg_img_1, reevol_img_col[1, "G"], reevol_img_col[1, "pix"],
-                            white_img,       white_img, reevol_img_col["_cmb", "G"], reevol_img_col["_cmb", "pix"]] #[proto_max_img_0, proto_max_img_1] + reevol_img_col
+                            white_img,       white_img, reevol_img_col["_cmb", "G"], reevol_img_col["_cmb", "pix"]]
     # mtg = make_grid_np(reevol_img_col, nrow=2)
     mtg = build_montages(reevol_img_all, (224, 224), (4, 3), transpose=True)[0]
     plt.imsave(join(protosumdir, f"Exp{Expi}_proto_attr_montage.jpg"), mtg)

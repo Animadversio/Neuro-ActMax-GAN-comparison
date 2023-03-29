@@ -1,8 +1,7 @@
 import os.path
-
-from pptx import Presentation#, SlidePart
-from pptx.util import Inches
 from os.path import join
+from pptx.util import Inches
+from pptx import Presentation#, SlidePart
 
 #%%
 attr_root = r"E:\Network_Data_Sync\BigGAN_FeatAttribution"

@@ -1,3 +1,7 @@
+"""
+Obsolete script for loading neural data from .mat files into python. Now we use .pkl files instead.
+"""
+
 from os.path import join
 from scipy.io import loadmat
 import mat73

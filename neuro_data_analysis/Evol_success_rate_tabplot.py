@@ -1,4 +1,6 @@
-"""Plot the success rate and estimates its error bar for different cortices. """
+"""
+Plot the success rate of Evolution and estimates its error bar for different cortices.
+"""
 import scipy
 import scipy.special
 import matplotlib.pyplot as plt

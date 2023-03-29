@@ -1,15 +1,19 @@
-import numpy as np
+"""
+Plot the neural activation as a function of evolution generation.
+"""
+
 import torch
 import seaborn as sns
 from scipy.stats import sem
 from matplotlib import cm
+from os.path import join
+import numpy as np
 import pickle as pkl
 import pandas as pd
 import matplotlib.pyplot as plt
 from core.utils.plot_utils import saveallforms, show_imgrid
 from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr, extract_evol_activation_array
 from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping
-from os.path import join
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_dynamics"
 #%%
 _, BFEStats = load_neural_data()
@@ -140,6 +144,9 @@ def animate_activation_dynamics(resp_mean_tsr, resp_sem_tsr, animname, outdir, i
 
 def animate_activation_dynamics_with_masks(resp_mean_tsr, resp_sem_tsr, masktuples, animname, outdir, interval=500,
                                              xylim=(-25, 375), alpha=0.5, linetrace=False):
+    """ Advanced version of animate_activation_dynamics, with masks and labels
+    masktuples: list of (mask, color, label_str)
+    """
     max_len = resp_mean_tsr.shape[1]
     figh = plt.figure(figsize=(8, 8))
 
@@ -170,6 +177,15 @@ def animate_activation_dynamics_with_masks(resp_mean_tsr, resp_sem_tsr, masktupl
 
 def plot_activation_dynamics(resp_mean_tsr, resp_sem_tsr, masktuples, animname, outdir,
                              xylim=(-25, 375), alpha=0.5, endonly=False, errorbar=False):
+    """ static plot of the activation dynamics
+
+    masktuples: list of (mask, color, label_str)
+    endonly:  if True, only plot the first and last point;
+              else, plot all points during the evolution
+    errorbar: if True, plot errorbar at the end point. (only works when endonly=True)
+
+    animname: name of the figure to be saved
+    """
     figh = plt.figure(figsize=(8, 8))
     for masktuple in masktuples:
         mask, color, label = masktuple
