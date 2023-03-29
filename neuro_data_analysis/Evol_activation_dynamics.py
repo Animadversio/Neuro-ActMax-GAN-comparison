@@ -255,6 +255,13 @@ for masktuple in masktuples:
     plot_activation_dynamics(resp_extrap_arr[:, :, :2], resp_extrap_arr[:, :, 2:4], [masktuple],
                                 f"resp_traj_{label}_sucs", outdir,
                              xylim=(-25, 375), alpha=0.3, endonly=True, errorbar=True)
+
+plot_activation_dynamics(resp_extrap_arr[:, :, :2], resp_extrap_arr[:, :, 2:4], masktuples,
+                                f"resp_traj_area_sep_sucs", outdir,
+                             xylim=(-25, 375), alpha=0.3, endonly=True, errorbar=False)
+plot_activation_dynamics(resp_extrap_arr[:, :, :2], resp_extrap_arr[:, :, 2:4], masktuples,
+                                f"resp_traj_area_sep_sucserr", outdir,
+                             xylim=(-25, 375), alpha=0.3, endonly=True, errorbar=True)
 #%%
 norm_max = resp_extrap_arr[:, :, :2].max(axis=(1,2))[:, None, None]
 norm_min = 0.0  # resp_extrap_arr[:, :, -2:].mean(axis=(1,2))[:, None, None]
