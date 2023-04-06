@@ -1,3 +1,9 @@
+"""
+Activation increase stats for Evolution.
+Similar but simpler than
+    Evol_activation_dynamics.py
+    Evol_BigGAN_FC6_act_cmp.py
+"""
 import torch
 import numpy as np
 import os
