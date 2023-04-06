@@ -9,4 +9,4 @@ from core.utils.montage_utils import build_montages, make_grid_np, make_grid_T, 
     color_framed_montages, crop_from_montage
 from core.utils.grad_RF_estim import grad_RF_estimate, GAN_grad_RF_estimate, \
     gradmap2RF_square, fit_2dgauss, show_gradmap
-from core.utils.stata_utils import summary_by_block
+from core.utils.stats_utils import summary_by_block
