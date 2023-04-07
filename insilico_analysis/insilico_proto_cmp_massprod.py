@@ -2,6 +2,7 @@ import re
 import os
 import timm
 import torch
+import tqdm
 from easydict import EasyDict as edict
 from tqdm import trange
 from scipy.stats import sem
@@ -39,6 +40,7 @@ fetcher_cnn = fetcher_cnn.cuda().eval()
 # querystr = "resnet50_.layer3.Bottleneck5_"
 # querystr = "resnet50_.layer2.Bottleneck3_"
 querystr = "resnet50_linf8_.layer3.Bottleneck5_"
+querystr = r"resnet50_linf8_.layer1.Bottleneck1_"
 for iChan in range(20):
     imgfps = [*Path(protosumdir).glob(f"{querystr}{iChan}_*.jpg")]
     print(len(imgfps))
@@ -61,6 +63,10 @@ def format_img(img_np):
 
 
 naive_featmask_L3, naive_featmask_L4 = naive_featmsk()
+#%% RFmsk and pixel masks
+
+
+
 #%%
 import pickle as pkl
 from core.utils.plot_utils import saveallforms
@@ -75,22 +81,25 @@ suffix = ""
 # optimname2cmp = ['RFrsz_CholCMA', 'RFrsz_HessCMA', 'RFrsz_HessCMA500_fc6']  #
 # suffix = "_RFrsz"
 # go through prototypes
+# chan_rng = range(20)
+chan_rng = range(50)
 for layerstr, layer_pattern in [
-                                ("resnet_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
-                                ("resnet_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
-                                ("resnet_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
-                                ("resnet_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
-                                ("resnet_fc", "resnet50_.Linearfc_%d_"),
+                                # ("resnet_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
+                                # ("resnet_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
+                                # ("resnet_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
+                                # ("resnet_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
+                                # ("resnet_fc", "resnet50_.Linearfc_%d_"),
+                                ("resnet_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
+                                ("resnet_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
+                                ("resnet_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
+                                ("resnet_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
+                                ("resnet_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
                                 ]:
     img_col_all = {}
     img_stack_all = {}
-    for iChan in range(20):
+    for iChan in chan_rng:
         img_col = {}
         unitstr = layer_pattern % iChan
-        # unitstr = f"resnet50_.layer4.Bottleneck2_{iChan}_4_4_"
-        # unitstr = f"resnet50_.layer3.Bottleneck5_{iChan}_7_7_"
-        # unitstr = f"resnet50_.layer2.Bottleneck3_{iChan}_14_14_"
-        # unitstr = f"resnet50_.layer1.Bottleneck1_{iChan}_28_28_"
         img_stack_all[iChan] = {}
         for optimnm in optimname2cmp:
             imgfps = [*Path(protosumdir).glob(f"{unitstr}{optimnm}.jpg")]
@@ -105,10 +114,10 @@ for layerstr, layer_pattern in [
             img_stack_all[iChan][k] = format_img(v)
 
 
-    #%%
+    #%% compute distance matrices
     dist_col = {}
     stat_col = []
-    for iChan in trange(20):
+    for iChan in tqdm(chan_rng):
         # image stack for this channel
         # TODO: may subsample to match the number of reps.
         imgstack0 = img_stack_all[iChan][optimname2cmp[0]]
@@ -116,7 +125,7 @@ for layerstr, layer_pattern in [
         imgstack2 = img_stack_all[iChan][optimname2cmp[2]]
         # random sample from other channels from 0,20 as the control
         while True:
-            iChan_alt = np.random.choice(20)
+            iChan_alt = np.random.choice(chan_rng)
             if iChan_alt != iChan:
                 break
         imgstack0_alt = img_stack_all[iChan_alt][optimname2cmp[0]]
@@ -134,6 +143,22 @@ for layerstr, layer_pattern in [
         def img_metric_L3(imgs1, imgs2):
             return compare_imgs_cnn_featmsk(imgs1, imgs2, fetcher_cnn,
                 featmsk1=naive_featmask_L3, featkey="layer3", metric="cosine", )
+
+        def img_metric_L4_RFfeatmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1, imgs2, fetcher_cnn,
+                featmsk1=RF_featmask_L4, featkey="layer4", metric="cosine", )
+
+        def img_metric_L3_RFfeatmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1, imgs2, fetcher_cnn,
+                featmsk1=RF_featmask_L3, featkey="layer3", metric="cosine", )
+
+        def img_metric_L4_RFpixmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
+                featmsk1=RF_featmask_L4, featkey="layer4", metric="cosine", )
+
+        def img_metric_L3_RFpixmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
+                featmsk1=RF_featmask_L3, featkey="layer3", metric="cosine", )
 
         # list of image metrics
         for metric, metric_sfx in [(img_metric_L3, "_L3"),
@@ -170,20 +195,27 @@ for layerstr, layer_pattern in [
     pkl.dump(dist_col, open(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.pkl"), "wb"))
 
 #%% merging all layers
+network_prefix = "resnet_linf8_"
 suffix = ""
 stat_all_df = pd.DataFrame()
-for layerstr in ["resnet_layer1B1",
-                 "resnet_layer2B3",
-                 "resnet_layer3B5",
-                 "resnet_layer4B2",
-                 "resnet_fc",
+for layerstr in [
+                 # "resnet_layer1B1",
+                 # "resnet_layer2B3",
+                 # "resnet_layer3B5",
+                 # "resnet_layer4B2",
+                 # "resnet_fc",
+                 "resnet_linf8_layer1B1",
+                 "resnet_linf8_layer2B3",
+                 "resnet_linf8_layer3B5",
+                 "resnet_linf8_layer4B2",
+                 "resnet_linf8_fc",
                  ]:
     stat_df = pd.read_csv(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
     stat_df["layer"] = layerstr
     stat_df["layershort"] = layerstr[7:]
     stat_all_df = pd.concat([stat_all_df, stat_df], axis=0)
 
-stat_all_df.to_csv(join(figdir, f"alllayer_imgdist_cmp_stats{suffix}.csv"))
+stat_all_df.to_csv(join(figdir, f"{network_prefix}alllayer_imgdist_cmp_stats{suffix}.csv"))
 #%%
 figh = plt.figure(figsize=[6,6])
 sns.pointplot(data=stat_all_df, x="layershort",
@@ -202,8 +234,8 @@ plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
                                        "BGChol", "BGHess", "FC",
                                        "FC'-BGChol", "FC-BGChol'"])
 plt.ylabel("Cosine Similarity - (resenet_linf8 L4)")
-plt.title("Image Similarity among prototypes\nLayer 4 cosine", fontsize=14)
-saveallforms(figdir, f"alllayers_imgdist_FCBG_CholCMABG_L4{suffix}", figh, )
+plt.title(f"Image Similarity among prototypes\nLayer 4 cosine\n{network_prefix[:-1]}", fontsize=14)
+saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG_L4{suffix}", figh, )
 plt.show()
 #%%
 # alternatives of sns.pointplot using matplotlib errorbar and plot
@@ -234,8 +266,8 @@ plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
                                        "BGChol", "BGHess", "FC",
                                        "FC'-BGChol", "FC-BGChol'"])
 plt.ylabel("Cosine Similarity - (resenet_linf8 L3)")
-plt.title("Image Similarity among prototypes\nLayer 3 cosine", fontsize=14)
-saveallforms(figdir, f"alllayers_imgdist_FCBG_CholCMABG_L3{suffix}", figh, )
+plt.title(f"Image Similarity among prototypes\nLayer 3 cosine\n{network_prefix[:-1]}", fontsize=14)
+saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG_L3{suffix}", figh, )
 plt.show()
 
 #%%
