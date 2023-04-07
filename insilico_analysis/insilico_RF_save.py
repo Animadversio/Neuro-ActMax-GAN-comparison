@@ -95,7 +95,7 @@ for netname in ["resnet50", "resnet50_linf8"]:
         axs[2].imshow(fitmap_L4, cmap="jet")
         plt.show()
         #%%
-        fitmaps_dict[(netname, layer_short)] = (fitmap_pix, fitmap_L3, fitmap_L4)
+        fitmaps_dict[f"{netname}_{layer_short}"] = (fitmap_pix, fitmap_L3, fitmap_L4)
 #%%
 with open(join(RFdir, "fitmaps_dict.pkl"), "wb") as f:
     pickle.dump(fitmaps_dict, f)
