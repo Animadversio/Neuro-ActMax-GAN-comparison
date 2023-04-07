@@ -5,6 +5,7 @@ import re
 import glob
 
 import torch
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -91,7 +92,6 @@ datalist = glob.glob(join(rootdir, "*", "*.pt"))
 figdir = join(rootdir, "protoimgs")
 os.makedirs(figdir, exist_ok=True)
 #%%
-import numpy as np
 evoloptimnames = ["CholCMA", "HessCMA", "HessCMA500_fc6",]
 unitdirs = list(rootpath.glob("res*"))
 for unitdir in tqdm(unitdirs[:]): # 340
@@ -154,3 +154,65 @@ for unitdir in tqdm(unitdirs[:]): # 340
 list(Path(figdir).glob("*.pkl"))
 
 #%%
+evolrootdir = r"E:\Cluster_Backup\GAN_Evol_cmp"
+evolrootpath = Path(evolrootdir)
+figdir = r"F:\insilico_exps\GAN_Evol_cmp\protoimgs"
+os.makedirs(figdir, exist_ok=True)
+
+evoloptimnames = ["CholCMA", "HessCMA", "CholCMA_fc6", "HessCMA500_fc6", ]
+unitdirs = list(evolrootpath.glob("resnet50_linf8_*"))
+for unitdir in tqdm(unitdirs[:]): # 340
+    unit_pat = re.compile("([^.]*)_([^_]*)_([\d_]*)(_RFrsz)?$")
+    unit_match = unit_pat.findall(unitdir.name)
+    assert len(unit_match) == 1
+    unit_match = unit_match[0]
+    netname = unit_match[0]
+    layer = unit_match[1]
+    RFresize = True if unit_match[3] == "_RFrsz" else False
+    unitstr = unit_match[2]
+    if "_" in unitstr:
+        unit = unitstr.split("_")
+        unitid = int(unit[0])
+        x = int(unit[1])
+        y = int(unit[2])
+    else:
+        unitid = int(unitstr)
+        x = None
+        y = None
+    print(unit_match, "=", netname, layer, unitid, x, y, RFresize)
+    unitdict = edict(netname=netname, layer=layer, unitid=unitid, x=x, y=y, RFresize=RFresize)
+    proto_col = defaultdict(list)
+    info_col = defaultdict(list)
+    # score_col = defaultdict(list)
+    imgsize = 256  # 227 if RFresize else 256
+    for optimname in evoloptimnames:
+        # trial_list = list(unitdir.glob(f"lastgen{optimname}_*_score*.jpg"))
+        # trial_pat = re.compile(f"lastgen{optimname}_(\d\d\d\d\d)_score([-\d.]*).jpg$")
+        trialbest_list = list(unitdir.glob(f"besteachgen{optimname}_*.jpg"))
+        trialbest_pat = re.compile(f"besteachgen(.*)_(\d\d\d\d\d).jpg$")
+        if len(trialbest_list) == 0:
+            continue
+        for trailmtgnm in trialbest_list:
+            print(trailmtgnm)
+            match = trialbest_pat.findall(trailmtgnm.name)
+            assert len(match) == 1
+            match = match[0]
+            if not (match[0] == optimname):
+                continue
+            RND = int(match[1])
+            data = np.load(unitdir / f"scores{optimname}_{RND:05d}.npz")
+            scores = data["scores_all"]
+            generations = data["generations"]
+            score_max = scores.max()
+            score_avg = scores[generations == generations.max()].mean()
+            score_maxlast = scores[generations == generations.max()].max()
+            mtg = plt.imread(trailmtgnm)
+            img = crop_from_montage(mtg, -1, imgsize=imgsize)
+            proto_col[optimname].append(img)
+            info_col[optimname].append({"RND": RND, "score_max": score_max,
+                        "score_avg": score_avg, "score_maxlast": score_maxlast})
+        mtg = make_grid_np(proto_col[optimname], nrow=10, padding=2, )
+        plt.imsave(join(figdir, f"{unitdir.name}_{optimname}.jpg"), mtg)
+    if len(info_col) == 0:
+        continue
+    pkl.dump(info_col, open(join(figdir, f"{unitdir.name}_evolproto_info.pkl"), "wb"))
