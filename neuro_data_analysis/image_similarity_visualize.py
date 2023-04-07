@@ -7,13 +7,13 @@ import numpy as np
 from os.path import join
 from tqdm import tqdm
 import pandas as pd
-from lpips import LPIPS
 import matplotlib.pyplot as plt
 from core.utils.plot_utils import show_imgrid, save_imgrid, saveallforms
 from core.utils.montage_utils import crop_all_from_montage, make_grid_np, build_montages, crop_from_montage
 from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr
 from core.utils.dataset_utils import ImagePathDataset, ImageFolder
 from timm import list_models, create_model
+from lpips import LPIPS
 from torchvision.models import resnet50, alexnet
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 from neuro_data_analysis.neural_data_lib import get_expstr
@@ -70,8 +70,8 @@ def showimg_ax(img, bar=False, cmap=None, ax=None, title=None):
 
 from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
     compare_imgs_vit, compare_imgs_LPIPS
-#%%
 from core.utils.CNN_scorers import load_featnet
+#%%
 # cnnmodel = resnet50(pretrained=True)
 cnnmodel, _ = load_featnet("resnet50_linf8",)
 # get_graph_node_names(cnnmodel)

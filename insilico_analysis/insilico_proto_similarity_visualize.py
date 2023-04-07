@@ -6,9 +6,8 @@ import re
 import os
 import timm
 import torch
-import tqdm
 from easydict import EasyDict as edict
-from tqdm import trange
+from tqdm import trange, tqdm
 from scipy.stats import sem
 import numpy as np
 from scipy.ndimage import zoom
@@ -47,11 +46,11 @@ def format_img(img_np):
 
 from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
     compare_imgs_vit, compare_imgs_LPIPS
-#%%
 from lpips import LPIPS
 from timm import list_models, create_model
 from torchvision.models import resnet50, alexnet
 from core.utils.CNN_scorers import load_featnet
+#%%
 # cnnmodel = resnet50(pretrained=True)
 cnnmodel, _ = load_featnet("resnet50_linf8",)
 # get_graph_node_names(cnnmodel)
@@ -136,7 +135,6 @@ matplotlib.use('Agg')
 # use pycharm interactive backend
 # matplotlib.use('module://backend_interagg')
 #%%
-from tqdm import tqdm
 optimname2cmp = ['CholCMA', 'HessCMA', 'HessCMA500_fc6']  #
 suffix = ""
 # optimname2cmp = ['RFrsz_CholCMA', 'RFrsz_HessCMA', 'RFrsz_HessCMA500_fc6']  #

@@ -63,19 +63,26 @@ def format_img(img_np):
 
 
 naive_featmask_L3, naive_featmask_L4 = naive_featmsk()
+naive_pixmask = np.ones((224, 224, 1), dtype="float32")
 #%% RFmsk and pixel masks
+import pickle as pkl
+RFdir = r"F:\insilico_exps\GAN_Evol_cmp\RFmaps"
+fitRFdict = pkl.load(open(join(RFdir, "fitmaps_dict.pkl"), "rb"))
+#%%
+fitRFtorchdict = {}
+for key, (pixmask, featmask_L3, featmask_L4) in fitRFdict.items():
+    fitRFtorchdict[key] = pixmask[:,:,None].astype("float32"), \
+                          torch.from_numpy(featmask_L3).float().cuda(), \
+                          torch.from_numpy(featmask_L4).float().cuda()
 
-
+fitRFtorchdict["resnet50_linf8_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
+fitRFtorchdict["resnet50_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
 
 #%%
 import pickle as pkl
 from core.utils.plot_utils import saveallforms
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage_cmp_insilico"
 
-# layerstr = "resnet_layer4B2"
-# layerstr = "resnet_layer3B5"
-# layerstr = "resnet_layer2B3"
-# layerstr = "resnet_layer1B1"
 optimname2cmp = ['CholCMA', 'HessCMA', 'HessCMA500_fc6']  #
 suffix = ""
 # optimname2cmp = ['RFrsz_CholCMA', 'RFrsz_HessCMA', 'RFrsz_HessCMA500_fc6']  #
@@ -84,17 +91,21 @@ suffix = ""
 # chan_rng = range(20)
 chan_rng = range(50)
 for layerstr, layer_pattern in [
-                                # ("resnet_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
-                                # ("resnet_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
-                                # ("resnet_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
-                                # ("resnet_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
-                                # ("resnet_fc", "resnet50_.Linearfc_%d_"),
-                                ("resnet_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
-                                ("resnet_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
-                                ("resnet_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
-                                ("resnet_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
-                                ("resnet_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
+                                # ("resnet50_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
+                                # ("resnet50_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
+                                # ("resnet50_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
+                                # ("resnet50_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
+                                # ("resnet50_fc", "resnet50_.Linearfc_%d_"),
+                                ("resnet50_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
+                                ("resnet50_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
+                                ("resnet50_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
+                                ("resnet50_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
+                                ("resnet50_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
                                 ]:
+    # sepidx = layerstr.rfind("_")
+    # netname = layerstr[:sepidx]
+    # layerkey = layerstr.split("_")[-1]
+    RFpixmask, RF_featmask_L3, RF_featmask_L4 = fitRFtorchdict[layerstr]
     img_col_all = {}
     img_stack_all = {}
     for iChan in chan_rng:
@@ -112,7 +123,6 @@ for layerstr, layer_pattern in [
 
         for k, v in img_col_all[iChan].items():
             img_stack_all[iChan][k] = format_img(v)
-
 
     #%% compute distance matrices
     dist_col = {}
@@ -154,15 +164,29 @@ for layerstr, layer_pattern in [
 
         def img_metric_L4_RFpixmask(imgs1, imgs2):
             return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
-                featmsk1=RF_featmask_L4, featkey="layer4", metric="cosine", )
+                featmsk1=naive_featmask_L4, featkey="layer4", metric="cosine", )
 
         def img_metric_L3_RFpixmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
+                featmsk1=naive_featmask_L3, featkey="layer3", metric="cosine", )
+
+        def img_metric_L4_RFpixfeatmask(imgs1, imgs2):
+            return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
+                featmsk1=RF_featmask_L4, featkey="layer4", metric="cosine", )
+
+        def img_metric_L3_RFpixfeatmask(imgs1, imgs2):
             return compare_imgs_cnn_featmsk(imgs1 * RFpixmask, imgs2 * RFpixmask, fetcher_cnn,
                 featmsk1=RF_featmask_L3, featkey="layer3", metric="cosine", )
 
         # list of image metrics
         for metric, metric_sfx in [(img_metric_L3, "_L3"),
-                                   (img_metric_L4, "_L4")]:
+                                   (img_metric_L4, "_L4"),
+                                   (img_metric_L3_RFfeatmask, "_L3_RFftmsk"),
+                                   (img_metric_L4_RFfeatmask, "_L4_RFftmsk"),
+                                   (img_metric_L3_RFpixmask, "_L3_RFpxmsk"),
+                                   (img_metric_L4_RFpixmask, "_L4_RFpxmsk"),
+                                   (img_metric_L3_RFpixfeatmask, "_L3_RFpxftmsk"),
+                                   (img_metric_L4_RFpixfeatmask, "_L4_RFpxftmsk"),]:
             # list of image stacks to compare between each other
             for entry, imgs1, imgs2 in [
                                         ("distmats00", imgstack0, imgstack0),
@@ -195,7 +219,7 @@ for layerstr, layer_pattern in [
     pkl.dump(dist_col, open(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.pkl"), "wb"))
 
 #%% merging all layers
-network_prefix = "resnet_linf8_"
+network_prefix = "resnet50_linf8_"
 suffix = ""
 stat_all_df = pd.DataFrame()
 for layerstr in [
@@ -204,11 +228,11 @@ for layerstr in [
                  # "resnet_layer3B5",
                  # "resnet_layer4B2",
                  # "resnet_fc",
-                 "resnet_linf8_layer1B1",
-                 "resnet_linf8_layer2B3",
-                 "resnet_linf8_layer3B5",
-                 "resnet_linf8_layer4B2",
-                 "resnet_linf8_fc",
+                 "resnet50_linf8_layer1B1",
+                 "resnet50_linf8_layer2B3",
+                 "resnet50_linf8_layer3B5",
+                 "resnet50_linf8_layer4B2",
+                 "resnet50_linf8_fc",
                  ]:
     stat_df = pd.read_csv(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
     stat_df["layer"] = layerstr
@@ -315,3 +339,6 @@ figh.suptitle(f"{layerstr}\nimg dist FC-BG vs FC-BG', CholCMA BG")
 figh.gca().set_ylabel("cosine dist (layer3)")
 saveallforms(figdir, f"{layerstr}_imgdist_FCBG_vs_FCBG'_CholCMABG_L3{suffix}", figh, )
 figh.show()
+#%%
+# pandas display options with wider full columns
+pd.set_option('display.max_columns', 500)
