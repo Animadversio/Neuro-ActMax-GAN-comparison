@@ -2,13 +2,12 @@ import re
 import os
 import timm
 import torch
-import tqdm
+from tqdm import tqdm
 from easydict import EasyDict as edict
+import pickle as pkl
 from tqdm import trange
 from scipy.stats import sem
-import numpy as np
 from scipy.ndimage import zoom
-import matplotlib.pyplot as plt
 from pathlib import Path
 from os.path import join
 from core.utils.CNN_scorers import load_featnet
@@ -17,13 +16,16 @@ from core.utils.montage_utils import crop_from_montage, crop_all_from_montage
 from core.utils.montage_utils import make_grid, make_grid_np, make_grid_T
 from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
     compare_imgs_LPIPS, naive_featmsk
+import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
+from core.utils.plot_utils import saveallforms
+
 #%%
 # directories
 protosumdir = r"F:\insilico_exps\GAN_Evol_cmp\protoimgs"
-#%%
-
+#%% load the image encoders
 # cnnmodel = resnet50(pretrained=True)
 cnnmodel, _ = load_featnet("resnet50_linf8",)
 # get_graph_node_names(cnnmodel)
@@ -31,15 +33,12 @@ fetcher_cnn = create_feature_extractor(cnnmodel, ['layer3', "layer4", ])
 fetcher_cnn = fetcher_cnn.cuda().eval()
 
 # timm.list_models("*clip*", pretrained=True)
-#%%
-
-
 
 #%%
 # get the names of the optimizers, initial sweep
 # querystr = "resnet50_.layer3.Bottleneck5_"
 # querystr = "resnet50_.layer2.Bottleneck3_"
-querystr = "resnet50_linf8_.layer3.Bottleneck5_"
+# querystr = "resnet50_linf8_.layer3.Bottleneck5_"
 querystr = r"resnet50_linf8_.layer1.Bottleneck1_"
 for iChan in range(20):
     imgfps = [*Path(protosumdir).glob(f"{querystr}{iChan}_*.jpg")]
@@ -65,7 +64,6 @@ def format_img(img_np):
 naive_featmask_L3, naive_featmask_L4 = naive_featmsk()
 naive_pixmask = np.ones((224, 224, 1), dtype="float32")
 #%% RFmsk and pixel masks
-import pickle as pkl
 RFdir = r"F:\insilico_exps\GAN_Evol_cmp\RFmaps"
 fitRFdict = pkl.load(open(join(RFdir, "fitmaps_dict.pkl"), "rb"))
 #%%
@@ -79,10 +77,8 @@ fitRFtorchdict["resnet50_linf8_fc"] = naive_pixmask, naive_featmask_L3, naive_fe
 fitRFtorchdict["resnet50_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
 
 #%%
-import pickle as pkl
-from core.utils.plot_utils import saveallforms
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage_cmp_insilico"
-
+datadir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage_cmp_insilico\data"
 optimname2cmp = ['CholCMA', 'HessCMA', 'HessCMA500_fc6']  #
 suffix = ""
 # optimname2cmp = ['RFrsz_CholCMA', 'RFrsz_HessCMA', 'RFrsz_HessCMA500_fc6']  #
@@ -91,16 +87,16 @@ suffix = ""
 # chan_rng = range(20)
 chan_rng = range(50)
 for layerstr, layer_pattern in [
-                                # ("resnet50_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
-                                # ("resnet50_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
-                                # ("resnet50_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
-                                # ("resnet50_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
-                                # ("resnet50_fc", "resnet50_.Linearfc_%d_"),
-                                ("resnet50_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
-                                ("resnet50_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
-                                ("resnet50_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
-                                ("resnet50_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
-                                ("resnet50_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
+                                ("resnet50_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
+                                ("resnet50_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
+                                ("resnet50_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
+                                ("resnet50_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
+                                ("resnet50_fc", "resnet50_.Linearfc_%d_"),
+                                # ("resnet50_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
+                                # ("resnet50_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
+                                # ("resnet50_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
+                                # ("resnet50_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
+                                # ("resnet50_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
                                 ]:
     # sepidx = layerstr.rfind("_")
     # netname = layerstr[:sepidx]
@@ -108,7 +104,7 @@ for layerstr, layer_pattern in [
     RFpixmask, RF_featmask_L3, RF_featmask_L4 = fitRFtorchdict[layerstr]
     img_col_all = {}
     img_stack_all = {}
-    for iChan in chan_rng:
+    for iChan in tqdm(chan_rng):
         img_col = {}
         unitstr = layer_pattern % iChan
         img_stack_all[iChan] = {}
@@ -215,31 +211,95 @@ for layerstr, layer_pattern in [
     #%
     stat_df = pd.DataFrame(stat_col)
     #%%
-    stat_df.to_csv(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
-    pkl.dump(dist_col, open(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.pkl"), "wb"))
+    stat_df.to_csv(join(datadir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
+    pkl.dump(dist_col, open(join(datadir, f"{layerstr}_imgdist_cmp_stats{suffix}.pkl"), "wb"))
 
 #%% merging all layers
-network_prefix = "resnet50_linf8_"
+network_prefix = "resnet50_" #"resnet50_linf8_" #
 suffix = ""
 stat_all_df = pd.DataFrame()
 for layerstr in [
-                 # "resnet_layer1B1",
-                 # "resnet_layer2B3",
-                 # "resnet_layer3B5",
-                 # "resnet_layer4B2",
-                 # "resnet_fc",
-                 "resnet50_linf8_layer1B1",
-                 "resnet50_linf8_layer2B3",
-                 "resnet50_linf8_layer3B5",
-                 "resnet50_linf8_layer4B2",
-                 "resnet50_linf8_fc",
+                 "resnet50_layer1B1",
+                 "resnet50_layer2B3",
+                 "resnet50_layer3B5",
+                 "resnet50_layer4B2",
+                 "resnet50_fc",
+                 # "resnet50_linf8_layer1B1",
+                 # "resnet50_linf8_layer2B3",
+                 # "resnet50_linf8_layer3B5",
+                 # "resnet50_linf8_layer4B2",
+                 # "resnet50_linf8_fc",
                  ]:
-    stat_df = pd.read_csv(join(figdir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
+    stat_df = pd.read_csv(join(datadir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
     stat_df["layer"] = layerstr
-    stat_df["layershort"] = layerstr[7:]
+    stat_df["layershort"] = layerstr.split("_")[-1]  #layerstr[len(network_prefix):]
     stat_all_df = pd.concat([stat_all_df, stat_df], axis=0)
 
-stat_all_df.to_csv(join(figdir, f"{network_prefix}alllayer_imgdist_cmp_stats{suffix}.csv"))
+stat_all_df.to_csv(join(datadir, f"{network_prefix}alllayer_imgdist_cmp_stats{suffix}.csv"))
+
+#%%
+from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, paired_strip_plot
+
+"""Compare the distance metrics between the different layers
+Loop through all the metrics and plot the results
+"""
+metric_sfx = "_L4"
+for metric_sfx in ["_L4",
+                   "_L4_RFftmsk",
+                   "_L4_RFpxmsk",
+                   "_L4_RFpxftmsk",
+                   "_L3",
+                   "_L3_RFftmsk",
+                   "_L3_RFpxmsk",
+                   "_L3_RFpxftmsk",
+                   ]:
+    figh = plt.figure(figsize=[6,6])
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats02"+metric_sfx, color="k", alpha=0.6, capsize=0.2)
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats00"+metric_sfx, color="magenta", alpha=0.6, capsize=0.2, )
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats11"+metric_sfx, color="green", alpha=0.6, capsize=0.2, )
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats22"+metric_sfx, color="cyan", alpha=0.6, capsize=0.2, )
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats02_FCalt"+metric_sfx, color="r", alpha=0.6, capsize=0.2)
+    sns.pointplot(data=stat_all_df, x="layershort",
+                  y="distmats02_BGalt"+metric_sfx, color="b", alpha=0.6, capsize=0.2)
+    plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
+                                           "BGChol", "BGHess", "FC",
+                                           "FC'-BGChol", "FC-BGChol'"])
+    plt.ylabel(f"Cosine Similarity - (resenet_linf8 {metric_sfx.replace('_', ' ')})")
+    plt.title(f"Image Similarity among prototypes\n{metric_sfx.replace('_', ' ')} cosine\n{network_prefix[:-1]}", fontsize=14)
+    saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG{metric_sfx}{suffix}", figh, )
+    plt.show()
+
+#%%
+"""Compare the distance metrics between the different layers
+Loop through all the metrics and plot the results
+"""
+
+#%% Scratch
+figh = plt.figure(figsize=[6,6])
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats02_L3", color="k", alpha=0.6, capsize=0.2)
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats00_L3", color="magenta", alpha=0.6, capsize=0.2, )
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats11_L3", color="green", alpha=0.6, capsize=0.2, )
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats22_L3", color="cyan", alpha=0.6, capsize=0.2, )
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats02_FCalt_L3", color="r", alpha=0.6, capsize=0.2)
+sns.pointplot(data=stat_all_df, x="layershort",
+              y="distmats02_BGalt_L3", color="b", alpha=0.6, capsize=0.2)
+plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
+                                       "BGChol", "BGHess", "FC",
+                                       "FC'-BGChol", "FC-BGChol'"])
+plt.ylabel("Cosine Similarity - (resenet_linf8 L3)")
+plt.title(f"Image Similarity among prototypes\nLayer 3 cosine\n{network_prefix[:-1]}", fontsize=14)
+saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG_L3{suffix}", figh, )
+plt.show()
 #%%
 figh = plt.figure(figsize=[6,6])
 sns.pointplot(data=stat_all_df, x="layershort",
@@ -262,40 +322,6 @@ plt.title(f"Image Similarity among prototypes\nLayer 4 cosine\n{network_prefix[:
 saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG_L4{suffix}", figh, )
 plt.show()
 #%%
-# alternatives of sns.pointplot using matplotlib errorbar and plot
-# def df_errorbar_plot(data, x, y, color, alpha, capsize, **kwargs):
-#     xvals = data[x].unique()
-#     yvals = data[y].values
-#     ystds = data[y+"_std"].values
-#     ysems = data[y+"_sem"].values
-#     plt.errorbar(xvals, yvals, yerr=ystds, color=color, alpha=alpha, capsize=capsize, **kwargs)
-#     plt.plot(xvals, yvals, color=color, alpha=alpha, **kwargs)
-#     return plt.gca()
-
-#%%
-figh = plt.figure(figsize=[6,6])
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats02_L3", color="k", alpha=0.6, capsize=0.2)
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats00_L3", color="magenta", alpha=0.6, capsize=0.2, )
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats11_L3", color="green", alpha=0.6, capsize=0.2, )
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats22_L3", color="cyan", alpha=0.6, capsize=0.2, )
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats02_FCalt_L3", color="r", alpha=0.6, capsize=0.2)
-sns.pointplot(data=stat_all_df, x="layershort",
-              y="distmats02_BGalt_L3", color="b", alpha=0.6, capsize=0.2)
-plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
-                                       "BGChol", "BGHess", "FC",
-                                       "FC'-BGChol", "FC-BGChol'"])
-plt.ylabel("Cosine Similarity - (resenet_linf8 L3)")
-plt.title(f"Image Similarity among prototypes\nLayer 3 cosine\n{network_prefix[:-1]}", fontsize=14)
-saveallforms(figdir, f"{network_prefix}alllayers_imgdist_FCBG_CholCMABG_L3{suffix}", figh, )
-plt.show()
-
-#%%
-from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, paired_strip_plot
 ttest_rel_print_df(stat_df, None, "distmats12_L3", "distmats12_FCalt_L3")
 #%%
 ttest_rel_print_df(stat_df, None, "distmats12_L3", "distmats12_BGalt_L3")
@@ -342,3 +368,14 @@ figh.show()
 #%%
 # pandas display options with wider full columns
 pd.set_option('display.max_columns', 500)
+#%%
+#%%
+# alternatives of sns.pointplot using matplotlib errorbar and plot
+# def df_errorbar_plot(data, x, y, color, alpha, capsize, **kwargs):
+#     xvals = data[x].unique()
+#     yvals = data[y].values
+#     ystds = data[y+"_std"].values
+#     ysems = data[y+"_sem"].values
+#     plt.errorbar(xvals, yvals, yerr=ystds, color=color, alpha=alpha, capsize=capsize, **kwargs)
+#     plt.plot(xvals, yvals, color=color, alpha=alpha, **kwargs)
+#     return plt.gca()

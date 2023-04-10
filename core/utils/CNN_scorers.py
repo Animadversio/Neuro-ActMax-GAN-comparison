@@ -6,6 +6,7 @@ from sys import platform
 import os
 from os.path import join
 import numpy as np
+import timm
 import torch
 from torchvision import models
 from torchvision import transforms
@@ -14,6 +15,7 @@ from core.utils.layer_hook_utils import layername_dict, register_hook_by_module_
 import matplotlib.pyplot as plt
 import matplotlib
 import socket
+import timm
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
@@ -167,6 +169,10 @@ class TorchScorer:
                 from cornet import cornet_s
                 Cnet = cornet_s(pretrained=True)
                 self.model = Cnet.module
+                self.inputsize = (3, imgpix, imgpix)
+                self.layername = None
+            elif model_name in timm.list_models():
+                self.model = timm.create_model(model_name, pretrained=True)
                 self.inputsize = (3, imgpix, imgpix)
                 self.layername = None
             else:
