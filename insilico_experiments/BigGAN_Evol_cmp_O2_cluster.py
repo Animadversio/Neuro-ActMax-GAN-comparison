@@ -82,28 +82,32 @@ def load_Hessian(name):
 
 
 def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda"):
-    if not "fc" in layer:
-        module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
-        layer_key = [k for k, v in module_names.items() if v == layer][0]
-        feat_outshape = module_spec[layer_key]['outshape']
-        assert len(feat_outshape) == 3  # fc layer will fail
+    module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
+    layer_key = [k for k, v in module_names.items() if v == layer][0]
+    feat_outshape = module_spec[layer_key]['outshape']
+    # assert len(feat_outshape) == 3  # fc layer will fail
+    if len(feat_outshape) == 3:
         cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
-    else:
+    elif len(feat_outshape) == 1:
         cent_pos = None
+    else:
+        raise ValueError(f"Unknown layer shape {feat_outshape} for layer {layer}")
 
     # rf Mapping,
-    if not "fc" in layer:
+    if len(feat_outshape) == 3: # fixit
         print("Computing RF by direct backprop: ")
         gradAmpmap = grad_RF_estimate(model, layer, (slice(None), *cent_pos), input_size=input_size,
                                       device=device, show=False, reps=30, batch=1)
         Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
         corner = (Xlim[0], Ylim[0])
         imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
-    else:
+    elif len(feat_outshape) == 1:
         imgsize = input_size[-2:]
         corner = (0, 0)
         Xlim = (corner[0], corner[0] + imgsize[0])
         Ylim = (corner[1], corner[1] + imgsize[1])
+    else:
+        raise ValueError(f"Unknown layer shape {feat_outshape} for layer {layer}")
 
     return cent_pos, corner, imgsize, Xlim, Ylim
 
