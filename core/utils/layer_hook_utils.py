@@ -171,6 +171,47 @@ def get_module_names(model, input_size, device="cpu", show=True):
     return module_names, module_types, module_spec
 
 
+def print_specific_layer(module_subset, module_names, module_types, module_spec):
+    print("------------------------------------------------------------------------------")
+    line_new = "{:>14}  {:>12}   {:>12}   {:>12}   {:>25} ".\
+        format("Layer Id", "inshape", "outshape", "Type", "ReadableStr", )
+    print(line_new)
+    print("==============================================================================")
+    for layer, v in module_names.items():
+        if v in module_subset:
+            # for layer in module_names:
+                # input_shape, output_shape, trainable, nb_params
+            line_new = "{:7} {:8} {:>12} {:>12} {:>15}  {:>25}".format(
+                "",
+                layer,
+                str(module_spec[layer]["inshape"]),
+                str(module_spec[layer]["outshape"]),
+                module_types[layer],
+                module_names[layer],
+            )
+            print(line_new)
+    print("------------------------------------------------------------------------------")
+
+
+def recursive_print(module, prefix="", depth=0, deepest=3):
+    """Simulating print(module) for torch.nn.Modules
+        but with depth control. Print to the `deepest` level. `deepest=0` means no print
+    """
+    if depth == 0:
+        print(f"[{type(module).__name__}]")
+    if depth >= deepest:
+        return
+    for name, child in module.named_children():
+        if len([*child.named_children()]) == 0:
+            print(f"{prefix}({name}): {child}")
+        else:
+            if isinstance(child, nn.ModuleList):
+                print(f"{prefix}({name}): {type(child).__name__} len={len(child)}")
+            else:
+                print(f"{prefix}({name}): {type(child).__name__}")
+        recursive_print(child, prefix + "  ", depth + 1, deepest)
+
+
 def register_hook_by_module_names(target_name, target_hook, model, input_size=(3, 256, 256), device="cpu", ):
     module_names = OrderedDict()
     module_types = OrderedDict()
