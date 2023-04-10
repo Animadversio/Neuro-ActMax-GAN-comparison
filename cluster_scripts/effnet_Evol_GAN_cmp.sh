@@ -4,7 +4,7 @@
 #SBATCH -t 4:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=1-28
+#SBATCH --array=29-36
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o BigGANeffnet_evol_%j.out
 
@@ -39,6 +39,14 @@ param_list=\
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.5 --optim HessCMA CholCMA --G BigGAN --rep 10
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.6 --optim HessCMA500 CholCMA --G fc6 --rep 10
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.6 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .SelectAdaptivePool2dglobal_pool --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .SelectAdaptivePool2dglobal_pool --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .Linearclassifier --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .Linearclassifier --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .SelectAdaptivePool2dglobal_pool --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .SelectAdaptivePool2dglobal_pool --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .Linearclassifier --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .Linearclassifier --optim HessCMA CholCMA --G BigGAN --rep 10
 '
 
 export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
