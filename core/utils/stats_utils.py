@@ -73,7 +73,7 @@ def paired_strip_plot(df, msk, col1, col2):
     vec1 = df[msk][col1]
     vec2 = df[msk][col2]
     xjitter = 0.1 * np.random.randn(len(vec1))
-    figh = plt.figure(figsize=[4, 6])
+    figh = plt.figure(figsize=[5, 6])
     plt.scatter(xjitter, vec1)
     plt.scatter(xjitter+1, vec2)
     plt.plot(np.arange(2)[:,None]+xjitter[None,:],
