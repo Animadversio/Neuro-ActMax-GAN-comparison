@@ -1,108 +1,44 @@
 #!/bin/bash
 #SBATCH -n 1
 #SBATCH -p gpu_quad
-#SBATCH -t 8:00:00
+#SBATCH -t 4:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=75-92
+#SBATCH --array=1-28
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
-#SBATCH -o BigGANresnet_evol_%j.out
+#SBATCH -o BigGANeffnet_evol_%j.out
 
 echo "$SLURM_ARRAY_TASK_ID"
 
 param_list=\
-'--chans 0 20 --G fc6 --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer2.Bottleneck0 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck0 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck2 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck4 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500 --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer2.Bottleneck0 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck0 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck2 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck4 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G BigGAN --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0 20 --G fc6 --net resnet50 --layer .Linearfc --optim HessCMA500  --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer2.Bottleneck0 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck0 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck2 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck4 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA CholCMA --rep 10
---chans 0 20 --G BigGAN --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10 
---chans 0 20 --G BigGAN --net resnet50 --layer .Linearfc --optim HessCMA CholCMA --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA500 --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer2.Bottleneck0 --optim HessCMA500 --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA500  --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck0 --optim HessCMA500 --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck2 --optim HessCMA500 --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck4 --optim HessCMA500  --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500  --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA500 --rep 10
---chans 0 20 --G fc6 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500  --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .Linearfc --optim HessCMA500 CholCMA  --rep 10
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .Linearfc --optim HessCMA CholCMA --rep 10
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 0  25 --G fc6    --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 0  25 --G BigGAN --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .Linearfc --optim HessCMA500 CholCMA  --rep 10
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .Linearfc --optim HessCMA CholCMA --rep 10
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 25 50 --G fc6    --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 25 50 --G BigGAN --net resnet50_linf8 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 20 50 --G fc6    --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10
---chans 20 50 --G BigGAN --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10
---chans 20 50 --G fc6    --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10
---chans 20 50 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10
---chans 20 50 --G fc6    --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10
---chans 20 50 --G BigGAN --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10
---chans 20 50 --G fc6    --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10
---chans 20 50 --G BigGAN --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10
---chans 20 50 --G fc6    --net resnet50 --layer .Linearfc --optim HessCMA500 CholCMA  --rep 10
---chans 20 50 --G BigGAN --net resnet50 --layer .Linearfc --optim HessCMA CholCMA --rep 10
---chans 20 50 --G fc6    --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 20 50 --G BigGAN --net resnet50 --layer .layer1.Bottleneck1 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 20 50 --G fc6    --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 20 50 --G BigGAN --net resnet50 --layer .layer2.Bottleneck3 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 20 50 --G fc6    --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 20 50 --G BigGAN --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --rep 10 --RFresize 1
---chans 20 50 --G fc6    --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA  --rep 10 --RFresize 1
---chans 20 50 --G BigGAN --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --rep 10 --RFresize 1
+'--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.0 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.0 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.1 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.1 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.2 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.2 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.3 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.3 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.4 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.4 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.5 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.5 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.6 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6_ap --layer .blocks.6 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.0 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.0 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.1 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.1 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.2 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.2 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.3 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.3 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.4 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.4 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.5 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.5 --optim HessCMA CholCMA --G BigGAN --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.6 --optim HessCMA500 CholCMA --G fc6 --rep 10
+--chans 0 10 --net tf_efficientnet_b6 --layer .blocks.6 --optim HessCMA CholCMA --G BigGAN --rep 10
 '
 
 export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
