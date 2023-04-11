@@ -3,7 +3,6 @@ import shutil
 import os
 import re
 import glob
-
 import torch
 import numpy as np
 import pandas as pd
@@ -16,14 +15,15 @@ from core.utils.montage_utils import crop_from_montage, crop_all_from_montage
 from core.utils.montage_utils import make_grid, make_grid_np, make_grid_T
 from collections import defaultdict
 import pickle as pkl
+#%%
 rootdir = r"F:\insilico_exps\GAN_gradEvol_cmp"
 rootpath = Path(rootdir)
 datalist = glob.glob(join(rootdir, "*", "*.pt"))
 figdir = join(rootdir, "protoimgs")
 os.makedirs(figdir, exist_ok=True)
 #%%
-optimnames = ["Adam001Hess", "Adam001", "Adam01Hess_fc6", "Adam01_fc6"]
 #%% gradient based Evolution data
+optimnames = ["Adam001Hess", "Adam001", "Adam01Hess_fc6", "Adam01_fc6"]
 # datalist = glob.glob(join(rootdir, "*", "imglastgen*_\d\d\d\d\d.jpg"))
 unitdirs = list(rootpath.glob("res*"))
 df_col = []
@@ -92,8 +92,10 @@ datalist = glob.glob(join(rootdir, "*", "*.pt"))
 figdir = join(rootdir, "protoimgs")
 os.makedirs(figdir, exist_ok=True)
 #%%
-evoloptimnames = ["CholCMA", "HessCMA", "HessCMA500_fc6",]
-unitdirs = list(rootpath.glob("res*"))
+# evoloptimnames = ["CholCMA", "HessCMA", "HessCMA500_fc6",]
+evoloptimnames = ["CholCMA", "HessCMA", "CholCMA_fc6", "HessCMA500_fc6", ]
+# unitdirs = list(rootpath.glob("res*"))
+unitdirs = list(rootpath.glob("tf_efficientnet*"))
 for unitdir in tqdm(unitdirs[:]): # 340
     unit_pat = re.compile("([^.]*)_([^_]*)_([\d_]*)(_RFrsz)?$")
     unit_match = unit_pat.findall(unitdir.name)
