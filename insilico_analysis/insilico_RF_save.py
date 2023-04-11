@@ -32,44 +32,60 @@ def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda")
         # Ylim = (corner[1], corner[1] + imgsize[1])
 
     return cent_pos, corner, imgsize, Xlim, Ylim, gradAmpmap
+
+# cnnmodel, _ = load_featnet("resnet50_linf8",)
+# cent_pos,gradAmpmap = get_center_pos_and_rf(cnnmodel, ".Linearfc", input_size=(3, 227, 227), device="cuda")
 #%%
 from lpips import LPIPS
 from timm import list_models, create_model
 from torchvision.models import resnet50, alexnet
 from core.utils.CNN_scorers import load_featnet
-# cnnmodel = resnet50(pretrained=True)
-cnnmodel, _ = load_featnet("resnet50_linf8",)
+from core.utils.CNN_scorers import TorchScorer
 #%%
-# cent_pos,gradAmpmap = get_center_pos_and_rf(cnnmodel, ".Linearfc", input_size=(3, 227, 227), device="cuda")
 from core.utils.GAN_utils import upconvGAN
 G = upconvGAN()
 G.eval().cuda()
 G.requires_grad_(False)
 #%%
 RFdir = r"F:\insilico_exps\GAN_Evol_cmp\RFmaps"
-# layer = ".Linearfc"
 # netname = "resnet50_linf8"
 # cnnmodel, _ = load_featnet("resnet50_linf8",)
-netname = "resnet50"
-cnnmodel, _ = load_featnet("resnet50",)
-# layer, unitslice = ".layer1.Bottleneck1", (slice(None), 28, 28)
-# layer, unitslice = ".layer2.Bottleneck3", (slice(None), 14, 14)
-# layer, unitslice = ".layer3.Bottleneck5", (slice(None), 7, 7)
-# layer, unitslice = ".layer4.Bottleneck2", (slice(None), 4, 4)
-for layer, unitslice in [(".layer1.Bottleneck1", (slice(None), 28, 28)),
-                        (".layer2.Bottleneck3", (slice(None), 14, 14)),
-                        (".layer3.Bottleneck5", (slice(None), 7, 7)),
-                        (".layer4.Bottleneck2", (slice(None), 4, 4))
-                        #(".Linearfc", (slice(None),))
+for netname in ["resnet50", "resnet50_linf8"]:
+    cnnmodel, _ = load_featnet(netname,)
+    for layer, unitslice in [(".layer1.Bottleneck1", (slice(None), 28, 28)),
+                            (".layer2.Bottleneck3", (slice(None), 14, 14)),
+                            (".layer3.Bottleneck5", (slice(None), 7, 7)),
+                            (".layer4.Bottleneck2", (slice(None), 4, 4))
+                            #(".Linearfc", (slice(None),))
+                                ]:
+        layer_short = layer[1:].replace(".Bottleneck", "B")
+        gradAmpmap = grad_RF_estimate(cnnmodel, layer, unitslice, input_size=(3, 227, 227),
+                                              device="cuda", show=True, reps=100, batch=1)
+        fit_2dgauss(gradAmpmap, f"{netname}-"+layer_short, outdir=RFdir, plot=True)
+        gradAmpmap = GAN_grad_RF_estimate(G, cnnmodel, layer, unitslice, input_size=(3, 227, 227),
+                                              device="cuda", show=True, reps=30, batch=1)
+        fit_2dgauss(gradAmpmap, f"{netname}-GAN-"+layer_short, outdir=RFdir, plot=True)
+        # Xlim, Ylim = gradmap2RF_square(gradAmpmap, relthresh=0.01, square=True)
+#%%
+RFdir = r"F:\insilico_exps\GAN_Evol_cmp\RFmaps"
+for netname in ["tf_efficientnet_b6_ap", "tf_efficientnet_b6"]:
+    scorer = TorchScorer(netname, )
+    cnnmodel = scorer.model
+    for layer, unitslice in [(".blocks.0", (slice(None), 57, 57)),
+                            (".blocks.1", (slice(None), 28, 28)),
+                            (".blocks.2", (slice(None), 14, 14)),
+                            (".blocks.3", (slice(None), 7, 7)),
+                            (".blocks.4", (slice(None), 7, 7)),
+                            (".blocks.5", (slice(None), 4, 4)),
+                            (".blocks.6", (slice(None), 4, 4)),
                             ]:
-    layer_short = layer[1:].replace(".Bottleneck", "B")
-    gradAmpmap = grad_RF_estimate(cnnmodel, layer, unitslice, input_size=(3, 227, 227),
-                                          device="cuda", show=True, reps=100, batch=1)
-    fit_2dgauss(gradAmpmap, f"{netname}-"+layer_short, outdir=RFdir, plot=True)
-    gradAmpmap = GAN_grad_RF_estimate(G, cnnmodel, layer, unitslice, input_size=(3, 227, 227),
-                                          device="cuda", show=True, reps=30, batch=1)
-    fit_2dgauss(gradAmpmap, f"{netname}-GAN-"+layer_short, outdir=RFdir, plot=True)
-    # Xlim, Ylim = gradmap2RF_square(gradAmpmap, relthresh=0.01, square=True)
+        layer_short = layer[1:].replace(".Bottleneck", "B")
+        gradAmpmap = grad_RF_estimate(cnnmodel, layer, unitslice, input_size=(3, 227, 227),
+                                              device="cuda", show=True, reps=100, batch=1)
+        fit_2dgauss(gradAmpmap, f"{netname}-"+layer_short, outdir=RFdir, plot=True)
+        gradAmpmap = GAN_grad_RF_estimate(G, cnnmodel, layer, unitslice, input_size=(3, 227, 227),
+                                              device="cuda", show=True, reps=30, batch=1)
+        fit_2dgauss(gradAmpmap, f"{netname}-GAN-"+layer_short, outdir=RFdir, plot=True)
 #%%
 # save as pkl
 import pickle
@@ -83,11 +99,9 @@ for netname in ["resnet50", "resnet50_linf8"]:
         RFdict = np.load(join(RFdir, f"{netname}-{layer_short}_gradAmpMap_GaussianFit.npz"))
         fitmap = RFdict["fitmap"]
         fitmap = fitmap / fitmap.max()
-        #%%
         fitmap_pix = zoom(fitmap, 224 / 227, order=2)
         fitmap_L3 = zoom(fitmap, 14 / 227, order=2)
         fitmap_L4 = zoom(fitmap, 7 / 227, order=2)
-        #%%
         # plot these maps
         fig, axs = plt.subplots(1, 3, figsize=(12, 4))
         axs[0].imshow(fitmap_pix, cmap="jet")
