@@ -86,10 +86,31 @@ for unitdir in tqdm(unitdirs):
 
 #%% Evolution experimental data
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
+rootdir = r"/n/scratch3/users/b/biw905/GAN_Evol_cmp"
 rootpath = Path(rootdir)
-datalist = glob.glob(join(rootdir, "*", "*.pt"))
+# datalist = glob.glob(join(rootdir, "*", "*.pt"))
 figdir = join(rootdir, "protoimgs")
 os.makedirs(figdir, exist_ok=True)
+#%%
+# check path and load data
+evoloptimnames = ["CholCMA", "HessCMA", "CholCMA_fc6", "HessCMA500_fc6", ]
+# unitdirs = list(rootpath.glob("res*"))
+unitdirs = list(rootpath.glob("tf_efficientnet*"))
+unitdir_w_missing = []
+for unitdir in tqdm(unitdirs[:]): # 340
+    for optimname in evoloptimnames:
+        # trial_list = list(unitdir.glob(f"lastgen{optimname}_*_score*.jpg"))
+        # trial_pat = re.compile(f"lastgen{optimname}_(\d\d\d\d\d)_score([-\d.]*).jpg$")
+        trialbest_list = list(unitdir.glob(f"besteachgen{optimname}_*.jpg"))
+        if len(trialbest_list) < 10:
+            print(unitdir, optimname, f"not enough trials {len(trialbest_list)}")
+            unitdir_w_missing.append(unitdir)
+            continue
+        # elif len(trialbest_list) > 10:
+        #     print(unitdir, optimname, f"too many trials {len(trialbest_list)}")
+        #     continue
+#%%
+unitdir_w_missing_uniq = set(unitdir_w_missing)
 #%%
 # evoloptimnames = ["CholCMA", "HessCMA", "HessCMA500_fc6",]
 evoloptimnames = ["CholCMA", "HessCMA", "CholCMA_fc6", "HessCMA500_fc6", ]
