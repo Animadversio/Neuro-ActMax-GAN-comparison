@@ -75,6 +75,10 @@ for key, (pixmask, featmask_L3, featmask_L4) in fitRFdict.items():
 
 fitRFtorchdict["resnet50_linf8_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
 fitRFtorchdict["resnet50_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
+fitRFtorchdict["tf_efficientnet_b6_ap_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
+fitRFtorchdict["tf_efficientnet_b6_fc"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
+fitRFtorchdict["tf_efficientnet_b6_ap_globalpool"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
+fitRFtorchdict["tf_efficientnet_b6_globalpool"] = naive_pixmask, naive_featmask_L3, naive_featmask_L4
 
 #%%
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage_cmp_insilico"
@@ -87,43 +91,68 @@ suffix = ""
 # chan_rng = range(20)
 chan_rng = range(50)
 for layerstr, layer_pattern in [
-                                ("resnet50_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
-                                ("resnet50_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
-                                ("resnet50_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
-                                ("resnet50_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
-                                ("resnet50_fc", "resnet50_.Linearfc_%d_"),
+                                # ("resnet50_layer1B1", "resnet50_.layer1.Bottleneck1_%d_28_28_"),
+                                # ("resnet50_layer2B3", "resnet50_.layer2.Bottleneck3_%d_14_14_"),
+                                # ("resnet50_layer3B5", "resnet50_.layer3.Bottleneck5_%d_7_7_"),
+                                # ("resnet50_layer4B2", "resnet50_.layer4.Bottleneck2_%d_4_4_"),
+                                # ("resnet50_fc", "resnet50_.Linearfc_%d_"),
                                 # ("resnet50_linf8_layer1B1", "resnet50_linf8_.layer1.Bottleneck1_%d_28_28_"),
                                 # ("resnet50_linf8_layer2B3", "resnet50_linf8_.layer2.Bottleneck3_%d_14_14_"),
                                 # ("resnet50_linf8_layer3B5", "resnet50_linf8_.layer3.Bottleneck5_%d_7_7_"),
                                 # ("resnet50_linf8_layer4B2", "resnet50_linf8_.layer4.Bottleneck2_%d_4_4_"),
                                 # ("resnet50_linf8_fc", "resnet50_linf8_.Linearfc_%d_"),
+                                # ("tf_efficientnet_b6_ap_blocks.0", "tf_efficientnet_b6_ap_.blocks.0_%d_57_57_"),
+                                # ("tf_efficientnet_b6_ap_blocks.1", "tf_efficientnet_b6_ap_.blocks.1_%d_28_28_"),
+                                ("tf_efficientnet_b6_ap_blocks.2", "tf_efficientnet_b6_ap_.blocks.2_%d_14_14_"),
+                                ("tf_efficientnet_b6_ap_blocks.3", "tf_efficientnet_b6_ap_.blocks.3_%d_7_7_"),
+                                ("tf_efficientnet_b6_ap_blocks.4", "tf_efficientnet_b6_ap_.blocks.4_%d_7_7_"),
+                                ("tf_efficientnet_b6_ap_blocks.5", "tf_efficientnet_b6_ap_.blocks.5_%d_4_4_"),
+                                ("tf_efficientnet_b6_ap_blocks.6", "tf_efficientnet_b6_ap_.blocks.6_%d_4_4_"),
+                                ("tf_efficientnet_b6_ap_globalpool", "tf_efficientnet_b6_ap_.SelectAdaptivePool2dglobal_pool_%d_"),
+                                ("tf_efficientnet_b6_ap_fc", "tf_efficientnet_b6_ap_.Linearclassifier_%d_"),
+
+                                ("tf_efficientnet_b6_blocks.0", "tf_efficientnet_b6_.blocks.0_%d_57_57_"),
+                                ("tf_efficientnet_b6_blocks.1", "tf_efficientnet_b6_.blocks.1_%d_28_28_"),
+                                ("tf_efficientnet_b6_blocks.2", "tf_efficientnet_b6_.blocks.2_%d_14_14_"),
+                                ("tf_efficientnet_b6_blocks.3", "tf_efficientnet_b6_.blocks.3_%d_7_7_"),
+                                ("tf_efficientnet_b6_blocks.4", "tf_efficientnet_b6_.blocks.4_%d_7_7_"),
+                                ("tf_efficientnet_b6_blocks.5", "tf_efficientnet_b6_.blocks.5_%d_4_4_"),
+                                ("tf_efficientnet_b6_blocks.6", "tf_efficientnet_b6_.blocks.6_%d_4_4_"),
+                                ("tf_efficientnet_b6_globalpool", "tf_efficientnet_b6_.SelectAdaptivePool2dglobal_pool_%d_"),
+                                ("tf_efficientnet_b6_fc", "tf_efficientnet_b6_.Linearclassifier_%d_"),
                                 ]:
     # sepidx = layerstr.rfind("_")
     # netname = layerstr[:sepidx]
     # layerkey = layerstr.split("_")[-1]
     RFpixmask, RF_featmask_L3, RF_featmask_L4 = fitRFtorchdict[layerstr]
+    # continue
     img_col_all = {}
     img_stack_all = {}
     for iChan in tqdm(chan_rng):
         img_col = {}
         unitstr = layer_pattern % iChan
-        img_stack_all[iChan] = {}
         for optimnm in optimname2cmp:
             imgfps = [*Path(protosumdir).glob(f"{unitstr}{optimnm}.jpg")]
+            if len(imgfps) == 0:
+                continue
             mtg = plt.imread(imgfps[0])
             # crop from montage
-            imgs = crop_all_from_montage(mtg, imgsize=256, )
+            imgs = crop_all_from_montage(mtg, imgsize=256, autostop=False)
             img_col[optimnm] = imgs
             print(mtg.shape, len(imgs))
+        if len(img_col) == 0:
+            print(f"no images for {unitstr}, skip")
+            continue
         img_col_all[iChan] = img_col
-
+        img_stack_all[iChan] = {}
         for k, v in img_col_all[iChan].items():
             img_stack_all[iChan][k] = format_img(v)
 
     #%% compute distance matrices
     dist_col = {}
     stat_col = []
-    for iChan in tqdm(chan_rng):
+    exist_chans = list(img_stack_all.keys())
+    for iChan in tqdm(exist_chans):
         # image stack for this channel
         # TODO: may subsample to match the number of reps.
         imgstack0 = img_stack_all[iChan][optimname2cmp[0]]
@@ -131,7 +160,7 @@ for layerstr, layer_pattern in [
         imgstack2 = img_stack_all[iChan][optimname2cmp[2]]
         # random sample from other channels from 0,20 as the control
         while True:
-            iChan_alt = np.random.choice(chan_rng)
+            iChan_alt = np.random.choice(exist_chans)
             if iChan_alt != iChan:
                 break
         imgstack0_alt = img_stack_all[iChan_alt][optimname2cmp[0]]
@@ -215,21 +244,40 @@ for layerstr, layer_pattern in [
     pkl.dump(dist_col, open(join(datadir, f"{layerstr}_imgdist_cmp_stats{suffix}.pkl"), "wb"))
 
 #%% merging all layers
-network_prefix = "resnet50_" #"resnet50_linf8_" #
+network_prefix = "effnet_" #"effnet_ap_"#"resnet50_" #"resnet50_linf8_" #
 suffix = ""
 stat_all_df = pd.DataFrame()
 for layerstr in [
-                 "resnet50_layer1B1",
-                 "resnet50_layer2B3",
-                 "resnet50_layer3B5",
-                 "resnet50_layer4B2",
-                 "resnet50_fc",
+                 # "resnet50_layer1B1",
+                 # "resnet50_layer2B3",
+                 # "resnet50_layer3B5",
+                 # "resnet50_layer4B2",
+                 # "resnet50_fc",
                  # "resnet50_linf8_layer1B1",
                  # "resnet50_linf8_layer2B3",
                  # "resnet50_linf8_layer3B5",
                  # "resnet50_linf8_layer4B2",
                  # "resnet50_linf8_fc",
-                 ]:
+                # "tf_efficientnet_b6_ap_blocks.0",
+                # "tf_efficientnet_b6_ap_blocks.1",
+                # "tf_efficientnet_b6_ap_blocks.2",
+                # "tf_efficientnet_b6_ap_blocks.3",
+                # "tf_efficientnet_b6_ap_blocks.4",
+                # "tf_efficientnet_b6_ap_blocks.5",
+                # "tf_efficientnet_b6_ap_blocks.6",
+                # "tf_efficientnet_b6_ap_globalpool",
+                # "tf_efficientnet_b6_ap_fc",
+
+                "tf_efficientnet_b6_blocks.0",
+                "tf_efficientnet_b6_blocks.1",
+                "tf_efficientnet_b6_blocks.2",
+                "tf_efficientnet_b6_blocks.3",
+                "tf_efficientnet_b6_blocks.4",
+                "tf_efficientnet_b6_blocks.5",
+                "tf_efficientnet_b6_blocks.6",
+                "tf_efficientnet_b6_globalpool",
+                "tf_efficientnet_b6_fc",
+]:
     stat_df = pd.read_csv(join(datadir, f"{layerstr}_imgdist_cmp_stats{suffix}.csv"))
     stat_df["layer"] = layerstr
     stat_df["layershort"] = layerstr.split("_")[-1]  #layerstr[len(network_prefix):]
@@ -239,11 +287,13 @@ stat_all_df.to_csv(join(datadir, f"{network_prefix}alllayer_imgdist_cmp_stats{su
 
 #%%
 from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, paired_strip_plot
-
+network_prefix = "effnet_" # "effnet_ap_" ##"resnet50_" #"resnet50_linf8_" #
+stat_all_df = pd.read_csv(join(datadir, f"{network_prefix}alllayer_imgdist_cmp_stats{suffix}.csv"))
 """Compare the distance metrics between the different layers
 Loop through all the metrics and plot the results
 """
 metric_sfx = "_L4"
+nlayer = len(stat_all_df.layershort.unique())
 for metric_sfx in ["_L4",
                    "_L4_RFftmsk",
                    "_L4_RFpxmsk",
@@ -266,7 +316,7 @@ for metric_sfx in ["_L4",
                   y="distmats02_FCalt"+metric_sfx, color="r", alpha=0.6, capsize=0.2)
     sns.pointplot(data=stat_all_df, x="layershort",
                   y="distmats02_BGalt"+metric_sfx, color="b", alpha=0.6, capsize=0.2)
-    plt.legend(handles=plt.gca().lines[::16], labels=["FC-BGChol",
+    plt.legend(handles=plt.gca().lines[::(3*nlayer+1)], labels=["FC-BGChol",
                                            "BGChol", "BGHess", "FC",
                                            "FC'-BGChol", "FC-BGChol'"])
     plt.ylabel(f"Cosine Similarity - (resenet_linf8 {metric_sfx.replace('_', ' ')})")
