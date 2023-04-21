@@ -82,9 +82,9 @@ os.makedirs(join(rootdir, "summary"), exist_ok=True)
 figdir = join(rootdir, "summary")
 # datalist = glob.glob(join(rootdir, "*", "*.npz"))
 #%% ResNet50
-prefix = ""
-df_evol = sweep_dir(rootdir, unit_pattern="res*", save_pattern="scores*.npz")
-df_evol.to_csv(join(rootdir, "summary", "raw_summary.csv"), index=False)
+prefix = "resnet50_"
+df_evol = sweep_dir(rootdir, unit_pattern="resnet50*", save_pattern="scores*.npz")
+df_evol.to_csv(join(rootdir, "summary", f"{prefix}raw_summary.csv"), index=False)
 #%%
 maxactdf_evol = df_evol.groupby(["netname", "layer", "RFresize", "unitid",]).agg({"score": "max"})
 df_evol_norm = df_evol.merge(maxactdf_evol, on=["netname", "layer", "RFresize", "unitid"], suffixes=("", "_max"))
@@ -119,6 +119,7 @@ plt.show()
 
 
 #%% Efficient net
+# rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
 prefix = "effnet_"
 df_evol = sweep_dir(rootdir, unit_pattern="tf_efficientnet*", save_pattern="scores*.npz")
 df_evol.to_csv(join(rootdir, "summary", f"{prefix}raw_summary.csv"), index=False)
@@ -159,6 +160,18 @@ saveallforms(figdir, f"{prefix}score_norm_by_optim_GAN_bar")
 plt.show()
 
 
+
+#%% ResNet50_linf8 robust
+rootdir = r"E:\Cluster_Backup\GAN_Evol_cmp"
+os.makedirs(join(rootdir, "summary"), exist_ok=True)
+figdir = join(rootdir, "summary")
+# datalist = glob.glob(join(rootdir, "*", "*.npz"))
+df_evol = sweep_dir(rootdir, unit_pattern="resnet50_linf8*", save_pattern="scores*.npz")
+df_evol = df_evol.astype({"GANname": str, "layer": str, "optimmethod": str, "netname": str,
+                          "score": float, "maxscore": float, "maxstep": int, "RFresize": bool})
+df_evol.to_csv(join(rootdir, "summary", f"resnet50_linf8_raw_summary.csv"), index=False)
+#%%
+df_evol.to_csv(join(r"F:\insilico_exps\GAN_Evol_cmp", "summary", f"resnet50_linf8_raw_summary.csv"), index=False)
 
 #%% ResNet50_linf8 robust
 rootdir = r"E:\Cluster_Backup\GAN_Evol_cmp"
