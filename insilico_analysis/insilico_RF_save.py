@@ -86,7 +86,7 @@ for netname in ["tf_efficientnet_b6_ap", "tf_efficientnet_b6"]:
         gradAmpmap = GAN_grad_RF_estimate(G, cnnmodel, layer, unitslice, input_size=(3, 227, 227),
                                               device="cuda", show=True, reps=30, batch=1)
         fit_2dgauss(gradAmpmap, f"{netname}-GAN-"+layer_short, outdir=RFdir, plot=True)
-#%%
+#%% Save in dict
 # save as pkl
 import pickle
 import numpy as np
@@ -108,8 +108,27 @@ for netname in ["resnet50", "resnet50_linf8"]:
         axs[1].imshow(fitmap_L3, cmap="jet")
         axs[2].imshow(fitmap_L4, cmap="jet")
         plt.show()
-        #%%
         fitmaps_dict[f"{netname}_{layer_short}"] = (fitmap_pix, fitmap_L3, fitmap_L4)
+
+#%%
+for netname in ["tf_efficientnet_b6_ap", "tf_efficientnet_b6"]:
+    for layer_short in ["blocks.0", "blocks.1", "blocks.2", "blocks.3",
+                        "blocks.4", "blocks.5", "blocks.6"]:
+        RFdict = np.load(join(RFdir, f"{netname}-{layer_short}_gradAmpMap_GaussianFit.npz"))
+        fitmap = RFdict["fitmap"]
+        fitmap = fitmap / fitmap.max()
+        fitmap_pix = zoom(fitmap, 224 / 227, order=2)
+        fitmap_L3 = zoom(fitmap, 14 / 227, order=2)
+        fitmap_L4 = zoom(fitmap, 7 / 227, order=2)
+        # plot these maps
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+        axs[0].imshow(fitmap_pix, cmap="jet")
+        axs[1].imshow(fitmap_L3, cmap="jet")
+        axs[2].imshow(fitmap_L4, cmap="jet")
+        plt.show()
+        fitmaps_dict[f"{netname}_{layer_short}"] = (fitmap_pix, fitmap_L3, fitmap_L4)
+#%%
+
 #%%
 with open(join(RFdir, "fitmaps_dict.pkl"), "wb") as f:
     pickle.dump(fitmaps_dict, f)
