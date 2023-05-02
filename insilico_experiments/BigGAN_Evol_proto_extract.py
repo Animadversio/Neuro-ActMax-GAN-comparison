@@ -1,4 +1,6 @@
-"""Devoted to extract the protoimages from the unit directory of Evolution experiments."""
+""" to extract the protoimages from the unit directory of Evolution experiments.
+Create a montaged image for each optimization method and the score / stats dict for each unit, across methods.
+"""
 import shutil
 import os
 import re
@@ -21,7 +23,7 @@ rootpath = Path(rootdir)
 datalist = glob.glob(join(rootdir, "*", "*.pt"))
 figdir = join(rootdir, "protoimgs")
 os.makedirs(figdir, exist_ok=True)
-#%% gradient based Evolution data
+#%% Collect gradient based Evolution data
 optimnames = ["Adam001Hess", "Adam001", "Adam01Hess_fc6", "Adam01_fc6"]
 # datalist = glob.glob(join(rootdir, "*", "imglastgen*_\d\d\d\d\d.jpg"))
 unitdirs = list(rootpath.glob("res*"))

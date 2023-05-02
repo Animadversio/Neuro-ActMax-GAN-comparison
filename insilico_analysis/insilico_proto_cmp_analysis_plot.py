@@ -1,3 +1,4 @@
+
 import os
 from os.path import join
 import numpy as np
@@ -11,6 +12,7 @@ figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage
 datadir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoImage_cmp_insilico\data"
 optimname2cmp = ['CholCMA', 'HessCMA', 'HessCMA500_fc6']  #
 #%%
+"""Read in the dataframe data for each network layer and then synthesize them into a plot """
 network_prefix = "resnet50_linf8_" # "resnet50_" #
 suffix = "" # "_RFrsz"
 stat_all_df = pd.DataFrame()

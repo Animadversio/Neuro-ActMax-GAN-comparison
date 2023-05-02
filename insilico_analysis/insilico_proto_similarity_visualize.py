@@ -1,4 +1,4 @@
-"""visualize the similarity map of the protoimgs
+"""visualize the similarity map / mask of the protoimgs
 Including LPIPS and CNN (VIT ommitted)
 """
 
@@ -43,7 +43,7 @@ def format_img(img_np):
 
 
 
-
+#%%
 from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
     compare_imgs_vit, compare_imgs_LPIPS
 from lpips import LPIPS
