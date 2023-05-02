@@ -83,3 +83,23 @@ def paired_strip_plot(df, msk, col1, col2):
     plt.title(f"tval={tval:.3f}, pval={pval:.1e} N={msk.sum()}")
     plt.show()
     return figh
+
+
+def trivariate_corr(x, y, z):
+    """
+    x = np.random.normal(0, 1, size=100)
+    y = np.random.normal(0, 1, size=100)
+    z = np.random.normal(0, 1, size=100)
+
+    r = trivariate_corr(x, y, z)
+    print(r)
+    :param x:
+    :param y:
+    :param z:
+    :return:
+    """
+    xy_corr = np.corrcoef(x, y)[0, 1]
+    xz_corr = np.corrcoef(x, z)[0, 1]
+    yz_corr = np.corrcoef(y, z)[0, 1]
+    r = (xy_corr**2 + xz_corr**2 + yz_corr**2 + 2*xy_corr*xz_corr*yz_corr) / (1 - xy_corr**2 - xz_corr**2- yz_corr**2 + 2*xy_corr*xz_corr*yz_corr)
+    return r

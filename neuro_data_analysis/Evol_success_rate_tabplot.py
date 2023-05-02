@@ -3,8 +3,12 @@ Plot the success rate of Evolution and estimates its error bar for different cor
 """
 import scipy
 import scipy.special
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
+from core.utils.plot_utils import saveallforms
 from neuro_data_analysis.neural_data_lib import *
+from scipy.stats import sem, ttest_ind, ttest_rel, ttest_1samp
 #%%
 def rate_CI(n, k, q):
     """ Confidence interval for success rate
@@ -27,7 +31,6 @@ rate_CI(10, 1, [0.1, 0.9])
 BFEStats_merge, BFEStats = load_neural_data()
 #%%
 import datetime
-from scipy.stats import sem, ttest_ind, ttest_rel, ttest_1samp
 def parse_meta(S):
     ephysFN = S["meta"]["ephysFN"]
     expControlFN = S["meta"]["expControlFN"]
@@ -113,9 +116,6 @@ for Expi in range(1, len(BFEStats)+1):
 
     success_col.append(Stat)
 #%%
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 df = pd.DataFrame(success_col)
 #%%
@@ -123,7 +123,6 @@ df["endinit_success_BG"] = df["endinit_pval_BG"] < 0.01
 df["endinit_success_FC"] = df["endinit_pval_FC"] < 0.01
 df.groupby("visual_area")[["endinit_success_BG", "endinit_success_FC"]].mean()
 sumtable = df.groupby("visual_area")[["endinit_success_BG", "endinit_success_FC"]].mean()
-#%%
 
 #%%
 sumtable.iloc[[1,2,0]].plot(kind="bar")
@@ -152,7 +151,6 @@ BG_rate = count_table[("endinit_success_BG","sum")].to_numpy() / \
 BG_success = count_table[("endinit_success_BG","sum")].to_numpy()
 BG_total = count_table[("endinit_success_BG","count")].to_numpy()
 #%%
-from core.utils.plot_utils import saveallforms
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
 plt.figure(figsize=(4.5,4))
 plt.plot(FC_rate, label="DeePSim", lw=2)
@@ -185,7 +183,9 @@ plt.show()
 import numpy as np
 import scipy.stats
 
+
 def mean_CI_up(data, confidence=0.95):
+    """Util function to calculate the upper bound of the confidence interval of the data"""
     a = 1.0 * np.array(data)
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)
@@ -194,6 +194,7 @@ def mean_CI_up(data, confidence=0.95):
 
 
 def mean_CI_low(data, confidence=0.95):
+    """Util function to calculate the lower bound of the confidence interval of the data"""
     a = 1.0 * np.array(data)
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)

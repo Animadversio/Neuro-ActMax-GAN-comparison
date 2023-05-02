@@ -1,5 +1,6 @@
 """
 Plot the neural activation as a function of evolution generation.
+    on the 2d phase plane of the two spaces BigGAN DeePSim .
 """
 
 import torch

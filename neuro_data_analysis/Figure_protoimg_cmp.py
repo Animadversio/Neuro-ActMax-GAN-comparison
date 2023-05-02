@@ -1,3 +1,6 @@
+"""
+Script to generate proto images comparison figure for the paper
+"""
 import os
 import torch
 import numpy as np

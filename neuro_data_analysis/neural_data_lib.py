@@ -43,10 +43,15 @@ def load_neural_data():
 
 def get_expstr(BFEStats, Expi):
     S = BFEStats[Expi - 1]  # Expi follows matlab convention, starts from 1
+    space_names = S['evol']['space_names']
+    if isinstance(space_names[0], list):
+        space_names = [n[0] for n in space_names]
+    elif isinstance(space_names[0], str):
+        pass
     expstr = f"Exp {Expi:03d} {S['meta']['ephysFN']} Pref chan{int(S['evol']['pref_chan'][0])} U{int(S['evol']['unit_in_pref_chan'][0])}" \
              f"\nimage size {S['evol']['imgsize']} deg  pos {S['evol']['imgpos'][0]}" \
-             f"\nEvol thr0: {S['evol']['space_names'][0][0]}" \
-             f"   thr1: {S['evol']['space_names'][1][0]}"
+             f"\nEvol thr0: {space_names[0]}" \
+             f"   thr1: {space_names[1]}"
     return expstr
 
 
@@ -119,6 +124,26 @@ def extract_evol_activation_array(S, thread, rsp_wdw=range(50, 200), bsl_wdw=ran
     imgidx_vec = np.concatenate(imgidx_arr, axis=0)
     gen_vec = np.concatenate(gen_arr, axis=0)
     return resp_arr, bsl_arr, gen_arr, resp_vec, bsl_vec, gen_vec
+
+
+def parse_montage(mtg):
+    """Parse the montage into different subimages.
+    for the proto montage files in the ProtoSummary folder
+    """
+    from core.utils.montage_utils import crop_from_montage
+    mtg = mtg.astype(np.float32) / 255.0
+    S = edict()
+    S.FC_maxblk = crop_from_montage(mtg, (0, 0), 224, 0)
+    S.FC_maxblk_avg = crop_from_montage(mtg, (0, 1), 224, 0)
+    S.FC_reevol_G = crop_from_montage(mtg, (0, 2), 224, 0)
+    S.FC_reevol_pix = crop_from_montage(mtg, (0, 3), 224, 0)
+    S.BG_maxblk = crop_from_montage(mtg, (1, 0), 224, 0)
+    S.BG_maxblk_avg = crop_from_montage(mtg, (1, 1), 224, 0)
+    S.BG_reevol_G = crop_from_montage(mtg, (1, 2), 224, 0)
+    S.BG_reevol_pix = crop_from_montage(mtg, (1, 3), 224, 0)
+    S.both_reevol_G = crop_from_montage(mtg, (2, 2), 224, 0)
+    S.both_reevol_pix = crop_from_montage(mtg, (2, 3), 224, 0)
+    return S
 
 
 def _format_psth_arr(psth_block_arr):
