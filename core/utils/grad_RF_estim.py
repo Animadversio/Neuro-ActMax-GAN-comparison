@@ -23,6 +23,7 @@ def grad_RF_estimate(model, target_layer, target_unit, input_size=(3,227,227),
     # graddata = torch.zeros((1, 3, 227, 227)).cuda()
     gradabsdata = torch.zeros(input_size).cuda()
     for i in range(reps):
+        # TODO: check the mean & std after normalization is proper
         intsr = torch.rand((batch, *input_size)).cuda() * 2 - 1
         intsr.requires_grad_(True)
         model(intsr)
@@ -72,6 +73,7 @@ def GAN_grad_RF_estimate(G, model, target_layer, target_unit, input_size=(3,227,
     # graddata = torch.zeros((1, 3, 227, 227)).cuda()
     gradabsdata = torch.zeros(input_size).cuda()
     for i in range(reps):
+        # TODO: check the mean & std after normalization is proper
         intsr = G.visualize(torch.randn(batch, 4096).cuda()) * 2 - 1
         intsr = F.interpolate(intsr, size=input_size[1:], mode='bilinear', align_corners=True)
         # intsr = torch.rand((batch, *input_size)).cuda() * 2 - 1
