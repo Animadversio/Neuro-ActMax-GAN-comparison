@@ -10,6 +10,8 @@ from os.path import join
 from easydict import EasyDict as edict
 import numpy as np
 import pandas as pd
+import pickle as pkl
+from collections import defaultdict
 from core.utils.plot_utils import saveallforms
 
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
@@ -36,8 +38,6 @@ plt.switch_backend('agg')
 # get current backend
 # plt.get_backend() # 'module://backend_interagg'
 #%%
-import pickle as pkl
-from collections import defaultdict
 optimnames = "CholCMA", "HessCMA", "HessCMA500_fc6"
 for unitname in tqdm(unitlist):
     unitdir = join(r"F:\insilico_exps\GAN_Evol_cmp", unitname)

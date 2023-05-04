@@ -1,17 +1,18 @@
 import os
-
-import numpy as np
 import torch
 import seaborn as sns
-from scipy.stats import sem
 from matplotlib import cm
 import pickle as pkl
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import sem, ttest_ind, ttest_1samp, ttest_rel
 from core.utils.plot_utils import saveallforms, show_imgrid
 from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr, extract_evol_activation_array
 from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping
 from os.path import join
+from collections import OrderedDict
+from easydict import EasyDict as edict
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
 os.makedirs(outdir, exist_ok=True)
 #%%
@@ -20,9 +21,6 @@ _, BFEStats = load_neural_data()
 #%%
 # data structure to contain a collection of trajectories
 # each trajectory is an 1D array of length n_blocks
-from collections import OrderedDict
-from easydict import EasyDict as edict
-from scipy.stats import ttest_ind, ttest_rel
 resp_col = OrderedDict()
 meta_col = OrderedDict()
 #%%
