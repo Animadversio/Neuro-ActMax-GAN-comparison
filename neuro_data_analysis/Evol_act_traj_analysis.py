@@ -164,8 +164,8 @@ Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 #%%
 blocknum_arr = np.arange(1, max_len+1)[None, :]
-FC_win_blks = (resp_extrap_arr[:, :, 0] - resp_extrap_arr[:, :, 1]) > (resp_extrap_arr[:, :, 2] + resp_extrap_arr[:, :, 3])
-BG_win_blks = (resp_extrap_arr[:, :, 1] - resp_extrap_arr[:, :, 0]) > (resp_extrap_arr[:, :, 2] + resp_extrap_arr[:, :, 3])
+FC_win_blks = (resp_extrap_arr[:, :, 0] - resp_extrap_arr[:, :, 1]) > 2 * np.sqrt(resp_extrap_arr[:, :, 2]**2 + resp_extrap_arr[:, :, 3]**2)
+BG_win_blks = (resp_extrap_arr[:, :, 1] - resp_extrap_arr[:, :, 0]) > 2 * np.sqrt(resp_extrap_arr[:, :, 2]**2 + resp_extrap_arr[:, :, 3]**2)
 BG_win_blk_num = (BG_win_blks * extrap_mask_arr).sum(axis=1)
 FC_win_blk_num = (FC_win_blks * extrap_mask_arr).sum(axis=1)
 FC_win_avg_blk = (FC_win_blks * blocknum_arr * extrap_mask_arr).sum(axis=1) / (FC_win_blks * extrap_mask_arr).sum(axis=1)
@@ -229,4 +229,35 @@ for msk_common in [validmsk & sucsmsk & Amsk, validmsk & sucsmsk & Bmsk]:
     ttest_ind_print_df(winblk_meta_df, msk_common & ITmsk, msk_common & V4msk, "BG_win_blk_prop")
     ttest_ind_print_df(winblk_meta_df, msk_common & V4msk, msk_common & V1msk, "BG_win_blk_num")
     ttest_ind_print_df(winblk_meta_df, msk_common & V4msk, msk_common & V1msk, "BG_win_blk_prop")
+
+#%%
+"""Plot the win rate of BG and FC as a function of the visual area and the block number"""
+figh, axh = plt.subplots(1, 3, figsize=[8, 3], )
+for mi, msk in enumerate([validmsk & sucsmsk & V1msk,
+                          validmsk & sucsmsk & V4msk,
+                          validmsk & sucsmsk & ITmsk]):
+    plt.sca(axh[mi])
+    BG_winrate_traj = BG_win_blks[msk, :].mean(axis=0)
+    BG_winrate_traj_std = BG_win_blks[msk, :].std(axis=0)
+    BG_winrate_traj_sem = BG_win_blks[msk, :].std(axis=0) / np.sqrt(BG_win_blks[msk, :].shape[0]) #TODO: better errorbars for a bunch of 0,1 obersvations
+    FC_winrate_traj = FC_win_blks[msk, :].mean(axis=0)
+    FC_winrate_traj_std = FC_win_blks[msk, :].std(axis=0)
+    FC_winrate_traj_sem = FC_win_blks[msk, :].std(axis=0) / np.sqrt(FC_win_blks[msk, :].shape[0]) #TODO: better errorbars for a bunch of 0,1 obersvations
+    plt.plot(np.arange(1, len(BG_winrate_traj)+1), BG_winrate_traj, label="BigGAN > DeePSiM", color="r")
+    plt.fill_between(np.arange(1, len(BG_winrate_traj)+1), BG_winrate_traj - BG_winrate_traj_sem,
+                        BG_winrate_traj + BG_winrate_traj_sem, alpha=0.3, color="r")
+    plt.plot(np.arange(1, len(FC_winrate_traj)+1), FC_winrate_traj, label="DeePSiM > BigGAN", color="b")
+    plt.fill_between(np.arange(1, len(FC_winrate_traj)+1), FC_winrate_traj - FC_winrate_traj_sem,
+                        FC_winrate_traj + FC_winrate_traj_sem, alpha=0.3, color="b")
+    plt.title(meta_df.loc[msk, "visual_area"].unique()[0])
+    plt.xlabel("Block Number")
+    plt.ylim([0, 1])
+    if mi == 2:
+        plt.legend()
+    if mi == 0:
+        plt.ylabel("Fraction of experiments")
+plt.tight_layout()
+saveallforms(figdir, "both_winrate_traj_area_sep", figh, ["svg", "png", "pdf"])
+plt.show()
+
 
