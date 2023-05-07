@@ -90,6 +90,7 @@ FC_win_prob_col = np.stack(FC_win_prob_col, axis=0)
 BG_win_prob_col = np.stack(BG_win_prob_col, axis=0)
 FC_BG_tval_col = np.stack(FC_BG_tval_col, axis=0)
 #%%
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\insilico_activation_dynamics"
 np.savez(join(figdir, "insilico_act_traj_synopsis.npz"), score_mean1_col=score_mean1_col,
             score_mean2_col=score_mean2_col, score_mean3_col=score_mean3_col,
             score_sem1_col=score_sem1_col, score_sem2_col=score_sem2_col, score_sem3_col=score_sem3_col,
@@ -98,6 +99,8 @@ np.savez(join(figdir, "insilico_act_traj_synopsis.npz"), score_mean1_col=score_m
 
 #%%
 def parse_unitname(unitname):
+    """parse unitname in directory name into netname layername, chan, x, y, RFrsz
+    similar to the meta df format in the insilico experiment"""
     netname = unitname.split("_.")[0]
     RFrsz = unitname.endswith("_RFrsz")
     unitname_bare = unitname.replace(netname + "_", "").replace("_RFrsz", "")
@@ -123,7 +126,6 @@ def parse_unitname(unitname):
     return meta
 
 #%%
-figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\insilico_activation_dynamics"
 meta_info = []
 for unitname in tqdm(unitlist):
     # parse unitname to get the layer and unit number 'resnet50_linf8_.layer4.Bottleneck2_29_4_4_RFrsz'
@@ -136,9 +138,11 @@ meta_info_df.to_csv(join(figdir, "meta_info_df.csv"), index=False)
 #%%
 meta_info_df.groupby(by=["netname", "layername", "RFrsz"]).count()
 #%%
+
 def _shaded_errorbar(x, y, yerr, color, alpha, **kwargs):
     plt.plot(x, y, color=color, **kwargs)
     plt.fill_between(x, y - yerr, y + yerr, color=color, alpha=alpha)
+
 
 def _shaded_errorbar_arr(arr, color="r", alpha=0.3, errtype="sem", **kwargs):
     x = np.arange(arr.shape[1])
@@ -160,7 +164,7 @@ normscore_mean1_col = score_mean1_col / normalizer[:, None, None]
 normscore_mean2_col = score_mean2_col / normalizer[:, None, None]
 normscore_mean3_col = score_mean3_col / normalizer[:, None, None]
 
-#%%
+#%% Layer-wise plot
 for (netname, layername, RFrsz), df in meta_info_df.groupby(by=["netname", "layername", "RFrsz"]):
     print(netname, layername, RFrsz)
     # print(df)
@@ -191,26 +195,6 @@ for (netname, layername, RFrsz), df in meta_info_df.groupby(by=["netname", "laye
     plt.show()
     # raise Exception
     # plt.figure()
-    # plt.plot(score_mean1_col[df.index].reshape(-1,100).T, alpha=0.03, color="b")
-    # _shaded_errorbar_arr(score_mean1_col[df.index].reshape(-1,100), color="b", alpha=0.3, )
-    # plt.plot(score_mean2_col[df.index].reshape(-1,100).T, alpha=0.03, color="r")
-    # _shaded_errorbar_arr(score_mean2_col[df.index].reshape(-1,100), color="r", alpha=0.3, )
-    # plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
-    # plt.ylabel("Activation")
-    # plt.xlabel("Blocks")
-    # saveallforms(figdir, f"{netname}_{layername}{'_RFrsz' if RFrsz else ''}_activation_cmp")
-    # plt.show()
-
-    # plt.figure()
-    # _shaded_errorbar_arr(score_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3, errtype="std")
-    # _shaded_errorbar_arr(score_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3, errtype="std")
-    # plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
-    # plt.ylabel("Activation")
-    # plt.xlabel("Blocks")
-    # saveallforms(figdir, f"{netname}_{layername}{'_RFrsz' if RFrsz else ''}_activation_cmp_std")
-    # plt.show()
-    # raise Exception
-    # plt.figure()
     # plt.plot(BG_win_prob_col[df.index].T, alpha=0.3, color="k")
     # _shaded_errorbar_arr(BG_win_prob_col[df.index], color="r", alpha=0.3, )
     # plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
@@ -231,12 +215,12 @@ for (netname, layername, RFrsz), df in meta_info_df.groupby(by=["netname", "laye
     # raise Exception
 
 #%% Merged plot of all layers for each network
-netname = 'resnet50' # 'resnet50_linf8'
+netname ='resnet50_linf8'# 'resnet50' # 'resnet50_linf8'
 meta_info_df[meta_info_df.netname==netname].layername.unique()
 layernames = ['.layer1.Bottleneck1', '.layer2.Bottleneck3',
        '.layer3.Bottleneck5', '.layer4.Bottleneck2', '.Linearfc']
 RFrsz = False
-figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*4, 5.5))
+figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
 for li, layername in enumerate(layernames):
     df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
                       & (meta_info_df.RFrsz==False)]
@@ -263,14 +247,14 @@ for ax in axs:
 saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std_xlim40", figh)
 figh.show()
 #%%
-netname = "tf_efficientnet_b6_ap" # 'tf_efficientnet_b6'
+netname = 'tf_efficientnet_b6'# "tf_efficientnet_b6_ap" # 'tf_efficientnet_b6'
 meta_info_df[meta_info_df.netname==netname].layername.unique()
 layernames = ['.blocks.0', '.blocks.1', '.blocks.2', '.blocks.3', '.blocks.4',
        '.blocks.5', '.blocks.6','.SelectAdaptivePool2dglobal_pool',
        '.Linearclassifier']
 RFrsz = False
 
-figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*4, 5.5))
+figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
 for li, layername in enumerate(layernames):
     df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
                       & (meta_info_df.RFrsz==False)]
@@ -296,4 +280,65 @@ for ax in axs:
     ax.autoscale_view(tight=True, scalex=False, scaley=True)
 saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std_xlim40", figh)
 figh.show()
+#%%
+netname = 'resnet50_linf8' # 'resnet50_linf8'
+for netname in [ 'resnet50_linf8', 'resnet50']:
+    meta_info_df[meta_info_df.netname==netname].layername.unique()
+    layernames = ['.layer1.Bottleneck1', '.layer2.Bottleneck3',
+                  '.layer3.Bottleneck5', '.layer4.Bottleneck2', '.Linearfc']
+    RFrsz = False
+    figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
+    for li, layername in enumerate(layernames):
+        df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
+                          & (meta_info_df.RFrsz==False)]
+        plt.sca(axs[li])
+        plt.plot(BG_win_prob_col[df.index].T, alpha=0.3, color="k")
+        _shaded_errorbar_arr(BG_win_prob_col[df.index], color="r", alpha=0.3, )
+        plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
+        plt.ylabel("BG win prob")
+        plt.xlabel("Blocks")
+        plt.ylim([0, 1])
+        if li == len(layernames) - 1:
+            plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
+    plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} BigGAN win probability")
+    plt.tight_layout()
+    saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_BG_winprob", figh)
+    figh.show()
+    for ax in axs:
+        ax.set_xlim([0, 40])
+        # ax.autoscale(enable=True, axis='y', tight=True)
+        ax.autoscale_view(tight=True, scalex=False, scaley=True)
+    saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_BG_winprob_xlim40", figh)
+    figh.show()
+#%%
+for netname in ["tf_efficientnet_b6", 'tf_efficientnet_b6_ap']:
+    meta_info_df[meta_info_df.netname==netname].layername.unique()
+    layernames = ['.blocks.0', '.blocks.1', '.blocks.2', '.blocks.3', '.blocks.4',
+                   '.blocks.5', '.blocks.6','.SelectAdaptivePool2dglobal_pool',
+                   '.Linearclassifier']
+    RFrsz = False
+    figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
+    for li, layername in enumerate(layernames):
+        df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
+                          & (meta_info_df.RFrsz==False)]
+        plt.sca(axs[li])
+        plt.plot(BG_win_prob_col[df.index].T, alpha=0.3, color="k")
+        _shaded_errorbar_arr(BG_win_prob_col[df.index], color="r", alpha=0.3, )
+        plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
+        plt.ylabel("BG win prob")
+        plt.xlabel("Blocks")
+        plt.ylim([0, 1])
+        if li == len(layernames) - 1:
+            plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
+    plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} BigGAN win probability")
+    plt.tight_layout()
+    saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_BG_winprob", figh)
+    figh.show()
+    for ax in axs:
+        ax.set_xlim([0, 40])
+        # ax.autoscale(enable=True, axis='y', tight=True)
+        ax.autoscale_view(tight=True, scalex=False, scaley=True)
+    saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_BG_winprob_xlim40", figh)
+    figh.show()
 
+#%%
