@@ -123,7 +123,7 @@ V4msk = meta_df.visual_area == "V4"
 ITmsk = meta_df.visual_area == "IT"
 length_msk = (meta_df.blockN > 14)
 spc_msk = (meta_df.space1 == "fc6") & meta_df.space2.str.contains("BigGAN")
-sucsmsk = (meta_df.p_maxinit_0 < 0.05) | (meta_df.p_maxinit_1 < 0.05)
+
 baseline_jump_list = ["Beto-18082020-002",
                       "Beto-07092020-006",
                       "Beto-14092020-002",
@@ -134,6 +134,7 @@ bsl_unstable_msk = meta_df.ephysFN.str.contains("|".join(baseline_jump_list), ca
 assert bsl_unstable_msk.sum() == len(baseline_jump_list)
 bsl_stable_msk = ~bsl_unstable_msk
 validmsk = length_msk & bsl_stable_msk & spc_msk
+sucsmsk = (meta_df.p_maxinit_0 < 0.05) | (meta_df.p_maxinit_1 < 0.05)
 #%%
 # print summary of the inclusion criteria
 print("total number of experiments: %d" % len(meta_df))

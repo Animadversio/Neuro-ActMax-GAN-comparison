@@ -175,6 +175,46 @@ Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 #%%
+# directory to save all the figures related to activation trajectory
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_synopsis_py"
+#%%
+""" Trajectory synopsis with all areas """
+normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1, 2), keepdims=True)
+#%%
+figh, axs = plt.subplots(2, 3, figsize=(9, 6))
+for rowi, (msk_major, label_major) in enumerate(zip([Amsk, Bmsk], ["A", "B"])):
+    for colj, (msk_minor, lable_minor) in enumerate(zip([V1msk, V4msk, ITmsk],
+                                              ["V1", "V4", "IT"])):
+        msk = msk_major & msk_minor & validmsk & sucsmsk
+        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
+        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
+        mean_trace_FC = normresp_extrap_arr[msk, :, 0].mean(axis=0)
+        sem_trace_FC = normresp_extrap_arr[msk, :, 0].std(axis=0) / np.sqrt(msk.sum())
+        mean_trace_BG = normresp_extrap_arr[msk, :, 1].mean(axis=0)
+        sem_trace_BG = normresp_extrap_arr[msk, :, 1].std(axis=0) / np.sqrt(msk.sum())
+        axs[rowi, colj].plot(mean_trace_FC, color="blue", lw=3)
+        axs[rowi, colj].fill_between(np.arange(len(mean_trace_FC)),
+                                        mean_trace_FC-sem_trace_FC,
+                                        mean_trace_FC+sem_trace_FC,
+                                        color="blue", alpha=0.25)
+        axs[rowi, colj].plot(mean_trace_BG, color="red", lw=3)
+        axs[rowi, colj].fill_between(np.arange(len(mean_trace_BG)),
+                                        mean_trace_BG-sem_trace_BG,
+                                        mean_trace_BG+sem_trace_BG,
+                                        color="red", alpha=0.25)
+        axs[rowi, colj].set_title(f"{label_major} {lable_minor} (N={msk.sum()})")
+
+for ax in axs.ravel():
+    ax.set_xlim([0, 40])
+
+plt.suptitle("Max Normalized response across blocks")
+plt.tight_layout()
+saveallforms(figdir, "maxnorm_resp_traj_val_succ_area_anim_sep", figh=figh)
+plt.show()
+
+
+#%%
+"""Compute the fraction of blocks that FC is significantly larger than BG"""
 blocknum_arr = np.arange(1, max_len+1)[None, :]
 FC_win_blks = (resp_extrap_arr[:, :, 0] - resp_extrap_arr[:, :, 1]) > 2 * np.sqrt(resp_extrap_arr[:, :, 2]**2 + resp_extrap_arr[:, :, 3]**2)
 BG_win_blks = (resp_extrap_arr[:, :, 1] - resp_extrap_arr[:, :, 0]) > 2 * np.sqrt(resp_extrap_arr[:, :, 2]**2 + resp_extrap_arr[:, :, 3]**2)
@@ -192,9 +232,6 @@ winblk_meta_df["FC_win_blk_prop"] = winblk_meta_df["FC_win_blk_prop"].astype(flo
 winblk_meta_df["BG_win_blk_prop"] = winblk_meta_df["BG_win_blk_prop"].astype(float)
 winblk_meta_df["FC_win_avg_blk"] = FC_win_avg_blk
 winblk_meta_df["BG_win_avg_blk"] = BG_win_avg_blk
-#%%
-# directory to save all the figures related to activation trajectory
-figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_synopsis_py"
 #%%
 # plot the FC and BG win block number as a function of the visual area
 # use different marker symbols for the two animals
@@ -244,24 +281,55 @@ for msk_common in [validmsk & sucsmsk & Amsk, validmsk & sucsmsk & Bmsk]:
     ttest_ind_print_df(winblk_meta_df, msk_common & V4msk, msk_common & V1msk, "BG_win_blk_prop")
 
 #%%
+#TODO: integrate this beta function into the CI computation
+# import numpy as np
+from scipy.stats import beta
+
+# Generate some random 0,1 data
+data = np.random.randint(0, 2, size=100)
+
+# Calculate the number of successes (1's) and total observations (n)
+k = np.sum(data)
+n = len(data)
+
+# Calculate the 95% confidence interval using the Clopper-Pearson method
+alpha = 0.05
+lower_ci, upper_ci = beta.interval(1-alpha, k+1, n-k+1)
+#%%
 """Plot the win rate of BG and FC as a function of the visual area and the block number"""
+errtype = "sem"  # "beta_CI" #
 figh, axh = plt.subplots(1, 3, figsize=[8, 3], )
 for mi, msk in enumerate([validmsk & sucsmsk & V1msk,
                           validmsk & sucsmsk & V4msk,
                           validmsk & sucsmsk & ITmsk]):
     plt.sca(axh[mi])
+    nExps, nblocks = BG_win_blks[msk, :].shape
     BG_winrate_traj = BG_win_blks[msk, :].mean(axis=0)
     BG_winrate_traj_std = BG_win_blks[msk, :].std(axis=0)
-    BG_winrate_traj_sem = BG_win_blks[msk, :].std(axis=0) / np.sqrt(BG_win_blks[msk, :].shape[0]) #TODO: better errorbars for a bunch of 0,1 obersvations
+    BG_winrate_traj_sem = BG_win_blks[msk, :].std(axis=0) / np.sqrt(BG_win_blks[msk, :].shape[0])
+    # better errorbars for a bunch of 0,1 obersvations using beta function
+    BG_win_CI1, BG_win_CI2 = beta.interval(0.95, BG_win_blks[msk, :].sum(axis=0) + 1,
+                      len(BG_win_blks[msk, :]) - BG_win_blks[msk, :].sum(axis=0) + 1)
     FC_winrate_traj = FC_win_blks[msk, :].mean(axis=0)
     FC_winrate_traj_std = FC_win_blks[msk, :].std(axis=0)
-    FC_winrate_traj_sem = FC_win_blks[msk, :].std(axis=0) / np.sqrt(FC_win_blks[msk, :].shape[0]) #TODO: better errorbars for a bunch of 0,1 obersvations
-    plt.plot(np.arange(1, len(BG_winrate_traj)+1), BG_winrate_traj, label="BigGAN > DeePSiM", color="r")
-    plt.fill_between(np.arange(1, len(BG_winrate_traj)+1), BG_winrate_traj - BG_winrate_traj_sem,
-                        BG_winrate_traj + BG_winrate_traj_sem, alpha=0.3, color="r")
-    plt.plot(np.arange(1, len(FC_winrate_traj)+1), FC_winrate_traj, label="DeePSiM > BigGAN", color="b")
-    plt.fill_between(np.arange(1, len(FC_winrate_traj)+1), FC_winrate_traj - FC_winrate_traj_sem,
-                        FC_winrate_traj + FC_winrate_traj_sem, alpha=0.3, color="b")
+    FC_winrate_traj_sem = FC_win_blks[msk, :].std(axis=0) / np.sqrt(FC_win_blks[msk, :].shape[0])
+    # better errorbars for a bunch of 0,1 obersvations using beta function
+    FC_win_CI1, FC_win_CI2 = beta.interval(0.95, FC_win_blks[msk, :].sum(axis=0) + 1,
+                      len(FC_win_blks[msk, :]) - FC_win_blks[msk, :].sum(axis=0) + 1)
+    plt.plot(np.arange(1, nblocks + 1), BG_winrate_traj, label="BigGAN > DeePSiM", color="r")
+    if errtype == "sem":
+        plt.fill_between(np.arange(1, nblocks + 1), BG_winrate_traj - BG_winrate_traj_sem,
+                            BG_winrate_traj + BG_winrate_traj_sem, alpha=0.3, color="r")
+    elif errtype == "beta_CI":
+        plt.fill_between(np.arange(1, nblocks + 1), BG_win_CI1, BG_win_CI2,
+                         alpha=0.3, color="r")
+    plt.plot(np.arange(1, nblocks + 1), FC_winrate_traj, label="DeePSiM > BigGAN", color="b")
+    if errtype == "sem":
+        plt.fill_between(np.arange(1, nblocks + 1), FC_winrate_traj - FC_winrate_traj_sem,
+                            FC_winrate_traj + FC_winrate_traj_sem, alpha=0.3, color="b")
+    elif errtype == "beta_CI":
+        plt.fill_between(np.arange(1, nblocks + 1), FC_win_CI1, FC_win_CI2,
+                     alpha=0.3, color="b")
     plt.title(meta_df.loc[msk, "visual_area"].unique()[0])
     plt.xlabel("Block Number")
     plt.ylim([0, 1])
@@ -270,40 +338,6 @@ for mi, msk in enumerate([validmsk & sucsmsk & V1msk,
     if mi == 0:
         plt.ylabel("Fraction of experiments")
 plt.tight_layout()
-saveallforms(figdir, "both_winrate_traj_area_sep", figh, ["svg", "png", "pdf"])
+saveallforms(figdir, f"both_winrate_traj_area_sep_{errtype}", figh, ["svg", "png", "pdf"])
 plt.show()
 
-#%%
-""" Trajectory synopsis with all areas """
-normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1, 2), keepdims=True)
-#%%
-figh, axs = plt.subplots(2, 3, figsize=(9, 6))
-for rowi, (msk_major, label_major) in enumerate(zip([Amsk, Bmsk], ["A", "B"])):
-    for colj, (msk_minor, lable_minor) in enumerate(zip([V1msk, V4msk, ITmsk],
-                                              ["V1", "V4", "IT"])):
-        msk = msk_major & msk_minor & validmsk & sucsmsk
-        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
-        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
-        mean_trace_FC = normresp_extrap_arr[msk, :, 0].mean(axis=0)
-        sem_trace_FC = normresp_extrap_arr[msk, :, 0].std(axis=0) / np.sqrt(msk.sum())
-        mean_trace_BG = normresp_extrap_arr[msk, :, 1].mean(axis=0)
-        sem_trace_BG = normresp_extrap_arr[msk, :, 1].std(axis=0) / np.sqrt(msk.sum())
-        axs[rowi, colj].plot(mean_trace_FC, color="blue", lw=3)
-        axs[rowi, colj].fill_between(np.arange(len(mean_trace_FC)),
-                                        mean_trace_FC-sem_trace_FC,
-                                        mean_trace_FC+sem_trace_FC,
-                                        color="blue", alpha=0.25)
-        axs[rowi, colj].plot(mean_trace_BG, color="red", lw=3)
-        axs[rowi, colj].fill_between(np.arange(len(mean_trace_BG)),
-                                        mean_trace_BG-sem_trace_BG,
-                                        mean_trace_BG+sem_trace_BG,
-                                        color="red", alpha=0.25)
-        axs[rowi, colj].set_title(f"{label_major} {lable_minor} (N={msk.sum()})")
-
-for ax in axs.ravel():
-    ax.set_xlim([0, 40])
-
-plt.suptitle("Max Normalized response across blocks")
-plt.tight_layout()
-saveallforms(figdir, "maxnorm_resp_traj_val_succ_area_anim_sep", figh=figh)
-plt.show()
