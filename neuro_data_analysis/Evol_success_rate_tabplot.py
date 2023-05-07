@@ -1,6 +1,7 @@
 """
 Plot the success rate of Evolution and estimates its error bar for different cortices.
 """
+import datetime
 import scipy
 import scipy.special
 import pandas as pd
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 from core.utils.plot_utils import saveallforms
 from neuro_data_analysis.neural_data_lib import *
 from scipy.stats import sem, ttest_ind, ttest_rel, ttest_1samp
-#%%
+
 def rate_CI(n, k, q):
     """ Confidence interval for success rate
     n: number of trials
@@ -26,58 +27,86 @@ def rate_CI(n, k, q):
     return scipy.special.betaincinv(k+1, n+1-k, q)
 
 
-rate_CI(10, 1, [0.1, 0.9])
+# rate_CI(10, 1, [0.1, 0.9])
 #%%
+from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping, get_all_masks, \
+    get_meta_df, get_meta_dict
+
+# meta_df = get_meta_df(BFEStats)
+outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
+dfdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
+meta_df = pd.read_csv(join(dfdir, "meta_stats.csv"))
+#%%
+Amsk, Bmsk, V1msk, V4msk, ITmsk, \
+    length_msk, spc_msk, sucsmsk, \
+    bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+
+#%%
+for msk, label in zip([validmsk & V1msk, validmsk & V4msk, validmsk & ITmsk],
+                      ["V1", "V4", "IT"]):
+    print(label, f"N={sum(msk)}")
+    print("max > init FC", sum(msk & (meta_df.p_maxinit_0 < 0.01) & (meta_df.t_maxinit_0 > 0)))
+    print("max > init BG", sum(msk & (meta_df.p_maxinit_1 < 0.01) & (meta_df.t_maxinit_1 > 0)))
+    print("end > init FC", sum(msk & (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 > 0)))
+    print("end > init BG", sum(msk & (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 > 0)))
+    print("end < init FC", sum(msk & (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 < 0)))
+    print("end < init BG", sum(msk & (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 < 0)))
+
+#%% Use different success criterion and save the result while plotting as curves
+sucs_criterion_label, sucs_label = "max > init, P<0.01", "maxinit"
+FC_suc_msk = (meta_df.p_maxinit_0 < 0.01) & (meta_df.t_maxinit_0 > 0)
+BG_suc_msk = (meta_df.p_maxinit_1 < 0.01) & (meta_df.t_maxinit_1 > 0)
+sucs_criterion_label, sucs_label = "end > init, P<0.01", "endinit"
+FC_suc_msk = (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 > 0)
+BG_suc_msk = (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 > 0)
+sucs_criterion_label, sucs_label = "end < init, P<0.01", "endinitdecrs"
+FC_suc_msk = (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 < 0)
+BG_suc_msk = (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 < 0)
+# build a dataframe of success rate for plotting
+SR_df = []
+for msk, label in zip([validmsk & V1msk, validmsk & V4msk, validmsk & ITmsk],
+                      ["V1", "V4", "IT"]):
+    SR = edict(label=label, FC_suc=sum(msk & FC_suc_msk), BG_suc=sum(msk & BG_suc_msk), total=sum(msk))
+    SR["FC_rate"] = SR.FC_suc / SR.total
+    SR["BG_rate"] = SR.BG_suc / SR.total
+    SR["FC_CI_1"] = rate_CI(SR.total, SR.FC_suc, 0.05)
+    SR["FC_CI_2"] = rate_CI(SR.total, SR.FC_suc, 0.95)
+    SR["BG_CI_1"] = rate_CI(SR.total, SR.BG_suc, 0.05)
+    SR["BG_CI_2"] = rate_CI(SR.total, SR.BG_suc, 0.95)
+    print(SR)
+    SR_df.append(SR)
+SR_df = pd.DataFrame(SR_df)
+SR_df = SR_df.set_index("label")
+# set dtypes
+SR_df = SR_df.astype({"FC_suc": int, "BG_suc": int, "total": int, "FC_rate": float, "BG_rate": float})
+SR_df.to_csv(join(outdir, f"SuccessRate_{sucs_label}.csv"))
+#%% Plot the success rate
+fig, ax = plt.subplots(1, 1, figsize=[3.5, 3.3])
+ax.plot(SR_df.index, SR_df.FC_rate, "o-", label="DeePSim", color="b")#"tab:blue"
+ax.plot(SR_df.index, SR_df.BG_rate, "o-", label="BigGAN", color="r")#"tab:red"
+ax.fill_between(SR_df.index, SR_df.FC_CI_1, SR_df.FC_CI_2, alpha=0.3, color="b")#"tab:blue"
+ax.fill_between(SR_df.index, SR_df.BG_CI_1, SR_df.BG_CI_2, alpha=0.3, color="r")#"tab:red"
+ax.set_ylim([0, 1.05])
+ax.set_ylabel("Success Rate")
+ax.set_xlabel("Visual Area")
+# annotate the number of trials as fraction
+for i, (label, row) in enumerate(SR_df.iterrows()):
+    ax.annotate(f"{int(row.FC_suc)}/{int(row.total)}",
+                xy=(i + 0.02, min(1.0, row.FC_rate+0.04)),
+                ha="center", va="bottom", fontsize=10)
+    ax.annotate(f"{int(row.BG_suc)}/{int(row.total)}",
+                xy=(i + 0.02, max(0.0, row.BG_rate-0.06)),
+                ha="center", va="bottom", fontsize=10)
+
+ax.legend()
+fig.suptitle(f"Success Rate of DeePSim and BigGAN\n{sucs_criterion_label} 90% CI")
+fig.tight_layout()
+saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_area_annot", fig, fmts=["png", "pdf", "svg"])
+fig.show()
+
+
+#%% Older code 
 BFEStats_merge, BFEStats = load_neural_data()
-#%%
-import datetime
-def parse_meta(S):
-    ephysFN = S["meta"]["ephysFN"]
-    expControlFN = S["meta"]["expControlFN"]
-    if ephysFN is not None:
-        # 'Beto-28072020-006'
-        ephysFN_parts = ephysFN.split("-")
-        Animal_PL2 = ephysFN_parts[0]
-        date_raw = ephysFN_parts[1]
-        expdate_PL2 = datetime.datetime.strptime(date_raw, "%d%m%Y")
-    if expControlFN is not None:
-        # '200728_Beto_generate_BigGAN(1)'
-        expctrl_parts = expControlFN.split("_")
-        date_raw = expctrl_parts[0]
-        Animal_bhv = expctrl_parts[1]
-        expdate_bhv = datetime.datetime.strptime(date_raw, "%y%m%d")
-    if ephysFN is not None and expControlFN is not None:
-        assert Animal_PL2 == Animal_bhv
-        assert expdate_PL2 == expdate_bhv
-        return Animal_PL2, expdate_PL2.date()
-    elif ephysFN is not None:# return the one that is not None
-        return Animal_PL2, expdate_PL2.date()
-    elif expControlFN is not None:
-        return Animal_bhv, expdate_bhv.date()
-    else:
-        raise ValueError("Both ephysFN and expControlFN are None, cannot parse")
-
-
-def area_mapping(chan, Animal, expdate):
-    if Animal == "Beto" and expdate > datetime.date(2021, 9, 1):
-        # beto's new array layout
-        if (chan <= 32 and chan >= 17):
-            area = "V1"
-        if (chan < 17):
-            area = "V4"
-        if (chan >= 33):
-            area = "IT"
-    elif Animal in ("Alfa", "Beto"):
-        if (chan <= 48 and chan >= 33):
-            area = "V1"
-        if (chan > 48):
-            area = "V4"
-        if (chan < 33):
-            area = "IT"
-    else:
-        raise ValueError("Unknown Animal")
-    return area
-
 #%%
 for i, S in enumerate(BFEStats):
     Animal, expdate = parse_meta(S)
@@ -89,6 +118,7 @@ for Expi in range(1, len(BFEStats)+1):
     S = BFEStats[Expi - 1]
     if S["evol"] is None:
         continue
+    # meta_dict = get_meta_dict(S)
     Animal, expdate = parse_meta(S)
     prefchan = int(S['evol']['pref_chan'][0])
     prefunit = int(S['evol']['unit_in_pref_chan'][0])
@@ -151,7 +181,6 @@ BG_rate = count_table[("endinit_success_BG","sum")].to_numpy() / \
 BG_success = count_table[("endinit_success_BG","sum")].to_numpy()
 BG_total = count_table[("endinit_success_BG","count")].to_numpy()
 #%%
-outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
 plt.figure(figsize=(4.5,4))
 plt.plot(FC_rate, label="DeePSim", lw=2)
 plt.plot(BG_rate, label="BigGAN", lw=2)
