@@ -1,3 +1,6 @@
+"""Merge the evol trajectory for in silico experiments into one
+one figure for each unit.
+"""
 import shutil
 import os
 import re

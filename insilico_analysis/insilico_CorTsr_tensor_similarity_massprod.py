@@ -1,3 +1,4 @@
+"""Find the consensus of similar features between two evolutions of the same unit."""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
