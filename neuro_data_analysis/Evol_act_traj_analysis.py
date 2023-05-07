@@ -23,6 +23,9 @@ os.makedirs(outdir, exist_ok=True)
 #%%
 
 def extract_all_evol_trajectory(BFEStats, ):
+    """Extract the evolution trajectory of all the experiments in the BFEStats list into
+    an dictionary of arrays. and a meta data dataframe
+    """
     resp_col = OrderedDict()
     meta_col = OrderedDict()
     #%
@@ -97,8 +100,12 @@ def extract_all_evol_trajectory(BFEStats, ):
     meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
     return resp_col, meta_df
 
-#%%
+
 def pad_resp_traj(resp_col):
+    """
+    Pad the response trajectories to the same length by extrapolating the last block with the mean of last two blocks
+    And then stack them together into a 3D array
+    """
     # get the length of the longest trajectory
     max_len = max([resp_bunch.shape[0] for resp_bunch in resp_col.values()])
     # extrapolate the last block with the mean of last two blocks
@@ -124,6 +131,11 @@ def pad_resp_traj(resp_col):
 
 
 def get_all_masks(meta_df):
+    """
+    Get all the masks for different conditions in the analysis
+    :param meta_df:
+    :return:
+    """
     # plot the FC and BG win block number as
     Amsk  = meta_df.Animal == "Alfa"
     Bmsk  = meta_df.Animal == "Beto"
@@ -154,7 +166,7 @@ def get_all_masks(meta_df):
     print("  - not fc6-BigGAN: %d" % (~spc_msk).sum())
     return Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk
 
-
+#%%
 _, BFEStats = load_neural_data()
 resp_col, meta_df = extract_all_evol_trajectory(BFEStats, )
 resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
@@ -181,7 +193,8 @@ winblk_meta_df["BG_win_blk_prop"] = winblk_meta_df["BG_win_blk_prop"].astype(flo
 winblk_meta_df["FC_win_avg_blk"] = FC_win_avg_blk
 winblk_meta_df["BG_win_avg_blk"] = BG_win_avg_blk
 #%%
-figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_dynamics"
+# directory to save all the figures related to activation trajectory
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_synopsis_py"
 #%%
 # plot the FC and BG win block number as a function of the visual area
 # use different marker symbols for the two animals
@@ -260,4 +273,37 @@ plt.tight_layout()
 saveallforms(figdir, "both_winrate_traj_area_sep", figh, ["svg", "png", "pdf"])
 plt.show()
 
+#%%
+""" Trajectory synopsis with all areas """
+normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1, 2), keepdims=True)
+#%%
+figh, axs = plt.subplots(2, 3, figsize=(9, 6))
+for rowi, (msk_major, label_major) in enumerate(zip([Amsk, Bmsk], ["A", "B"])):
+    for colj, (msk_minor, lable_minor) in enumerate(zip([V1msk, V4msk, ITmsk],
+                                              ["V1", "V4", "IT"])):
+        msk = msk_major & msk_minor & validmsk & sucsmsk
+        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
+        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
+        mean_trace_FC = normresp_extrap_arr[msk, :, 0].mean(axis=0)
+        sem_trace_FC = normresp_extrap_arr[msk, :, 0].std(axis=0) / np.sqrt(msk.sum())
+        mean_trace_BG = normresp_extrap_arr[msk, :, 1].mean(axis=0)
+        sem_trace_BG = normresp_extrap_arr[msk, :, 1].std(axis=0) / np.sqrt(msk.sum())
+        axs[rowi, colj].plot(mean_trace_FC, color="blue", lw=3)
+        axs[rowi, colj].fill_between(np.arange(len(mean_trace_FC)),
+                                        mean_trace_FC-sem_trace_FC,
+                                        mean_trace_FC+sem_trace_FC,
+                                        color="blue", alpha=0.25)
+        axs[rowi, colj].plot(mean_trace_BG, color="red", lw=3)
+        axs[rowi, colj].fill_between(np.arange(len(mean_trace_BG)),
+                                        mean_trace_BG-sem_trace_BG,
+                                        mean_trace_BG+sem_trace_BG,
+                                        color="red", alpha=0.25)
+        axs[rowi, colj].set_title(f"{label_major} {lable_minor} (N={msk.sum()})")
 
+for ax in axs.ravel():
+    ax.set_xlim([0, 40])
+
+plt.suptitle("Max Normalized response across blocks")
+plt.tight_layout()
+saveallforms(figdir, "maxnorm_resp_traj_val_succ_area_anim_sep", figh=figh)
+plt.show()
