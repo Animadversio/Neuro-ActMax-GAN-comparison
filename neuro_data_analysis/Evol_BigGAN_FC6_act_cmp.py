@@ -113,6 +113,8 @@ meta_df.to_csv(join(outdir, "meta_stats.csv"))
 np.save(join(outdir, "resp_traj_extrap_arr.npy"), resp_extrap_arr)
 pkl.dump({"resp_col": resp_col, "meta_col": meta_col}, open(join(outdir, "resp_traj_col.pkl"), "wb"))
 
+#%%
+normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1,2), keepdims=True)
 #%% masks
 Amsk  = meta_df.Animal == "Alfa"
 Bmsk  = meta_df.Animal == "Beto"
@@ -182,9 +184,161 @@ for msk, label in [(validmsk, "val"),
         plt.title(f"FC max resp vs BG max resp   mask: {label}")
         saveallforms(outdir, f"tval_FCBG_max_01_hist_{label}{'' if common_norm else '_norm'}")
         plt.show()
+#%%
+# plotting utilities
+def add_identity(ax, *line_args, **line_kwargs):
+    """Add a 1:1 line to an axes."""
+    identity, = ax.plot([], [], *line_args, **line_kwargs)
+
+    def callback_lim_changed(ax):
+        low_x, high_x = ax.get_xlim()
+        low_y, high_y = ax.get_ylim()
+        low = max(low_x, low_y)
+        high = min(high_x, high_y)
+        identity.set_data([low, high], [low, high])
+
+    callback_lim_changed(ax)
+    ax.callbacks.connect('xlim_changed', callback_lim_changed)
+    ax.callbacks.connect('ylim_changed', callback_lim_changed)
+
+
+def paired_strip_plot_simple(col1, col2, msk=None, col1_err=None, col2_err=None, ax=None,
+                             offset=0, jitter_std=0.1):
+    if msk is None:
+        msk = np.ones(len(col1), dtype=bool)
+    vec1 = col1[msk]
+    vec2 = col2[msk]
+    xjitter = jitter_std * np.random.randn(len(vec1))
+    if ax is None:
+        figh, ax = plt.subplots(1,1,figsize=[4, 6])
+    else:
+        figh = ax.figure
+    ax.scatter(offset + xjitter, vec1, color="blue", alpha=0.3)
+    ax.scatter(offset + xjitter+1, vec2, color="red", alpha=0.3)
+    if col1_err is not None:
+        ax.errorbar(offset + xjitter, vec1, yerr=col1_err[msk],
+                    fmt="none", color="blue", alpha=0.3)
+    if col2_err is not None:
+        ax.errorbar(offset + xjitter+1, vec2, yerr=col2_err[msk],
+                    fmt="none", color="red", alpha=0.3)
+    ax.plot(offset + np.arange(2)[:, None]+xjitter[None, :],
+             np.stack((vec1, vec2)), color="k", alpha=0.1)
+    # plt.xticks([0,1], [col1, col2])
+    tval, pval = ttest_rel(vec1, vec2)
+    # tval, pval = ttest_rel_df(df, msk, col1, col2)
+    ax.set_title(f"tval={tval:.3f}, pval={pval:.1e} N={msk.sum()}")
+    # annotate the string on top of the plot
+    ax.text(offset+0.5, 1.1, f"t={tval:.3f}, P={pval:.1e}\nN={msk.sum()}",
+            ha='center', va='center')
+    figh.show()
+    return figh
+#%%
+outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
+# msk_general, label_general = validmsk, "valid"
+msk_general, label_general = validmsk & sucsmsk, "valsucs"
+#%%
+"""Paired strip plot of initial block activation, seperated into the three visual areas"""
+figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+             col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+             msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+             col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+             msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+             col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+             msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+ax.set_xticks([0, 1, 2, 3, 4, 5])
+ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+ax.set_ylabel("Max Normalized response")
+figh.suptitle("Initial response comparison between DeePSim and BG across areas")
+saveallforms(outdir, f"maxnorm_initresp_cmp_{label_general}_areasep", figh)
+figh.show()
 
 #%%
-from scipy.stats import ttest_ind, ttest_1samp
+"""Paired strip plot of end block activation, seperated into the three visual areas"""
+figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+            col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+            msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+            col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+            msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+            col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+            msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+ax.set_xticks([0, 1, 2, 3, 4, 5])
+ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+ax.set_ylabel("Max Normalized response")
+figh.suptitle("Last block response comparison between DeePSim and BG across areas")
+saveallforms(outdir, f"maxnorm_endresp_cmp_{label_general}_areasep", figh)
+figh.show()
+
+#%%
+FC_maxresp = normresp_extrap_arr[:, :, 0].max(axis=1)
+FC_maxblkid = np.argmax(normresp_extrap_arr[:, :, 0], axis=1)
+FC_maxresp_sem = np.take_along_axis(normresp_extrap_arr[:, :, 2],
+                        FC_maxblkid[:, None], axis=1).squeeze()
+
+BG_maxresp = normresp_extrap_arr[:, :, 1].max(axis=1)
+BG_maxblkid = np.argmax(normresp_extrap_arr[:, :, 1], axis=1)
+BG_maxresp_sem = np.take_along_axis(normresp_extrap_arr[:, :, 3],
+                        BG_maxblkid[:, None], axis=1).squeeze()
+
+figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+paired_strip_plot_simple(FC_maxresp, BG_maxresp,
+            col1_err=FC_maxresp_sem, col2_err=BG_maxresp_sem,
+            msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+paired_strip_plot_simple(FC_maxresp, BG_maxresp,
+            col1_err=FC_maxresp_sem, col2_err=BG_maxresp_sem,
+            msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+paired_strip_plot_simple(FC_maxresp, BG_maxresp,
+            col1_err=FC_maxresp_sem, col2_err=BG_maxresp_sem,
+            msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+ax.set_xticks([0, 1, 2, 3, 4, 5])
+ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+ax.set_ylabel("Max Normalized response")
+figh.suptitle("Max block response comparison between DeePSim and BG across areas")
+saveallforms(outdir, f"maxnorm_maxresp_cmp_{label_general}_areasep", figh)
+figh.show()
+
+
+
+
+
+
+#%%
+figh = paired_strip_plot_simple(normresp_extrap_arr[:, :, 0].max(axis=1), normresp_extrap_arr[:, :, 1].max(axis=1),
+                                ITmsk & validmsk &sucsmsk,
+                                normresp_extrap_arr[:, -1, 2], normresp_extrap_arr[:, -1, 3])
+figh.gca().set_xticks([0, 1])
+figh.gca().set_xticklabels(["FC", "BG"])
+figh.gca().set_ylabel("Normalized response")
+figh.show()
+
+
+#%%
+msk, label = (validmsk, "val")
+plt.figure(figsize=(6, 6))
+# plt.scatter(resp_extrap_arr[msk, 0, 0], resp_extrap_arr[msk, 0, 1], alpha=0.25)
+plt.scatter(resp_extrap_arr[msk, -1, 0] / resp_extrap_arr[msk, :, 0:2].max(axis=(1,2)),
+            resp_extrap_arr[msk, -1, 1] / resp_extrap_arr[msk, :, 0:2].max(axis=(1,2)), alpha=0.25)
+add_identity(plt.gca(), color="k", ls="--")
+plt.axis("image")
+plt.xlabel("FC end resp")
+plt.ylabel("BG end resp")
+plt.show()
+#%%
+figh = paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                                ITmsk & validmsk)
+figh.gca().set_xticks([0, 1])
+figh.gca().set_xticklabels(["FC", "BG"])
+figh.gca().set_ylabel("Normalized response")
+figh.show()
+
+#%%
+
+#%%
 ttest_1samp(meta_df.loc[validmsk & V1msk, "t_FCBG_max_01"], 0)
 #%%
 ttest_ind(meta_df.loc[validmsk & V4msk, "t_FCBG_end_01"],
