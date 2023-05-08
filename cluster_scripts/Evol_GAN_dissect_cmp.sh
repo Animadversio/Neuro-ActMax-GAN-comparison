@@ -4,7 +4,7 @@
 #SBATCH -t 8:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=75-92
+#SBATCH --array=1-12
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o BigGANresnet_evol_%j.out
 
@@ -14,11 +14,11 @@ param_list=\
 '--chans 0 10 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA500 CholCMA --G fc6 --rep 5
 --chans 0 10 --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA500 CholCMA --G fc6 --rep 5
 --chans 0 10 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA500 CholCMA --G fc6 --rep 5
---chans 0 10 --net resnet50 --layer .Linearfc --optim HessCMA500 CholCMA  --G fc6 --rep 5
---chans 0 10 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA--G BigGAN  --rep 5
+--chans 0 10 --net resnet50 --layer .Linearfc           --optim HessCMA500 CholCMA --G fc6 --rep 5
+--chans 0 10 --net resnet50 --layer .layer3.Bottleneck5 --optim HessCMA CholCMA --G BigGAN --rep 5
 --chans 0 10 --net resnet50 --layer .layer4.Bottleneck0 --optim HessCMA CholCMA --G BigGAN --rep 5
 --chans 0 10 --net resnet50 --layer .layer4.Bottleneck2 --optim HessCMA CholCMA --G BigGAN --rep 5
---chans 0 10 --net resnet50 --layer .Linearfc --optim HessCMA CholCMA  --G BigGAN --rep 5
+--chans 0 10 --net resnet50 --layer .Linearfc           --optim HessCMA CholCMA --G BigGAN --rep 5
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.5 --optim HessCMA500 CholCMA --G fc6 --rep 5
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.5 --optim HessCMA CholCMA --G BigGAN --rep 5
 --chans 0 10 --net tf_efficientnet_b6 --layer .blocks.6 --optim HessCMA500 CholCMA --G fc6 --rep 5
