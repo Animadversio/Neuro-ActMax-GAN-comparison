@@ -105,7 +105,7 @@ saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_area_annot", fig, fmts
 fig.show()
 
 
-#%% Older code 
+#%% Older code
 BFEStats_merge, BFEStats = load_neural_data()
 #%%
 for i, S in enumerate(BFEStats):
