@@ -8,10 +8,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 from tqdm import trange, tqdm
-from core.utils.montage_utils import crop_from_montage, crop_all_from_montage
-from torchvision.models import resnet50, vgg16
+# from torchvision.models import resnet50, vgg16
 # from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
 from torchvision.transforms import Normalize, Compose, ToTensor
+sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
+from core.utils.montage_utils import crop_from_montage, crop_all_from_montage
 from core.utils.plot_utils import saveallforms
 from core.utils.CNN_scorers import load_featnet
 
