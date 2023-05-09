@@ -132,7 +132,7 @@ for unitdir_path in tqdm(allunitdirs):
                 axs[1, i].set_title(layer)
 
             figh.suptitle(f"{unitdir_path.name} {optimname} {RND:05d}", fontsize=16)
-            saveallforms(unitcov_path, f"covtsrs_{optimname}_{RND:05d}_vis", figh)
+            saveallforms(str(unitcov_path), f"covtsrs_{optimname}_{RND:05d}_vis", figh)
             plt.show()
 
 #%%
