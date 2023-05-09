@@ -120,6 +120,7 @@ for optimname in tqdm(optimnames):
         figh.suptitle(f"{unitdir_path.name} {optimname} {RND:05d}", fontsize=16)
         saveallforms(str(unitdir_path / "covtsrs"), f"covtsrs_{optimname}_{RND:05d}_vis", figh)
         plt.show()
+        raise Exception
 #%%
 
 #%%
