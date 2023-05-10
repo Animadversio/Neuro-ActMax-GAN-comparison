@@ -101,7 +101,8 @@ for unitdir_path in tqdm(allunitdirs):
                 if blocki == 0:
                     imgs = [imgmtg]
                 else:
-                    imgs = crop_all_from_montage(imgmtg, totalnum=imgn_in_block, imgsize=256, pad=2, autostop=True)
+                    imgs = crop_all_from_montage(imgmtg, totalnum=imgn_in_block, imgsize=256, pad=2,
+                         autostop=False)  # note some images are close to black, need to disable autostop
                 imgtsr = normalizer(torch.stack([ToTensor()(img) for img in imgs]))
                 with torch.no_grad():
                     cnn(imgtsr.cuda())
