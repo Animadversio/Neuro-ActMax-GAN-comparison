@@ -277,6 +277,15 @@ class BigGAN_wrapper(): #nn.Module
         imgs = self.BigGAN.generator(code, truncation)  # Matlab version default to 0.7
         return torch.clamp((imgs + 1.0) / 2.0, 0, 1) * scale
 
+    def visualize_batch(self, codes, scale=1.0, B=15, truncation=0.7):
+        img_all = None
+        for csr in range(0, codes.shape[0], B):
+            code_batch = codes[csr:csr+B, :]
+            imgs = self.visualize(code_batch, scale, truncation=truncation)
+            img_all = imgs if img_all is None else torch.cat((img_all, imgs), dim=0)
+        return img_all
+
+
     def visualize_batch_np(self, codes_all_arr, truncation=0.7, B=15, ):
         csr = 0
         img_all = None
