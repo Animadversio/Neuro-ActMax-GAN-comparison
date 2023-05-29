@@ -172,8 +172,12 @@ os.makedirs(figdir, exist_ok=True)
 #%%
 _, BFEStats = load_neural_data()
 #%%
+
+#%%
 rsp_wdw = range(150, 200)
-for rsp_wdw in [range(0, 50), range(50, 100),  range(100, 150), range(150, 200)]:
+for rsp_wdw in [range(0, 25), range(25, 50), range(50, 75), range(75, 100),
+                range(100, 125), range(125, 150), range(150, 175), range(175, 200)]:
+        # [range(0, 50), range(50, 100),  range(100, 150), range(150, 200)]:
     wdwstr = "wdw%d-%d" % (rsp_wdw[0], rsp_wdw[-1])
     resp_col, meta_df = extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=rsp_wdw)
     resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
@@ -252,6 +256,7 @@ for rsp_wdw in [range(0, 50), range(50, 100),  range(100, 150), range(150, 200)]
     plt.show()
 
 #%%
+# TODO: fix this part to conform with the dynamics
 """Compute the fraction of blocks that FC is significantly larger than BG"""
 blocknum_arr = np.arange(1, max_len+1)[None, :]
 FC_win_blks = (resp_extrap_arr[:, :, 0] - resp_extrap_arr[:, :, 1]) > 2 * np.sqrt(resp_extrap_arr[:, :, 2]**2 + resp_extrap_arr[:, :, 3]**2)
