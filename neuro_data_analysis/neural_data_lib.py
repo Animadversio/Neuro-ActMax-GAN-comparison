@@ -249,6 +249,16 @@ def extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200)):
     Extract the evolution trajectory of all the experiments in the BFEStats list into
     an dictionary of arrays. and a meta data dataframe
 
+    Examples:
+        _, BFEStats = load_neural_data()
+        rsp_wdw = range(50, 200)
+        resp_col, meta_df = extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=rsp_wdw)
+        resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
+        Amsk, Bmsk, V1msk, V4msk, ITmsk, \
+            length_msk, spc_msk, sucsmsk, \
+            bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+
+    :param BFEStats:
     :return:
         resp_col : OrderedDict of 3d array, each array is a
                     ( generation x thread [mean0, mean1, sem0, sem1, bsl_mean0, bsl_mean1]  x time )
@@ -369,6 +379,11 @@ def pad_resp_traj(resp_col):
 def extract_all_evol_trajectory_psth(BFEStats):
     """ Extract the whole psth across the Evolution blocks
     (in contrast to the scalar values in `extract_all_evol_trajectory_dyna`)
+
+    Examples:
+        _, BFEStats = load_neural_data()
+        psth_col, meta_df = extract_all_evol_trajectory_psth(BFEStats)
+        psth_extrap_arr, extrap_mask_arr, max_len = pad_psth_traj(psth_col)
 
     :param BFEStats:
     :return:
