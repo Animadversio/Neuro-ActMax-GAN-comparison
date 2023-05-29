@@ -225,6 +225,34 @@ plt.tight_layout()
 saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_space_per_area_bar_annot", fig, fmts=["png", "pdf", "svg"])
 fig.show()
 #%%
+# same plot but with bar and errorbar
+fig, ax = plt.subplots(1, 1, figsize=[3.0, 3.75])
+ax.bar(SR_df.index, SR_df.FC_rate, yerr=[SR_df.FC_rate - SR_df.FC_CI_1, SR_df.FC_CI_2 - SR_df.FC_rate],
+         label="DeePSim", color="b", alpha=0.5, error_kw=dict(ecolor='b', capsize=5))
+# add points
+ax.plot(SR_df.index, SR_df.FC_rate, "o", color="b", alpha=0.7)
+ax.bar(SR_df.index, SR_df.BG_rate, yerr=[SR_df.BG_rate - SR_df.BG_CI_1, SR_df.BG_CI_2 - SR_df.BG_rate],
+            label="BigGAN", color="r", alpha=0.5, error_kw=dict(ecolor='r', capsize=5))
+ax.plot(SR_df.index, SR_df.BG_rate, "o", color="r", alpha=0.7)
+# annotate the number of trials as fraction
+for i, (label, row) in enumerate(SR_df.iterrows()):
+    ax.annotate(f"{int(row.FC_suc)}/{int(row.total)}",
+                xy=(i + 0.02, min(1.0, row.FC_rate+0.05)),
+                ha="center", va="bottom", fontsize=10)
+    ax.annotate(f"{int(row.BG_suc)}/{int(row.total)}",
+                xy=(i + 0.02, max(0.0, row.BG_rate-0.08)),
+                ha="center", va="bottom", fontsize=10)
+# rename the xticks
+ax.set_xticklabels(["V1\nclass", "V1\nall", "V4\nclass", "V4\nall", "IT\nclass", "IT\nall"])
+ax.set_ylim([0, 1.05])
+ax.set_xlim([1.5, 5.5])
+ax.set_ylabel("Success Rate")
+ax.set_xlabel("Visual Area")
+ax.set_title(f"Success Rate of DeePSim and BigGAN\n{sucs_criterion_label} 90% CI")
+plt.tight_layout()
+saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_space_per_area_bar_annot_noV1", fig, fmts=["png", "pdf", "svg"])
+fig.show()
+#%%
 from statsmodels.stats.proportion import proportions_ztest
 # count: number of successes, i.e., A1 and A2
 count = np.array([48, 17])
