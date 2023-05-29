@@ -244,6 +244,10 @@ def _map_evol_imglist_2_imgfps(imglist, stimpath, sfx="bmp"):
     return imgfps_all, refimgfp_dict
 
 
+def extract_all_evol_trajectory(BFEStats):
+    return extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200))
+
+
 def extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200)):
     """
     Extract the evolution trajectory of all the experiments in the BFEStats list into
