@@ -94,6 +94,7 @@ def get_meta_df(BFEStats):
     meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
     return meta_df
 
+
 def get_all_masks(meta_df):
     """
     Get all the masks for different conditions in the analysis
@@ -129,3 +130,5 @@ def get_all_masks(meta_df):
     print("  - unstable baseline: %d" % bsl_unstable_msk.sum())
     print("  - not fc6-BigGAN: %d" % (~spc_msk).sum())
     return Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk
+
+
