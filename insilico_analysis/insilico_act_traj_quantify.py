@@ -96,6 +96,11 @@ np.savez(join(figdir, "insilico_act_traj_synopsis.npz"), score_mean1_col=score_m
             score_sem1_col=score_sem1_col, score_sem2_col=score_sem2_col, score_sem3_col=score_sem3_col,
             FC_win_prob_col=FC_win_prob_col, BG_win_prob_col=BG_win_prob_col, FC_BG_tval_col=FC_BG_tval_col)
 
+#%%
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\insilico_activation_dynamics"
+with np.load(join(figdir, "insilico_act_traj_synopsis.npz")) as data:
+    for k, v in data.items():
+        exec(f"{k} = v")
 
 #%%
 def parse_unitname(unitname):
@@ -153,7 +158,7 @@ def _shaded_errorbar_arr(arr, color="r", alpha=0.3, errtype="sem", **kwargs):
         yerr = np.nanstd(arr, axis=0)
     plt.plot(x, y, color=color, **kwargs)
     plt.fill_between(x, y - yerr, y + yerr, color=color, alpha=alpha,
-                     label="" if "label" not in kwargs else kwargs["label"]+"_"+errtype)
+                     label="" ) # if "label" not in kwargs else kwargs["label"]+"_"+errtype
 #%%
 normalizer = np.nanquantile(np.concatenate([score_mean1_col, score_mean2_col, score_mean3_col], axis=1)
                             [:, :, -5:], 0.95, axis=(1,2))
@@ -213,9 +218,12 @@ for (netname, layername, RFrsz), df in meta_info_df.groupby(by=["netname", "laye
     # saveallforms(figdir, f"{netname}_{layername}{'_RFrsz' if RFrsz else ''}_FC_BG_tval")
     # plt.show()
     # raise Exception
-
+#%%
+def shorten_layername(layername):
+    return layername.replace(".layer", "layer").replace(".Bottleneck", "B").replace(".Linear", "")
 #%% Merged plot of all layers for each network
 netname ='resnet50_linf8'# 'resnet50' # 'resnet50_linf8'
+errtype = "sem"
 meta_info_df[meta_info_df.netname==netname].layername.unique()
 layernames = ['.layer1.Bottleneck1', '.layer2.Bottleneck3',
        '.layer3.Bottleneck5', '.layer4.Bottleneck2', '.Linearfc']
@@ -225,26 +233,26 @@ for li, layername in enumerate(layernames):
     df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
                       & (meta_info_df.RFrsz==False)]
     plt.sca(axs[li])
-    _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3, errtype="std",
-                         label="DeePSim", )
-    _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3, errtype="std",
-                         label="BG CholCMA")
-    _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3, errtype="std",
-                         label="BG HessCMA")
-    plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
+    _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3,
+                         errtype=errtype, label="DeePSim", )
+    _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3,
+                         errtype=errtype, label="BG CholCMA")
+    _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3,
+                         errtype=errtype, label="BG HessCMA")
+    plt.title(f"{netname} {shorten_layername(layername)} {'RF resize' if RFrsz else ''}")
     plt.ylabel("Normalized Activation")
     plt.xlabel("Blocks")
     if li==len(layernames)-1:
         plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
 plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} Average Normalized Optimization trajectory")
 plt.tight_layout()
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std", figh)
+saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}", figh)
 figh.show()
 for ax in axs:
     ax.set_xlim([0, 40])
     # ax.autoscale(enable=True, axis='y', tight=True)
     ax.autoscale_view(tight=True, scalex=False, scaley=True)
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std_xlim40", figh)
+saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}_xlim40", figh)
 figh.show()
 #%%
 netname = 'tf_efficientnet_b6'# "tf_efficientnet_b6_ap" # 'tf_efficientnet_b6'
@@ -294,7 +302,7 @@ for netname in [ 'resnet50_linf8', 'resnet50']:
         plt.sca(axs[li])
         plt.plot(BG_win_prob_col[df.index].T, alpha=0.3, color="k")
         _shaded_errorbar_arr(BG_win_prob_col[df.index], color="r", alpha=0.3, )
-        plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
+        plt.title(f"{netname} {shorten_layername(layername)} {'RF resize' if RFrsz else ''}")
         plt.ylabel("BG win prob")
         plt.xlabel("Blocks")
         plt.ylim([0, 1])
