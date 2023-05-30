@@ -85,6 +85,30 @@ def paired_strip_plot(df, msk, col1, col2):
     return figh
 
 
+def shaded_errorbar(x, y, yerr, color, alpha=0.3, ax=None, **kwargs):
+    if ax is None:
+        ax = plt.gca()
+
+    ax.plot(x, y, color=color, **kwargs)
+    ax.fill_between(x, y - yerr, y + yerr, color=color, alpha=alpha)
+
+
+def shaded_errorbar_arr(arr, color="r", alpha=0.3, errtype="sem", ax=None, **kwargs):
+    if ax is None:
+        ax = plt.gca()
+    x = np.arange(arr.shape[1])
+    y = np.nanmean(arr, axis=0)
+    if errtype == "sem":
+        yerr = np.nanstd(arr, axis=0) / np.sqrt(arr.shape[0])
+    elif errtype == "std":
+        yerr = np.nanstd(arr, axis=0)
+    else:
+        raise Exception(f"errtype {errtype} not recognized")
+    ax.plot(x, y, color=color, **kwargs)
+    ax.fill_between(x, y - yerr, y + yerr, color=color, alpha=alpha,
+                     label="" if "label" not in kwargs else kwargs["label"]+"_"+errtype)
+
+
 def trivariate_corr(x, y, z):
     """
     x = np.random.normal(0, 1, size=100)
