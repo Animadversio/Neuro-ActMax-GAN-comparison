@@ -20,7 +20,6 @@ from easydict import EasyDict as edict
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
 os.makedirs(outdir, exist_ok=True)
 #%%
-#%%
 
 def extract_all_evol_trajectory(BFEStats, ):
     """Extract the evolution trajectory of all the experiments in the BFEStats list into
@@ -186,23 +185,38 @@ for rowi, (msk_major, label_major) in enumerate(zip([Amsk, Bmsk], ["A", "B"])):
     for colj, (msk_minor, lable_minor) in enumerate(zip([V1msk, V4msk, ITmsk],
                                               ["V1", "V4", "IT"])):
         msk = msk_major & msk_minor & validmsk & sucsmsk
-        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
-        axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
+        # naive plot
+        # axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
+        # axs[rowi, colj].plot(normresp_extrap_arr[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
+        # plot with dashed lines for extrapolated values
+        normresp_extrap_arr_nan = normresp_extrap_arr.copy()
+        normresp_extrap_arr_nan[~extrap_mask_arr, 0] = np.nan
+        normresp_extrap_arr_nan[~extrap_mask_arr, 1] = np.nan
+        axs[rowi, colj].plot(normresp_extrap_arr_nan[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7)
+        axs[rowi, colj].plot(normresp_extrap_arr_nan[msk, :, 1].T, color="red", alpha=0.2, lw=0.7)
+        normresp_extrap_fill_nan = normresp_extrap_arr.copy()
+        normresp_extrap_fill_nan[extrap_mask_arr, 0] = np.nan
+        normresp_extrap_fill_nan[extrap_mask_arr, 1] = np.nan
+        axs[rowi, colj].plot(normresp_extrap_fill_nan[msk, :, 0].T, color="blue", alpha=0.2, lw=0.7, linestyle=":")
+        axs[rowi, colj].plot(normresp_extrap_fill_nan[msk, :, 1].T, color="red", alpha=0.2, lw=0.7, linestyle=":")
+
         mean_trace_FC = normresp_extrap_arr[msk, :, 0].mean(axis=0)
         sem_trace_FC = normresp_extrap_arr[msk, :, 0].std(axis=0) / np.sqrt(msk.sum())
         mean_trace_BG = normresp_extrap_arr[msk, :, 1].mean(axis=0)
         sem_trace_BG = normresp_extrap_arr[msk, :, 1].std(axis=0) / np.sqrt(msk.sum())
-        axs[rowi, colj].plot(mean_trace_FC, color="blue", lw=3)
+        axs[rowi, colj].plot(mean_trace_FC, color="blue", lw=3, label="DeePSim" if colj == 0 else None)
         axs[rowi, colj].fill_between(np.arange(len(mean_trace_FC)),
                                         mean_trace_FC-sem_trace_FC,
                                         mean_trace_FC+sem_trace_FC,
                                         color="blue", alpha=0.25)
-        axs[rowi, colj].plot(mean_trace_BG, color="red", lw=3)
+        axs[rowi, colj].plot(mean_trace_BG, color="red", lw=3, label="BigGAN" if rowi == 0 else None)
         axs[rowi, colj].fill_between(np.arange(len(mean_trace_BG)),
                                         mean_trace_BG-sem_trace_BG,
                                         mean_trace_BG+sem_trace_BG,
                                         color="red", alpha=0.25)
         axs[rowi, colj].set_title(f"{label_major} {lable_minor} (N={msk.sum()})")
+        if rowi == 0 and colj == 0:
+            axs[rowi, colj].legend(loc="lower right")
 
 for ax in axs.ravel():
     ax.set_xlim([0, 40])
@@ -212,6 +226,11 @@ plt.tight_layout()
 saveallforms(figdir, "maxnorm_resp_traj_val_succ_area_anim_sep", figh=figh)
 plt.show()
 
+for ax in axs.ravel():
+    ax.set_ylim([0, 1.05])
+
+saveallforms(figdir, "maxnorm_resp_traj_val_succ_area_anim_sep_ylim01", figh=figh)
+plt.show()
 
 #%%
 """Compute the fraction of blocks that FC is significantly larger than BG"""
