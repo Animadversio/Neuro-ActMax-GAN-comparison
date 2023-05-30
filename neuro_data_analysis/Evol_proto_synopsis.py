@@ -1,5 +1,7 @@
 """
 Collect the prototypes and their reevolutions into a montage and save them
+Save to folder
+    `ProtoSummary`
 """
 import os
 import torch

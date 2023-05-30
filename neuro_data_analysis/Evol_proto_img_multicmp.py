@@ -164,6 +164,7 @@ def normalize_alphamask(img):
     img = img.astype(np.float32)
     img = img / img.max()
     return img
+
 #%% add alpha mask to the features. or add to the images
 import pickle as pkl
 from easydict import EasyDict as edict

@@ -1,5 +1,5 @@
 """
-Code to generate alpha masks for the prototypes
+Code to generate alpha masks for the prototypes via CovTsr attribution
 """
 import os
 

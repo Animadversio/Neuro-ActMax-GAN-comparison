@@ -3,6 +3,7 @@ import os
 import re
 import glob
 import torch
+import seaborn as sns
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pathlib import Path
@@ -11,7 +12,7 @@ from easydict import EasyDict as edict
 import numpy as np
 import pandas as pd
 from core.utils.plot_utils import saveallforms
-
+#%% Efficient Net
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
 os.makedirs(join(rootdir, "summary"), exist_ok=True)
 figdir = join(rootdir, "summary")
@@ -82,22 +83,25 @@ plt.tight_layout()
 saveallforms(figdir, f"{netname_prefix}score_norm_by_optim_GAN_bar")
 plt.show()
 
+
+
+
 #%% Resnet50_linf8
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
 os.makedirs(join(rootdir, "summary"), exist_ok=True)
 figdir = join(rootdir, "summary")
 netname_prefix = "resnet50_linf8_"
 df_evol = pd.read_csv(join(rootdir, "summary", f"resnet50_linf8_raw_summary.csv"))
+df_evol["layershort"] = df_evol["layer"].apply(lambda x: x.replace(".Linearfc", "fc")\
+                                          .replace('.Bottleneck', "B").replace(".layer", "block"))
 #%%
-maxactdf_evol = df_evol.groupby(["netname", "layer", "RFresize", "unitid",]).agg({"score": "max"})
+maxactdf_evol = df_evol.groupby(["netname", "layer", "layershort", "RFresize", "unitid",]).agg({"score": "max"})
 df_evol_norm = df_evol.merge(maxactdf_evol,
-                            on=["netname", "layer", "RFresize", "unitid"], suffixes=("", "_max"))
+                            on=["netname", "layer", "layershort", "RFresize", "unitid"], suffixes=("", "_max"))
 df_evol_norm["score_norm"] = df_evol_norm["score"] / df_evol_norm["score_max"]
 df_evol_norm["maxscore_norm"] = df_evol_norm["maxscore"] / df_evol_norm["score_max"]
 df_evol_norm.to_csv(join(rootdir, "summary", f"{netname_prefix}raw_summary_norm.csv"), index=False)
 #%%
-df_evol_norm["layershort"] = df_evol_norm["layer"].apply(lambda x: x.replace(".Linearfc", "fc")\
-                                          .replace('.Bottleneck', "B").replace(".layer", "block"))
 for netname, netdf in df_evol_norm.groupby(["netname"]):
     netname_short = netname
     # rename entries in columns layer
@@ -127,6 +131,7 @@ for netname, netdf in df_evol_norm.groupby(["netname"]):
     plt.suptitle(netname_short)
     saveallforms(figdir, f"{netname_short}_score_norm_by_optim_GAN_bar")
     plt.show()
+#%%
 
 #%% Resnet50
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
@@ -149,7 +154,6 @@ for col in ["layershort", "optimmethod", "GANname"]:
     df_evol_norm[col] = df_evol_norm[col].astype(str)
 df_evol_norm["RFresize"] = df_evol_norm["RFresize"].astype(bool)
 #%%
-import seaborn as sns
 
 for netname, netdf in df_evol_norm.groupby(["netname"]):
     netname_short = netname
