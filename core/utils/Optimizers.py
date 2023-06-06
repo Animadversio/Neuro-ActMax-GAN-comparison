@@ -400,3 +400,53 @@ class HessCMAES:
         self.sigma, self.A, self.Ainv, self.ps, self.pc = sigma, A, Ainv, ps, pc,
         self._istep += 1
         return new_samples
+
+
+#%% Wrap the optimizers, like concatenate 2 or concatenate one with a fixed code
+class concat_wrapper:
+    """ Concatenate 2 gradient free optimizers
+    each optimize a different part of the latent code
+    latent code space dim = self.optim1.space_dim + self.optim2.space_dim
+
+    optim1: gradient free optimizer
+    optim2: gradient free optimizer
+    """
+    def __init__(self, optim1, optim2):
+        self.optim1 = optim1
+        self.optim2 = optim2
+        self.sep = self.optim1.space_dimen
+        self.space_dimen = self.optim1.space_dimen + self.optim2.space_dimen
+
+    def step_simple(self, scores, codes):
+        new_codes1 = self.optim1.step_simple(scores, codes[:,:self.sep])
+        new_codes2 = self.optim2.step_simple(scores, codes[:,self.sep:])
+        return np.concatenate((new_codes1, new_codes2), axis=1)
+
+
+class fix_param_wrapper:
+    """ Fixe part of parameters, and optimize the rest
+    latent code space dim = self.optim.space_dim + self.fix_code.shape[1]
+
+    optim: gradient free optimizer
+    fix_code: fixed part of the latent code
+    pre: whether fix_code is before or after the optimizable part
+    """
+    def __init__(self, optim, fixed_code, pre=True):
+        self.optim = optim
+        self.fix_code = fixed_code
+        self.pre = pre  # if the fix code is in the first part
+        self.sep = fixed_code.shape[1]
+        self.space_dimen = self.optim.space_dimen + self.sep
+
+    def step_simple(self, scores, codes):
+        if self.pre:
+            """fix the first part of code, optimize the latter part"""
+            new_codes1 = self.optim.step_simple(scores, codes[:, self.sep:])
+            freezed_codes = np.repeat(self.fix_code, new_codes1.shape[0], axis=0)
+            return np.concatenate((freezed_codes, new_codes1), axis=1)
+        else:
+            """fix the last part of code, optimize the first part"""
+            new_codes1 = self.optim.step_simple(scores, codes[:, :-self.sep])
+            freezed_codes = np.repeat(self.fix_code, new_codes1.shape[0], axis=0)
+            return np.concatenate((new_codes1, freezed_codes), axis=1)
+

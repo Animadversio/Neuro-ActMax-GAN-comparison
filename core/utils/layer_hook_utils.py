@@ -352,7 +352,9 @@ class featureFetcher:
 class featureFetcher_recurrent:
     """ Light weighted modular feature fetcher, simpler than TorchScorer.
     Modified from featureFetcher to support recurrent fit_models the same layer will be activated multiple times.
-
+    Designed to be used with CorNet-s model.
+    e.g.
+        h = fetcher.record("IT", "output", "target")
     """
     def __init__(self, model, input_size=(3, 224, 224), device="cuda", print_module=True):
         self.model = model.to(device)
