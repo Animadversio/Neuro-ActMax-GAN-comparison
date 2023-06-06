@@ -1,3 +1,7 @@
+"""
+Quantify the direct similarity of the Cov Tsr
+"""
+
 import os
 from os.path import join
 import numpy as np

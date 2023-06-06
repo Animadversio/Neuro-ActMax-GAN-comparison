@@ -2,14 +2,13 @@
 Code to generate alpha masks for the prototypes via CovTsr attribution
 """
 import os
-
-import matplotlib.pyplot as plt
+from os.path import join
+import torch
+import pickle as pkl
 import numpy as np
 import pandas as pd
-import torch
-from os.path import join
-from tqdm import tqdm
-import pickle as pkl
+from tqdm.autonotebook import trange, tqdm
+import matplotlib.pyplot as plt
 #%%
 cov_root = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN"
 attr_dir = r"E:\Network_Data_Sync\BigGAN_FeatAttribution"
@@ -21,9 +20,9 @@ tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
 from scipy import ndimage
 from CorrFeatTsr_visualize_lib import pad_factor_prod, rectify_tsr, tsr_posneg_factorize, \
     visualize_cctsr_simple, vis_feattsr, vis_feattsr_factor, vis_featvec, vis_featvec_wmaps
-from tqdm import trange, tqdm
 
-thread = "_cmb" #1  # 1 # "_cmb"
+
+thread = "_cmb"  #1  # 1 # "_cmb"
 for Expi in trange(1, 191):
     for thread in [0, 1, "_cmb"]:
         if not os.path.exists(join(cov_root, f"Both_Exp{Expi:02d}_Evol_thr{thread}_res-robust_corrTsr.npz")):
@@ -48,7 +47,7 @@ for Expi in trange(1, 191):
             bdr = 1
             nmf_cfgs = dict(
                 init="nndsvda", solver="cd", l1_ratio=0, alpha=0, beta_loss="frobenius"
-            )  # default
+            )  # default config
             # nmf_cfgs_alt = dict(
             #     init="nndsvd", solver="mu", l1_ratio=0.8, alpha=0.005, beta_loss="kullback-leibler"
             # ) #"frobenius" ##
@@ -95,9 +94,6 @@ plt.figure(figsize=(8, 8))
 plt.imshow(alphamap_full / np.max(alphamap_full))
 plt.colorbar()
 plt.show()
-
-
-
 #%%
 alphamap = (Hmaps_pad**2).sum(axis=2)
 plt.figure(figsize=(8, 8))
