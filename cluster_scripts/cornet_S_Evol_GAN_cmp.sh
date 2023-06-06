@@ -3,7 +3,7 @@
 #SBATCH -p gpu_quad
 #SBATCH -t 8:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G
+#SBATCH --mem=20G
 #SBATCH --array=1-20
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
 #SBATCH -o cornet_evol_%j.out

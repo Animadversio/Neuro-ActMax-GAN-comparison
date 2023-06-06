@@ -252,6 +252,8 @@ fetcher.remove_hook()
 del fetcher
 dataroot = r"F:\insilico_exps\CorNet-recurrent-evol_BigGAN_tmp"
 #%%
+fetcher = featureFetcher_recurrent(model, print_module=False)
+h = fetcher.record(area, sublayer, "target")
 for unit_id in range(args.chans[0], args.chans[1]):
     if "decoder" in area or cent_pos is None:
         savedir = join(rootdir, "corner-s_%s.%s_%d"%(area, sublayer, unit_id))
@@ -264,8 +266,7 @@ for unit_id in range(args.chans[0], args.chans[1]):
     os.makedirs(savedir, exist_ok=True)
 
     # scorer.select_unit(unit, allow_grad=True)
-    fetcher = featureFetcher_recurrent(model, print_module=False)
-    h = fetcher.record(area, sublayer, "target")
+
     for triali in range(args.reps):
         # generate initial code.
         if args.G == "BigGAN":
