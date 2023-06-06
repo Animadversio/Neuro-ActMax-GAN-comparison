@@ -6,8 +6,12 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 from core.utils.dataset_utils import ImagePathDataset
 from torchvision import transforms, utils
-from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data
+from neuro_data_analysis.neural_data_lib import load_img_resp_pairs_multiwindow, load_neural_data # load_img_resp_pairs_multiwindow
 import matplotlib.pyplot as plt
+from os.path import join
+from CorrFeatTsr_lib import Corr_Feat_Machine, visualize_cctsr, loadimg_preprocess
+# from core.utils.layer_hook_utils import featureFetcher_module
+from core.utils.CNN_scorers import TorchScorer, load_featnet
 #%%
 BFEStats_merge, BFEStats = load_neural_data()
 #%%
@@ -31,11 +35,8 @@ def get_expstr(BFEStats, Expi):
              f"   thr1: {S['evol']['space_names'][1][0]}"
     return expstr
 #%%
-from os.path import join
-from CorrFeatTsr_lib import Corr_Feat_Machine, visualize_cctsr, loadimg_preprocess
-# from core.utils.layer_hook_utils import featureFetcher_module
-from core.utils.CNN_scorers import TorchScorer, load_featnet
 figroot = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN\fig_summary"
+figdynam_root = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN\fig_dynamic_summary"
 saveroot = r"E:\Network_Data_Sync\corrFeatTsr_BigGAN"
 #%%
 model, _ = load_featnet("resnet50_linf8")
@@ -44,18 +45,71 @@ recmodule_dict = {"layer1": model.layer1,
                    "layer3": model.layer3,
                    "layer4": model.layer4}
 #%%
+rsp_wdws = [range(50, 200), range(0, 50), range(50, 100), range(100, 150), range(150, 200)]
+rsp_wdws += [range(strt, strt+25) for strt in range(0, 200, 25)]
+#%%
+def visualize_cctsr_dynamics(featFetcher: Corr_Feat_Machine, rsp_wdws, layers2plot: list, ReprStats, Expi, Animal, ExpType, Titstr, figdir=""):
+    """ Given a `Corr_Feat_Machine` show the tensors in the different layers of it.
+    Example:
+        ExpType = "EM_cmb"
+        layers2plot = ['conv3_3', 'conv4_3', 'conv5_3']
+        figh = visualize_cctsr(featFetcher, layers2plot, ReprStats, Expi, Animal, ExpType, )
+        figh.savefig(join("S:\corrFeatTsr","VGGsummary","%s_Exp%d_%s_corrTsr_vis.png"%(Animal,Expi,ExpType)))
+    :param featFetcher:
+    :param layers2plot:
+    :param ReprStats:
+    :param Expi:
+    :param Animal:
+    :param Titstr:
+    :return:
+    """
+    nlayer = len(layers2plot)
+    for Ti, rsp_wdw in enumerate(rsp_wdws):
+        figh, axs = plt.subplots(3, nlayer, figsize=[10/3*nlayer,10])
+        if ReprStats is not None:
+            axs[0,0].imshow(ReprStats[Expi-1].Evol.BestImg)
+            axs[0,0].set_title("Best Evol Img")
+            axs[0,0].axis("off")
+            axs[0,1].imshow(ReprStats[Expi-1].Evol.BestBlockAvgImg)
+            axs[0,1].set_title("Best BlockAvg Img")
+            axs[0,1].axis("off")
+            axs[0,2].imshow(ReprStats[Expi-1].Manif.BestImg)
+            axs[0,2].set_title("Best Manif Img")
+            axs[0,2].axis("off")
+        for li, layer in enumerate(layers2plot):
+            chanN = featFetcher.cctsr[layer].shape[0]
+            tmp=axs[1,li].matshow(np.nansum(featFetcher.cctsr[layer][Ti].abs().numpy(), axis=0) / chanN)
+            plt.colorbar(tmp, ax=axs[1,li])
+            axs[1,li].set_title(layer+" mean abs cc")
+            tmp=axs[2,li].matshow(np.nanmax(featFetcher.cctsr[layer][Ti].abs().numpy(), axis=0))
+            plt.colorbar(tmp, ax=axs[2,li])
+            axs[2,li].set_title(layer+" max abs cc")
+        figh.suptitle("%s Exp%d Corr Tensor %s T:[%d,%d] %s"%(Animal, Expi, ExpType, rsp_wdw[0], rsp_wdw[-1]+1, Titstr))
+        plt.show()
+        figh.savefig(join(figdir, "%s_Exp%d_%s_T%d_%d-%d_corrTsr_vis.png" % (Animal, Expi, ExpType, Ti, rsp_wdw[0], rsp_wdw[-1]+1)))
+        figh.savefig(join(figdir, "%s_Exp%d_%s_T%d_%d-%d_corrTsr_vis.pdf" % (Animal, Expi, ExpType, Ti, rsp_wdw[0], rsp_wdw[-1]+1)))
+    return figh
+#%%
+import matplotlib
+matplotlib.use('Agg')
+#%%
 plot_err_dict = {}
 Animal = "Both"
-for Expi in [66]: #tqdm(range(70, 191)):
+for Expi in tqdm(range(1, 191)): # [66]: #:
+    S = BFEStats[Expi - 1]
+    if S["evol"] is None:
+        continue
     for thread in range(2):
         try:
-            imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi,
-                         "Evol", thread=thread, stimdrive="S:", output_fmt="vec")
+            imgfps, resp_mat, gen_vec = load_img_resp_pairs_multiwindow(BFEStats, Expi,
+                         "Evol", thread=thread, stimdrive="S:", output_fmt="vec",
+                         rsp_wdws=rsp_wdws)
         except Exception as e:
             print(f"Exp {Expi} thread {thread} failed to load, try Network version")
             try:
-                imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi,
-                         "Evol", thread=thread, stimdrive="N:", output_fmt="vec")
+                imgfps, resp_mat, gen_vec = load_img_resp_pairs_multiwindow(BFEStats, Expi,
+                         "Evol", thread=thread, stimdrive="N:", output_fmt="vec",
+                         rsp_wdws=rsp_wdws)
             except Exception as e2:
                 print(f"Exp {Expi} thread {thread} failed to load")
             plot_err_dict[(Expi, thread)] = e
@@ -63,7 +117,8 @@ for Expi in [66]: #tqdm(range(70, 191)):
         if len(imgfps) == 0:
             continue
         # create a dataloader for the image response pairs
-        evol_ds = ImagePathDataset(imgfps, resp_vec, transform=None, img_dim=(224, 224))
+        # use default transform for the image, including RGB norm and resize
+        evol_ds = ImagePathDataset(imgfps, resp_mat, transform=None, img_dim=(224, 224))
         evol_dl = DataLoader(evol_ds, batch_size=60, shuffle=False, num_workers=0)
 
         fetcher = Corr_Feat_Machine()
@@ -72,32 +127,38 @@ for Expi in [66]: #tqdm(range(70, 191)):
         for i, (imgtsr, resps) in tqdm(enumerate(evol_dl)):
             with torch.no_grad():
                 model(imgtsr.cuda())
-            fetcher.update_corr(resps.float())
+            fetcher.update_corr_multi(resps.float())
 
-        fetcher.calc_corr()
+        fetcher.calc_corr_multi()
         fetcher.clear_hook()
         savedict = fetcher.make_savedict()
 
-        np.savez(join(saveroot, f"{Animal}_Exp{Expi:02d}_Evol_thr{thread}_res-robust_corrTsr.npz"),
+        np.savez(join(saveroot, f"{Animal}_Exp{Expi:02d}_Evol_thr{thread}_res-robust_corrTsr_dynamics.npz"),
                  **savedict)
 
         titstr = get_expstr(BFEStats, Expi)
-        figh = visualize_cctsr(fetcher, ["layer1", "layer2", "layer3", "layer4"], None, Expi,
-                       "Both", f"BigGAN_Evol_thr{thread}_res-robust", titstr, figdir=figroot)
+        figh = visualize_cctsr_dynamics(fetcher, rsp_wdws, ["layer1", "layer2", "layer3", "layer4"], None, Expi,
+                       "Both", f"BigGAN_Evol_thr{thread}_res-robust_dynamics", titstr, figdir=figdynam_root)
         plt.close(figh)
 #%%
 
 plot_err_dict_cmb = {}
 Animal = "Both"
-for Expi in tqdm(range(1, 191)):
+for Expi in tqdm(range(1, 191)): # [66]
+    S = BFEStats[Expi - 1]
+    if S["evol"] is None:
+        continue
     try:
-        imgfps1, resp_vec1, bsl_vec1, gen_vec1 = load_img_resp_pairs(BFEStats, Expi,
-                     "Evol", thread=0, stimdrive="S:", output_fmt="vec")
-        imgfps2, resp_vec2, bsl_vec2, gen_vec2 = load_img_resp_pairs(BFEStats, Expi,
-                     "Evol", thread=1, stimdrive="S:", output_fmt="vec")
+        imgfps1, resp_mat1, gen_vec1 = load_img_resp_pairs_multiwindow(BFEStats, Expi,
+                    "Evol", thread=0, stimdrive="S:", output_fmt="vec", rsp_wdws=rsp_wdws)
+        imgfps2, resp_mat2, gen_vec2 = load_img_resp_pairs_multiwindow(BFEStats, Expi,
+                    "Evol", thread=1, stimdrive="S:", output_fmt="vec", rsp_wdws=rsp_wdws)
+        # imgfps1, resp_vec1, bsl_vec1, gen_vec1 = load_img_resp_pairs(BFEStats, Expi,
+        #              "Evol", thread=0, stimdrive="S:", output_fmt="vec")
+        # imgfps2, resp_vec2, bsl_vec2, gen_vec2 = load_img_resp_pairs(BFEStats, Expi,
+        #              "Evol", thread=1, stimdrive="S:", output_fmt="vec")
         imgfps = imgfps1 + imgfps2
-        resp_vec = np.concatenate((resp_vec1, resp_vec2), axis=0)
-        bsl_vec = np.concatenate((bsl_vec1, bsl_vec2), axis=0)
+        resp_mat = np.concatenate((resp_mat1, resp_mat2), axis=0)
         gen_vec = np.concatenate((gen_vec1, gen_vec2), axis=0)
     except Exception as e:
         print(f"Exp {Expi} failed to load")
@@ -106,7 +167,7 @@ for Expi in tqdm(range(1, 191)):
     if len(imgfps) == 0:
         continue
     # create a dataloader for the image response pairs
-    evol_ds = ImagePathDataset(imgfps, resp_vec, transform=None, img_dim=(224, 224))
+    evol_ds = ImagePathDataset(imgfps, resp_mat, transform=None, img_dim=(224, 224))
     evol_dl = DataLoader(evol_ds, batch_size=60, shuffle=False, num_workers=0)
 
     fetcher = Corr_Feat_Machine()
@@ -115,20 +176,19 @@ for Expi in tqdm(range(1, 191)):
     for i, (imgtsr, resps) in tqdm(enumerate(evol_dl)):
         with torch.no_grad():
             model(imgtsr.cuda())
-        fetcher.update_corr(resps.float())
+        fetcher.update_corr_multi(resps.float())
 
-    fetcher.calc_corr()
+    fetcher.calc_corr_multi()
     fetcher.clear_hook()
     savedict = fetcher.make_savedict()
 
-    np.savez(join(saveroot, f"{Animal}_Exp{Expi:02d}_Evol_thr{'_cmb'}_res-robust_corrTsr.npz"),
+    np.savez(join(saveroot, f"{Animal}_Exp{Expi:02d}_Evol_thr{'_cmb'}_res-robust_corrTsr_dynamics.npz"),
              **savedict)
 
     titstr = get_expstr(BFEStats, Expi)
-    figh = visualize_cctsr(fetcher, ["layer1", "layer2", "layer3", "layer4"], None, Expi,
-                   "Both", f"BigGAN_Evol_thr{'_cmb'}_res-robust", titstr, figdir=figroot)
+    figh = visualize_cctsr_dynamics(fetcher, rsp_wdws, ["layer1", "layer2", "layer3", "layer4"], None, Expi,
+                       "Both", f"BigGAN_Evol_thr{'_cmb'}_res-robust_dynamics", titstr, figdir=figdynam_root)
     plt.close(figh)
-
 
 
 #%%
