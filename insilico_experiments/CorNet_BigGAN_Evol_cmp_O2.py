@@ -7,6 +7,7 @@ Add CLI interface for cluster.
 Updated Jun.5th, 2023
 """
 import os, sys, argparse, time, glob, pickle, subprocess, shlex, io, pprint
+sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
 import numpy as np
 import torch
 import torch.nn as nn
@@ -30,7 +31,6 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 # sys.path.append(r"D:\Github\ActMax-Optimizer-Dev")                           #Binxu office
 # sys.path.append(r"D:\OneDrive - UC San Diego\GitHub\ActMax-Optimizer-Dev")   #Victoria local
 #sys.path.append(r"\data\Victoria\UCSD_projects\ActMax-Optimizer-Dev")       #Victoria remote
-sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
 if sys.platform == "linux":
     # rootdir = r"/scratch/binxu/BigGAN_Optim_Tune_new"
     # Hdir_BigGAN = r"/scratch/binxu/GAN_hessian/BigGAN/summary/H_avg_1000cls.npz"
