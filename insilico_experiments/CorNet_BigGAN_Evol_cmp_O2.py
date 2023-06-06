@@ -220,16 +220,14 @@ parser.add_argument("--optim", type=str, nargs='+', default=["HessCMA", "HessCMA
 parser.add_argument("--steps", type=int, default=100, help="")
 parser.add_argument("--reps", type=int, default=2, help="")
 parser.add_argument("--RFresize", type=bool, default=False, help="")
-args = parser.parse_args() # ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
+args = parser.parse_args()
+# ["--G", "BigGAN", "--optim", "HessCMA", "CholCMA","--chans",'1','2','--steps','100',"--reps",'2']
 
 #%% Prepare model
 # G = upconvGAN("fc6")
 # G.eval().cuda().requires_grad_(False)
 G = load_GAN(args.G)
 Hdata = load_Hessian(args.G)
-#% Select the Optimizer
-method_col = args.optim
-#%%
 model = get_cornet_model(pretrained=True)
 model.eval().requires_grad_(False)
 #%%
@@ -239,6 +237,8 @@ model.eval().requires_grad_(False)
 # chan_range = [200, 250]
 area = args.area
 sublayer = args.sublayer
+#% Select the Optimizer
+method_col = args.optim
 #%%
 fetcher = featureFetcher_recurrent(model, print_module=False)
 h = fetcher.record(area, sublayer, "target")
@@ -285,7 +285,6 @@ for unit_id in range(args.chans[0], args.chans[1]):
                     methodlab += "_fc6"
                 # core evolution code
                 new_codes = init_code
-                # new_codes = init_code + np.random.randn(25, 256) * 0.06
                 scores_all = []
                 generations = []
                 codes_all = []
