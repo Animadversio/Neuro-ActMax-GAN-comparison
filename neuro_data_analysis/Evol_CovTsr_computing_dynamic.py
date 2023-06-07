@@ -48,7 +48,8 @@ recmodule_dict = {"layer1": model.layer1,
 rsp_wdws = [range(50, 200), range(0, 50), range(50, 100), range(100, 150), range(150, 200)]
 rsp_wdws += [range(strt, strt+25) for strt in range(0, 200, 25)]
 #%%
-def visualize_cctsr_dynamics(featFetcher: Corr_Feat_Machine, rsp_wdws, layers2plot: list, ReprStats, Expi, Animal, ExpType, Titstr, figdir=""):
+def visualize_cctsr_dynamics(featFetcher: Corr_Feat_Machine, rsp_wdws, layers2plot: list, ReprStats, Expi, Animal, ExpType, Titstr, figdir="",
+                             show=False):
     """ Given a `Corr_Feat_Machine` show the tensors in the different layers of it.
     Example:
         ExpType = "EM_cmb"
@@ -85,9 +86,12 @@ def visualize_cctsr_dynamics(featFetcher: Corr_Feat_Machine, rsp_wdws, layers2pl
             plt.colorbar(tmp, ax=axs[2,li])
             axs[2,li].set_title(layer+" max abs cc")
         figh.suptitle("%s Exp%d Corr Tensor %s T:[%d,%d] %s"%(Animal, Expi, ExpType, rsp_wdw[0], rsp_wdw[-1]+1, Titstr))
-        plt.show()
         figh.savefig(join(figdir, "%s_Exp%d_%s_T%d_%d-%d_corrTsr_vis.png" % (Animal, Expi, ExpType, Ti, rsp_wdw[0], rsp_wdw[-1]+1)))
         figh.savefig(join(figdir, "%s_Exp%d_%s_T%d_%d-%d_corrTsr_vis.pdf" % (Animal, Expi, ExpType, Ti, rsp_wdw[0], rsp_wdw[-1]+1)))
+        if show:
+            plt.show()
+        else:
+            plt.close(figh)
     return figh
 #%%
 import matplotlib
@@ -95,7 +99,7 @@ matplotlib.use('Agg')
 #%%
 plot_err_dict = {}
 Animal = "Both"
-for Expi in tqdm(range(1, 191)): # [66]: #:
+for Expi in tqdm(range(110, 191)): # [66]: #:
     S = BFEStats[Expi - 1]
     if S["evol"] is None:
         continue
