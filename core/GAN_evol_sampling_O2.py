@@ -65,6 +65,8 @@ def grad_evolution(scorer, optim_constructor, z_init, hess_param=False, evc=None
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
+parser.add_argument("--layer", type=str, default=".Linearfc")
+parser.add_argument("--dirname", type=str, default="resnet50_linf8_gradevol")
 parser.add_argument("--batch_size", type=int, default=25)
 parser.add_argument("--img_per_class", type=int, default=50)
 parser.add_argument("--class_id_start", type=int, default=0)
@@ -73,15 +75,16 @@ args = parser.parse_args()
 print(args)
 # example
 # python core/GAN_evol_sampling_O2.py --batch_size 25 --class_id_start 0 --class_id_end 200
-savedir = r'/n/scratch3/users/b/biw905/GAN_sample_fid/resnet50_linf8_gradevol'
+savedir = rf'/n/scratch3/users/b/biw905/GAN_sample_fid/{args.dirname}'
 Path(savedir).mkdir(exist_ok=True, parents=True)
 
+layername = args.layer
 class_id_start = args.class_id_start
 class_id_end = args.class_id_end
 img_per_class = args.img_per_class
 batch_size = args.batch_size  # 25
 for class_id in trange(class_id_start, class_id_end): # 1000
-    scorer.select_unit((None, ".Linearfc", class_id), allow_grad=True)
+    scorer.select_unit((None, layername, class_id), allow_grad=True)
     for i in range(0, img_per_class, batch_size):
         z_init = torch.randn(batch_size, 4096, device="cuda")
         optim_constructor = lambda params: torch.optim.Adam(params, lr=0.1)
