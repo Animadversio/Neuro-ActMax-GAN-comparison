@@ -59,7 +59,6 @@ class ImageDataset_filter(Dataset):
 #%%
 sumdir = "/n/scratch3/users/b/biw905/GAN_sample_fid/summary"
 os.makedirs(sumdir, exist_ok=True)
-#%%
 with np.load(join(sumdir, f"{'INet'}_inception_stats.npz")) as f:
     mu_INet = f["mu"]
     sigma_INet = f["sigma"]
@@ -127,9 +126,58 @@ np.savez(join(sumdir, f"{imageset_str}_FC_gradevol_IS_stats.npz"), IS=inception_
 print(imageset_str, "FC Evolved")
 print("FID", fid_w_INet)
 print("Inception Score", inception_score, IS_std)
+#%%
+imageset_str = "resnet50_linf8_gradevol_avgpool"
+imgroot = "/n/scratch3/users/b/biw905/GAN_sample_fid/resnet50_linf8_gradevol_avgpool"
+gradevolimgdataset = ImageDataset_filter(imgroot, glob_pattern="class*", transform=None)
+print(len(gradevolimgdataset), )
+imgloader = DataLoader(gradevolimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_FC_gradevol_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_FC_gradevol_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "FC Evolved")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
 
-
-
+#%%
+imageset_str = "resnet50_linf8_gradevol_layer4"
+imgroot = "/n/scratch3/users/b/biw905/GAN_sample_fid/resnet50_linf8_gradevol_layer4"
+gradevolimgdataset = ImageDataset_filter(imgroot, glob_pattern="class*", transform=None)
+print(len(gradevolimgdataset), )
+imgloader = DataLoader(gradevolimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_FC_gradevol_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_FC_gradevol_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "FC Evolved")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
+#%%
+imageset_str = "resnet50_linf8_gradevol_layer3"
+imgroot = "/n/scratch3/users/b/biw905/GAN_sample_fid/resnet50_linf8_gradevol_layer3"
+gradevolimgdataset = ImageDataset_filter(imgroot, glob_pattern="class*", transform=None)
+print(len(gradevolimgdataset), )
+imgloader = DataLoader(gradevolimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_FC_gradevol_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_FC_gradevol_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "FC Evolved")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
 
 
 
