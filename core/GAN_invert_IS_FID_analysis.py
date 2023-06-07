@@ -9,6 +9,119 @@ from pytorch_pretrained_biggan import BigGAN
 from core.utils.GAN_utils import upconvGAN, BigGAN_wrapper, loadBigGAN
 from core.utils import saveallforms, showimg, show_imgrid, save_imgrid
 from core.utils.GAN_invert_utils import GAN_invert, GAN_invert_with_scheduler
+#%%
+import os
+from os.path import join
+from typing import List, Union, Tuple, Optional
+from glob import glob
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import Compose, Resize, ToTensor, GaussianBlur
+from torchvision.transforms.functional import to_tensor
+class ImageDataset_filter(Dataset):
+    """An simple image dataset for calculating inception score and FID."""
+
+    def __init__(self, root, glob_pattern="*", exts=['png', 'jpg', 'JPEG'], transform=None,
+                 num_images=None):
+        """Construct an image dataset.
+
+        Args:
+            root: Path to the image directory. This directory will be
+                  recursively searched.
+            exts: List of extensions to search for.
+            transform: A torchvision transform to apply to the images. If
+                       None, the images will be converted to tensors.
+            num_images: The number of images to load. If None, all images
+                        will be loaded.
+        """
+        self.paths = []
+        self.transform = transform
+        for ext in exts:
+            self.paths.extend(
+                list(glob(
+                    os.path.join(root, glob_pattern+'.%s' % ext), recursive=True)))
+        self.paths = self.paths[:num_images]
+
+    def __len__(self):              # noqa
+        return len(self.paths)
+
+    def __getitem__(self, idx):     # noqa
+        image = Image.open(self.paths[idx])
+        image = image.convert('RGB')        # fix ImageNet grayscale images
+        if self.transform is not None:
+            image = self.transform(image)
+        else:
+            image = to_tensor(image)
+        return image
+
+#%%
+sumdir = "/n/scratch3/users/b/biw905/GAN_sample_fid/summary"
+os.makedirs(sumdir, exist_ok=True)
+#%%
+with np.load(join(sumdir, f"{'INet'}_inception_stats.npz")) as f:
+    mu_INet = f["mu"]
+    sigma_INet = f["sigma"]
+#%%
+imageset_str = "BigGAN_1000cls_std07"
+imgroot = "/n/scratch3/users/b/biw905/GAN_sample_fid/BigGAN_1000cls_std07_invert"
+FCimgdataset = ImageDataset_filter(imgroot, glob_pattern="FC_invert*", transform=None)
+BGimgdataset = ImageDataset_filter(imgroot, glob_pattern="BG*", transform=None)
+BGBlurimgdataset = ImageDataset_filter(imgroot, glob_pattern="BG*",
+                           transform=Compose([ToTensor(), GaussianBlur([15, 15], sigma=9)]))
+print(len(FCimgdataset), len(BGimgdataset))
+
+imgloader = DataLoader(FCimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_FC_invert_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_FC_invert_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "FC Inverted")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
+#%%
+imgloader = DataLoader(BGimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_BG_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_BG_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "Original")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
+#%%
+imgloader = DataLoader(BGBlurimgdataset, batch_size=100, shuffle=False, num_workers=4, pin_memory=True)
+with torch.no_grad():
+    acts, probs = get_inception_feature(imgloader, dims=[2048, 1008], use_torch=True, verbose=True)
+mu = torch.mean(acts, dim=0).cpu().numpy()
+sigma = torch_cov(acts, rowvar=False).cpu().numpy()
+np.savez_compressed(join(sumdir, f"{imageset_str}_BGBlur_inception_stats.npz"), mu=mu, sigma=sigma)
+inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
+fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
+np.savez(join(sumdir, f"{imageset_str}_BGBlur_IS_stats.npz"), IS=inception_score, IS_std=IS_std, FID=fid_w_INet)
+print(imageset_str, "Blur")
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
+
+
+
+
+
+
+
+
+
+
+
+#%%
 biggan = BigGAN.from_pretrained("biggan-deep-256")
 biggan.eval().requires_grad_(False).cuda()
 BG = BigGAN_wrapper(biggan)
