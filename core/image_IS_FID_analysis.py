@@ -11,7 +11,6 @@ import sys
 import os
 from os.path import join
 
-import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from pytorch_gan_metrics import get_inception_score, get_fid
@@ -20,6 +19,7 @@ from pytorch_gan_metrics.core  import torch_cov, get_inception_feature, calculat
 from torchvision.transforms import Compose, Resize, ToTensor, CenterCrop
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+from core.utils.GAN_utils import upconvGAN, BigGAN_wrapper, loadBigGAN
 from core.utils import saveallforms, showimg, show_imgrid, save_imgrid
 if sys.platform == "linux" and os.getlogin() == 'binxuwang':
     savedir = "/home/binxuwang/DL_Projects/GAN-fids"
@@ -50,7 +50,6 @@ with np.load(join(savedir, f"{'INet'}_inception_stats.npz")) as f:
     mu_INet = f["mu"]
     sigma_INet = f["sigma"]
 #%% FC6
-from core.utils.GAN_utils import upconvGAN, BigGAN_wrapper, loadBigGAN
 class GANDataloader(DataLoader):
     """A hacky way to create a dataloader from a GAN model.
         Create images on the fly and stream them to the reader.
@@ -107,8 +106,8 @@ inception_score, IS_std = calculate_inception_score(probs, 10, use_torch=True)
 np.savez(join(savedir, f"{imageset_str}_IS_stats.npz"), IS=inception_score, IS_std=IS_std)
 fid_w_INet = calculate_frechet_distance(mu, sigma, mu_INet, sigma_INet, eps=1e-6)
 print(imageset_str)
-print("FID",fid_w_INet)
-print("Inception Score",inception_score, IS_std)
+print("FID", fid_w_INet)
+print("Inception Score", inception_score, IS_std)
 # FC6 vs INet : 197.0278012218725
 # Inception Score :  3.3964710235595703 +- 0.03907453641295433
 #%% Load in BigGAN

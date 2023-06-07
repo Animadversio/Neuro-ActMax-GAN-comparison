@@ -1,3 +1,5 @@
+import sys
+sys.path.append(r"/home/biw905/Github/Neuro-ActMax-GAN-comparison")
 import torch
 from tqdm import trange
 from torchvision.utils import save_image
