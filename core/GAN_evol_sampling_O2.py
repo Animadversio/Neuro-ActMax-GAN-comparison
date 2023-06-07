@@ -7,7 +7,8 @@ from pathlib import Path
 from core.utils.plot_utils import show_imgrid
 from core.utils.CNN_scorers import load_featnet, TorchScorer
 from core.utils.GAN_utils import BigGAN_wrapper, upconvGAN, loadBigGAN
-
+from core.utils.layer_hook_utils import get_module_names
+from core.utils.grad_RF_estim import grad_RF_estimate, gradmap2RF_square
 # _, model = load_featnet("resnet50_linf8")
 scorer = TorchScorer("resnet50_linf8")
 G = upconvGAN("fc6")
@@ -63,6 +64,34 @@ def grad_evolution(scorer, optim_constructor, z_init, hess_param=False, evc=None
     return img, z_traj, score_traj
 
 
+def get_center_pos_and_rf(model, layer, input_size=(3, 256, 256), device="cuda"):
+    module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
+    layer_key = [k for k, v in module_names.items() if v == layer][0]
+    feat_outshape = module_spec[layer_key]['outshape']
+    if len(feat_outshape) == 3:
+        cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
+    elif len(feat_outshape) == 1:
+        cent_pos = ()
+    else:
+        raise ValueError(f"Unknown layer shape {feat_outshape} for layer {layer}")
+
+    if len(feat_outshape) == 3: # fixit
+        print("Computing RF by direct backprop: ")
+        gradAmpmap = grad_RF_estimate(model, layer, (slice(None), *cent_pos), input_size=input_size,
+                                      device=device, show=False, reps=30, batch=1)
+        Xlim, Ylim = gradmap2RF_square(gradAmpmap, absthresh=1E-8, relthresh=0.01, square=True)
+        corner = (Xlim[0], Ylim[0])
+        imgsize = (Xlim[1] - Xlim[0], Ylim[1] - Ylim[0])
+    elif len(feat_outshape) == 1:
+        imgsize = input_size[-2:]
+        corner = (0, 0)
+        Xlim = (corner[0], corner[0] + imgsize[0])
+        Ylim = (corner[1], corner[1] + imgsize[1])
+    else:
+        raise ValueError(f"Unknown layer shape {feat_outshape} for layer {layer}")
+
+    return cent_pos, corner, imgsize, Xlim, Ylim
+
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--layer", type=str, default=".Linearfc")
@@ -83,8 +112,11 @@ class_id_start = args.class_id_start
 class_id_end = args.class_id_end
 img_per_class = args.img_per_class
 batch_size = args.batch_size  # 25
-for class_id in trange(class_id_start, class_id_end): # 1000
-    scorer.select_unit((None, layername, class_id), allow_grad=True)
+#%%
+cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(scorer.model, layername, input_size=(3, 256, 256), device="cuda")
+#%%
+for class_id in trange(class_id_start, class_id_end):  # 1000
+    scorer.select_unit((None, layername, class_id, *cent_pos), allow_grad=True)
     for i in range(0, img_per_class, batch_size):
         z_init = torch.randn(batch_size, 4096, device="cuda")
         optim_constructor = lambda params: torch.optim.Adam(params, lr=0.1)

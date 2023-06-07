@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH -n 1
 #SBATCH -p gpu_quad
-#SBATCH -t 5:00:00
+#SBATCH -t 6:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --array=6-13
+#SBATCH --array=14-25
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
-#SBATCH -o GANEvol_fid_%j.out
+#SBATCH -o GANEvol_fid_%j.%a.out
 
 echo "$SLURM_ARRAY_TASK_ID"
 
@@ -24,6 +24,18 @@ param_list=\
 --layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1280 --class_id_end 1536
 --layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1536 --class_id_end 1792
 --layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1792 --class_id_end 2048
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start   0 --class_id_end 256
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 256 --class_id_end 512
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 512 --class_id_end 768
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 768 --class_id_end 1024
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 1024 --class_id_end 1280
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 1280 --class_id_end 1536
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 1536 --class_id_end 1792
+--layer .layer4 --dirname resnet50_linf8_gradevol_layer4 --img_per_class 25 --class_id_start 1792 --class_id_end 2048
+--layer .layer3 --dirname resnet50_linf8_gradevol_layer3 --img_per_class 50 --class_id_start   0 --class_id_end 256
+--layer .layer3 --dirname resnet50_linf8_gradevol_layer3 --img_per_class 50 --class_id_start 256 --class_id_end 512
+--layer .layer3 --dirname resnet50_linf8_gradevol_layer3 --img_per_class 50 --class_id_start 512 --class_id_end 768
+--layer .layer3 --dirname resnet50_linf8_gradevol_layer3 --img_per_class 50 --class_id_start 768 --class_id_end 1024
 '
 
 export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
