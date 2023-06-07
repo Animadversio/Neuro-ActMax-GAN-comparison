@@ -16,14 +16,14 @@ param_list=\
 --batch_size 25 --class_id_start 400 --class_id_end 600
 --batch_size 25 --class_id_start 600 --class_id_end 800
 --batch_size 25 --class_id_start 800 --class_id_end 1000
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start   0 --class_id_end 256
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 256 --class_id_end 512
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 512 --class_id_end 768
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 768 --class_id_end 1024
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1024 --class_id_end 1280
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1280 --class_id_end 1536
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1536 --class_id_end 1792
---layer avgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1792 --class_id_end 2048
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start   0 --class_id_end 256
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 256 --class_id_end 512
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 512 --class_id_end 768
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 768 --class_id_end 1024
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1024 --class_id_end 1280
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1280 --class_id_end 1536
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1536 --class_id_end 1792
+--layer .AdaptiveAvgPool2davgpool --dirname resnet50_linf8_gradevol_avgpool --img_per_class 25 --class_id_start 1792 --class_id_end 2048
 '
 
 export unit_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
