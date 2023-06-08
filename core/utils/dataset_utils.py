@@ -65,3 +65,51 @@ def Invariance_dataset():
     img_src = r"N:\Stimuli\Invariance\Project_Manifold\ready"
     imglist = sorted(glob(join(img_src, "*.jpg")))
     return ImagePathDataset(imglist, None)
+
+
+import os
+from os.path import join
+from typing import List, Union, Tuple, Optional
+from glob import glob
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import Compose, Resize, ToTensor, GaussianBlur
+from torchvision.transforms.functional import to_tensor
+class ImageDataset_filter(Dataset):
+    """An simple image dataset for calculating inception score and FID."""
+
+    def __init__(self, root, glob_pattern="*", exts=['png', 'jpg', 'JPEG'], transform=None,
+                 num_images=None):
+        """Construct an image dataset.
+
+        Args:
+            root: Path to the image directory. This directory will be
+                  recursively searched.
+            exts: List of extensions to search for.
+            transform: A torchvision transform to apply to the images. If
+                       None, the images will be converted to tensors.
+            num_images: The number of images to load. If None, all images
+                        will be loaded.
+        """
+        self.paths = []
+        self.transform = transform
+        for ext in exts:
+            self.paths.extend(
+                list(glob(
+                    os.path.join(root, glob_pattern+'.%s' % ext), recursive=True)))
+        self.paths = self.paths[:num_images]
+
+    def __len__(self):              # noqa
+        return len(self.paths)
+
+    def __getitem__(self, idx):     # noqa
+        image = Image.open(self.paths[idx])
+        image = image.convert('RGB')        # fix ImageNet grayscale images
+        if self.transform is not None:
+            image = self.transform(image)
+        else:
+            image = to_tensor(image)
+        return image
+
