@@ -44,14 +44,16 @@ def ttest_1samp_print(seq, scalar):
 
 def ttest_rel_print(seq1, seq2):
     tval, pval = ttest_rel(seq1, seq2)
+    result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)})tval: {tval:.2f}, pval: {pval:.1e}"
     print(f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)})tval: {tval:.2f}, pval: {pval:.1e}")
-    return tval, pval
+    return tval, pval, result_str
 
 
 def ttest_ind_print(seq1, seq2):
     tval, pval = ttest_ind(seq1, seq2, nan_policy="omit")
+    result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) tval: {tval:.2f}, pval: {pval:.1e}"
     print(f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) tval: {tval:.2f}, pval: {pval:.1e}")
-    return tval, pval
+    return tval, pval, result_str
 
 
 def ttest_rel_print_df(df, msk, col1, col2):
