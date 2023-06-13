@@ -4,8 +4,12 @@ import pickle as pkl
 import pandas as pd
 from tqdm import trange, tqdm
 import matplotlib.pyplot as plt
+# from ultralytics import YOLO
+# model_new = YOLO("yolov8x.pt")
+#%%
 # Model
 yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
+
 # plt.switch_backend('module://backend_interagg')
 saveroot = Path(r"/n/scratch3/users/b/biw905/GAN_sample_fid")
 sumdir = (saveroot / "yolo_summary")
@@ -31,6 +35,11 @@ def yolo_process(imgpathlist, batch_size=100, size=256, savename=None, sumdir=su
         pkl.dump(results_dfs, open(sumdir / f"{savename}_dfs.pkl", "wb"))
         print(f"Saved to {sumdir / f'{savename}_dfs.pkl'}")
         print(f"Saved to {sumdir / f'{savename}_yolo_stats.csv'}")
+    print("Fraction of images with objects", (yolo_stats_df.n_objs > 0).mean())
+    print("confidence", yolo_stats_df.confidence.mean(), "confidence with 0 filled",
+          yolo_stats_df.confidence.fillna(0).mean())
+    print("most common class", yolo_stats_df["class"].value_counts().index[0])
+    print("n_objs", yolo_stats_df.n_objs.mean(), )
     return results_dfs, yolo_stats_df
 
 
@@ -60,3 +69,29 @@ results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
 # imgpathlist = sorted(list(Path(imgdir).glob("class*")))
 # results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
 #                                           savename=imgdir_name)
+
+#%%
+for imgdir_name in [
+        "DeePSim_4std",
+        "BigGAN_std_008",
+        "BigGAN_trunc07",
+        ]:
+    imgdir = saveroot / imgdir_name
+    imgpathlist = sorted(list(Path(imgdir).glob("sample*.png")))
+    results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
+                                              savename=imgdir_name)
+    print("Fraction of images with objects", (yolo_stats_df.n_objs > 0).mean())
+    print("confidence", yolo_stats_df.confidence.mean(), "confidence with 0 filled", yolo_stats_df.confidence.fillna(0).mean())
+    print("most common class", yolo_stats_df["class"].value_counts().index[0])
+    print("n_objs", yolo_stats_df.n_objs.mean(), )
+
+#%%
+
+imgdir = r"/home/biw905/Datasets/imagenet-valid/valid"
+imgpathlist = sorted(list(Path(imgdir).glob("*.JPEG")))
+results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
+                                            savename="imagenet_valid")
+print("Fraction of images with objects", (yolo_stats_df.n_objs > 0).mean())
+print("confidence", yolo_stats_df.confidence.mean(), "confidence with 0 filled", yolo_stats_df.confidence.fillna(0).mean())
+print("most common class", yolo_stats_df["class"].value_counts().index[0])
+print("n_objs", yolo_stats_df.n_objs.mean(), )
