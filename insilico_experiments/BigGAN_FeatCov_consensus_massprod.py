@@ -17,7 +17,7 @@ matplotlib.use('Agg')
 # matplotlib.use('module://backend_interagg')
 #%%
 covdir = unitdirs[-1]
-for covdir in tqdm(unitdirs[84:]):
+for covdir in tqdm(unitdirs[80:90]):
     optimnames = ["HessCMA500_fc6", "CholCMA_fc6", "CholCMA", "HessCMA"]
     unitname = covdir.name
     covfns_col = {optimname: sorted(list(Path(covdir).glob(f"covtsrs_{optimname}_[0-9][0-9][0-9][0-9][0-9].pt")))

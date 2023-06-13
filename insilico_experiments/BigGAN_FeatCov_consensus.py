@@ -4,21 +4,24 @@ import torch
 import matplotlib.pyplot as plt
 unitdir = r"F:\insilico_exps\GAN_Evol_Dissection\resnet50_.layer3.Bottleneck5_5_7_7"
 unitdir = r"F:\insilico_exps\GAN_Evol_Dissection\tf_efficientnet_b6_.blocks.5_5_4_4"
+unitdir = r"F:\insilico_exps\GAN_Evol_CovTsr\resnet50_.layer4.Bottleneck0_3_4_4"
 covdir = join(unitdir, "covtsrs")
-
+covdir  = r"F:\insilico_exps\GAN_Evol_CovTsr\resnet50_.layer4.Bottleneck0_3_4_4"
+# \covtsrs_CholCMA_fc6_99328_vis.png
 #%%
 optimnames = ["HessCMA500_fc6", "CholCMA_fc6", "CholCMA", "HessCMA"]
-optimname1 = "HessCMA"
+optimname1 = "CholCMA"
 covfns = list(Path(covdir).glob(f"covtsrs_{optimname1}*.pt"))
 covdict1 = torch.load(covfns[4])
 covtsrs1 = covdict1["covtsrs"] if "covtsrs" in covdict1 else covdict1["covtsr"]
-
-optimname2 = "CholCMA"  # "CholCMA"
+#%%
+optimname2 = "CholCMA_fc6"  # "CholCMA"
 covfns = list(Path(covdir).glob(f"covtsrs_{optimname2}*.pt"))
-covdict2 = torch.load(covfns[1])
+covdict2 = torch.load(covfns[-3])
 covtsrs2 = covdict2["covtsrs"] if "covtsrs" in covdict2 else covdict2["covtsr"]
 #%%
 layernames = list(covtsrs1.keys())
+matplotlib.use('module://backend_interagg')
 #%%
 figh, axs = plt.subplots(4, 8, figsize=[21, 12])
 for i, layer in enumerate(layernames):
