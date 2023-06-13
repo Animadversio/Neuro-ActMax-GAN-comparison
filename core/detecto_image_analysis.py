@@ -1,7 +1,7 @@
-from detecto.core import Model
-from detecto import utils, visualize
-# https://medium.com/pytorch/detecto-build-and-train-object-detection-models-with-pytorch-5f31b68a8109
-model = Model()
+# from detecto.core import Model
+# from detecto import utils, visualize
+# # https://medium.com/pytorch/detecto-build-and-train-object-detection-models-with-pytorch-5f31b68a8109
+# model = Model()
 def print_detecto_results(labels, scores, boxes=None):
     for i, label in enumerate(labels):
         print(f"{label}: {scores[i]}","" if boxes is None else boxes[i] )
@@ -76,7 +76,7 @@ meta_detect_df.groupby("visual_area")[["BG_maxblk", "FC_maxblk"]].mean()
 meta_detect_df.groupby("visual_area")[["BG_reevol_pix", "FC_reevol_pix"]].mean()
 meta_detect_df.groupby("visual_area")[["BG_reevol_G", "FC_reevol_G"]].mean()
 
-#%%
+#%% yolo model
 import torch
 import matplotlib.pyplot as plt
 # Model
@@ -145,11 +145,19 @@ plt.show()
 #%%
 from pathlib import Path
 from core.utils.dataset_utils import ImageDataset_filter, DataLoader
+# savedir = Path("/n/scratch3/users/b/biw905/GAN_sample_fid/DeePSim_4std")
 savedir = Path("/n/scratch3/users/b/biw905/GAN_sample_fid/BigGAN_std_008")
 dataset = ImageDataset_filter(savedir)
 dataloader = DataLoader(dataset, batch_size=50, shuffle=False, num_workers=4)
 #%%
 # use yolo model with data loader
+from tqdm import tqdm
+for batch in tqdm(dataloader):
+    results = yolomodel(list(batch), size=256)
+    print(results)
+    break
+
+
 
 
 #%%
