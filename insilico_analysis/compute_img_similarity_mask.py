@@ -92,7 +92,7 @@ def compare_imgs_cnn_feat_simmask(img1, img2, fetcher, featmsk1=None, featmsk2=N
 #%%
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 cnn, _ = load_featnet("resnet50_linf8")
-
+# get_graph_node_names(cnn)
 cnn_feat = create_feature_extractor(cnn, ["layer2", "layer3", "layer4"])
 #%%
 example_mtg = r"F:\insilico_exps\GAN_Evol_cmp\protoimgs_merge\resnet50_linf8_.layer4.Bottleneck2_43_4_4_RFrsz_optim_pool.jpg"

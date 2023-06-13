@@ -65,4 +65,26 @@ for i in trange(0, 50000, batch_size):
     _save_imgtsr(img, savedir, prefix="sample", offset=i)
 
 #%%
+def pink_noise(batch_size, generator=None, device="cuda"):
+    amp = torch.fft.fft2(torch.rand(batch_size, 3, 256, 256, generator=generator, device=device))
+    freq1d = torch.fft.fftfreq(256).to(device)
+    freq2d = torch.sqrt(freq1d[:, None] ** 2 + freq1d[None, :] ** 2)
+    freq2d[0, 0] = 1
+    amp = amp / freq2d
+    amp[0, 0] = 0
+    pinknoise = torch.fft.ifft2(amp).real  # ()
+    pinknoise = (pinknoise - pinknoise.mean(dim=(-3, -2, -1), keepdim=True)) / \
+                pinknoise.std(dim=(-3, -2, -1), keepdim=True) * 0.2 + 0.5
+    pinknoise = pinknoise.clamp(0, 1)
+    return pinknoise
+
+
+savedir = Path("/n/scratch3/users/b/biw905/GAN_sample_fid/pink_noise")
+savedir.mkdir(exist_ok=True)
+batch_size = 100
+for i in trange(0, 50000, batch_size):
+    # use torch manual seeds with cuda generator
+    with torch.no_grad():
+        imgs = pink_noise(batch_size, generator=torch.cuda.manual_seed(i)).cpu()
+    _save_imgtsr(imgs, savedir, prefix="sample", offset=i)
 
