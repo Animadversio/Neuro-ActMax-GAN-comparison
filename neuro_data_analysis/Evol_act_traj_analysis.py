@@ -75,7 +75,7 @@ def extract_all_evol_trajectory(BFEStats, ):
         max_id1 = max_id1 if max_id1 < len(resp_arr1) - 2 else len(resp_arr1) - 3
         t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1+2]), np.concatenate(resp_arr1[:2]))
 
-        t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[:2]))
+        t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[-2:]))
         t_FCBG_max_01, p_FCBG_max_01 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr1[max_id1:max_id1+2]))
 
         # save the meta data
@@ -173,6 +173,9 @@ resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+#%%
+tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+meta_df.to_csv(os.path.join(tabdir, "meta_stats.csv"))
 #%%
 # directory to save all the figures related to activation trajectory
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_synopsis_py"
