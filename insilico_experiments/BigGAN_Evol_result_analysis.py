@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from core.utils.plot_utils import saveallforms
 #%%
+from insilico_analysis.insilico_analysis_lib import sweep_dir
 def sweep_dir(rootdir, unit_pattern, save_pattern):
     rootpath = Path(rootdir)
     unitdirs = list(rootpath.glob(unit_pattern))
