@@ -129,6 +129,35 @@ for area in ["V4", "IT"]:
             # fig.savefig(tabdir / "yolo_confidence_score_dist.png")
             plt.show()
 #%%
+for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
+    for success_str, success_mask in zip(["Both", "Any", "None"], [bothsucmsk, sucsmsk, ~sucsmsk]):
+        for value_str in ["confidence_fill0", "confidence"]:
+            titlestr = f"V4 vs IT {GANname} {success_str} Success"
+            commonmsk1 = (all_df.visual_area == "V4") & \
+                        (all_df.included) & (all_df.thread == thread) & \
+                        (all_df.Expi.isin(meta_df[validmsk & success_mask].index))
+            commonmsk2 = (all_df.visual_area == "IT") & \
+                        (all_df.included) & (all_df.thread == thread) & \
+                        (all_df.Expi.isin(meta_df[validmsk & success_mask].index))
+            fig, ax = plt.subplots(figsize=[5, 4])
+            ax.hist(all_df[value_str][(all_df.block > all_df.maxblock - 4) & commonmsk1], bins=100, alpha=0.5, density=True)
+            ax.hist(all_df[value_str][(all_df.block > all_df.maxblock - 4) & commonmsk2], bins=100, alpha=0.5, density=True)
+            if GANname == "DeePSim":
+                ax.hist(GANimgtab[value_str][GANimgtab.imgdir_name == "DeePSim_4std"], bins=100, alpha=0.5, density=True)
+            elif GANname == "BigGAN":
+                ax.hist(GANimgtab[value_str][GANimgtab.imgdir_name == 'BigGAN_std_008'], bins=100, alpha=0.5, density=True)
+            tval, pval, result_str = ttest_ind_print_df(all_df, (all_df.block > all_df.maxblock - 4) & commonmsk1,
+                               (all_df.block > all_df.maxblock - 4) & commonmsk2, value_str, )
+            ax.set_xlabel("Confidence score")
+            ax.set_ylabel("Density")
+            plt.legend(["V4", "IT", f"{GANname} samples"])
+            # "Confidence score distribution of YOLOv5 detections"
+            ax.set_title(f"YOLOv5 confidence score through Evolution\n[{titlestr}]\n"+result_str.replace('tval','\ntval')) # t={tval:.3f}, p={pval:.1e}
+            plt.tight_layout()
+            saveallforms(figdir, f"yolo_{value_str}_score_dist_V4_vs_IT_{GANname}_{success_str}_suc_with_GANref", fig, fmts=["png", "pdf"])
+            # fig.savefig(tabdir / "yolo_confidence_score_dist.png")
+            plt.show()
+#%%
 # redirect output to a text file.
 import sys
 
