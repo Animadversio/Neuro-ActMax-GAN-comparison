@@ -17,6 +17,7 @@ sumdir = (saveroot / "yolo_summary")
 sumdir.mkdir(exist_ok=True)
 df_all = {}
 for imgdir_name in [
+    "pink_noise",
     "imagenet_valid",
     "DeePSim_4std",
     "BigGAN_trunc07",
@@ -30,12 +31,24 @@ for imgdir_name in [
 ]:
     df = pd.read_csv(sumdir / f"{imgdir_name}_yolo_stats.csv", index_col=0)
     df["imgdir_name"] = imgdir_name
-    df_all[imgdir_name] = (df)
+    df_all[imgdir_name] = df
 df_all = pd.concat(df_all.values())
 #%%
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
-df_all.to_csv(sumdir / "all_yolo_stats.csv")
-df_all.to_csv(tabdir / "all_yolo_stats.csv")
+df_all.to_csv(sumdir / "GAN_samples_all_yolo_stats.csv")
+df_all.to_csv(tabdir / "GAN_samples_all_yolo_stats.csv")
+#%%
+tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
+df_all = pd.read_csv(tabdir / "GAN_samples_all_yolo_stats.csv", index_col=0)
+#%%
+df_all["confidence_fill0"] = df_all["confidence"].fillna(0)
+#%%
+# count rate of non zero confidence
+df_all.groupby("imgdir_name").agg({"confidence_fill0": ["mean", "sem"], "confidence": [lambda x: 1-np.mean(pd.isna(x))],})
+#%%
+import numpy as np
+# count rate of non zero confidence
+df_all.groupby("imgdir_name").agg({})
 #%%
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\GAN_image_statistics\yolo_src"
 # use frequency instead of count?

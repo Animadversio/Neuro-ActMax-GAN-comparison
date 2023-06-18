@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 #%%
 # Model
 yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
-
 # plt.switch_backend('module://backend_interagg')
 saveroot = Path(r"/n/scratch3/users/b/biw905/GAN_sample_fid")
 sumdir = (saveroot / "yolo_summary")
@@ -42,7 +41,12 @@ def yolo_process(imgpathlist, batch_size=100, size=256, savename=None, sumdir=su
     print("n_objs", yolo_stats_df.n_objs.mean(), )
     return results_dfs, yolo_stats_df
 
+#%%
 
+imgdir = saveroot / "pink_noise"
+imgpathlist = sorted(list(Path(imgdir).glob("sample*.png")))
+results_dfs, yolo_stats_df = yolo_process(imgpathlist,
+                  batch_size=100, size=256, savename="pink_noise")
 #%%
 imgdir_name = "resnet50_linf8_gradevol_avgpool"
 for imgdir_name in [
@@ -64,11 +68,6 @@ results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
 imgpathlist = sorted(list(Path(imgdir).glob("BG*.png")))
 results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
                                           savename="BigGAN_1000cls_std07")
-# imgdir_name = "resnet50_linf8_gradevol"
-# imgdir = saveroot / imgdir_name
-# imgpathlist = sorted(list(Path(imgdir).glob("class*")))
-# results_dfs, yolo_stats_df = yolo_process(imgpathlist, batch_size=100, size=256,
-#                                           savename=imgdir_name)
 
 #%%
 for imgdir_name in [
