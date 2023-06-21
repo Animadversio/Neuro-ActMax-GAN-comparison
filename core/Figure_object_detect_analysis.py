@@ -1,10 +1,11 @@
 import torch
 from pathlib import Path
 import pickle as pkl
+import numpy as np
 import pandas as pd
-from tqdm import trange, tqdm
 import seaborn as sns
 import matplotlib.pyplot as plt
+from tqdm import trange, tqdm
 from core.utils.plot_utils import saveallforms
 from core.utils.stats_utils import paired_strip_plot
 # Model
@@ -37,18 +38,78 @@ df_all = pd.concat(df_all.values())
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 df_all.to_csv(sumdir / "GAN_samples_all_yolo_stats.csv")
 df_all.to_csv(tabdir / "GAN_samples_all_yolo_stats.csv")
+
+
 #%%
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 df_all = pd.read_csv(tabdir / "GAN_samples_all_yolo_stats.csv", index_col=0)
 #%%
 df_all["confidence_fill0"] = df_all["confidence"].fillna(0)
 #%%
+# show more columns
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 # count rate of non zero confidence
-df_all.groupby("imgdir_name").agg({"confidence_fill0": ["mean", "sem"], "confidence": [lambda x: 1-np.mean(pd.isna(x))],})
+sumstatdf = pd.concat([df_all.groupby("imgdir_name").agg({"confidence_fill0": ["mean", "sem"], "confidence":["mean", "sem"]}),
+           df_all.groupby("imgdir_name").agg(detect_rate=("n_objs", lambda x: 1-np.mean(x == 0)))],
+        axis=1)
+sumstatdf.to_csv(tabdir / "GAN_samples_all_yolo_stats_summary.csv")
 #%%
-import numpy as np
-# count rate of non zero confidence
-df_all.groupby("imgdir_name").agg({})
+outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Figure_Evol_objectness\GAN_ref_src"
+#%%
+plt.figure(figsize=[5, 6])
+sns.barplot(data=sumstatdf.reset_index(), x="imgdir_name", y="detect_rate",
+            order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std", "pink_noise"],)
+plt.gca().set_xticklabels(["ImageNet", "BigGAN", "DeePSim", "Pink noise"])
+plt.xlabel("Image Space Name", fontsize=14)
+plt.ylabel("Object Detection Rate", fontsize=14)
+plt.suptitle("Object Detection Rate of YOLOv5 on ImageNet and GAN Samples")
+plt.xticks(rotation=0)
+saveallforms(outdir, "yolo_detect_rate_select", plt.gcf(), )
+plt.show()
+
+#%%
+plt.figure(figsize=[4.5, 6])
+sns.violinplot(data=df_all.reset_index(), x="imgdir_name", y="confidence",
+            order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std", ], cut=0, )  # "pink_noise"
+plt.gca().set_xticklabels(["ImageNet", "BigGAN", "DeePSim", ])  # "Pink noise"
+plt.xlabel("Image Space Name", fontsize=14)
+plt.ylabel("Max Confidence", fontsize=14)
+plt.suptitle("Objectness of ImageNet and GAN Samples")
+plt.xticks(rotation=0)
+saveallforms(outdir, "yolo_objectness_select", plt.gcf(), )
+plt.show()
+#%%
+plt.figure(figsize=[4.5, 6])
+sns.violinplot(data=df_all.reset_index(), x="imgdir_name", y="confidence",
+               order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
+               cut=0, )
+sns.pointplot(data=df_all.reset_index(), x="imgdir_name", y="confidence_fill0",
+              order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
+              n_boot=0, errorbar="se", linestyles="none", color="red",
+              capsize=.4, errwidth=1)
+plt.gca().set_xticklabels(["ImageNet", "BigGAN (RND)", "DeePSim"])
+plt.xlabel("Image Space Name", fontsize=14)
+plt.ylabel("Max Confidence", fontsize=14)
+plt.suptitle("Objectness of ImageNet and GAN Samples")
+plt.xticks(rotation=0)
+saveallforms(outdir, "yolo_objectness_select_pnt", plt.gcf(), )
+plt.show()
+#%%
+plt.figure(figsize=[5, 4.5])
+sns.kdeplot(data=df_all.reset_index(), x="confidence", hue="imgdir_name", cut=0,  fill=True,
+            hue_order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
+            )
+plt.suptitle("Objectness of ImageNet and GAN Samples")
+plt.gca().get_legend().set_title("Image Space Name")
+sns.move_legend(plt.gca(), "upper left",)
+# change the texts
+for text_obj, legend_str in zip(plt.gca().get_legend().texts,
+                                ["ImageNet", "BigGAN (RND)", "DeePSim"]):
+    text_obj.set_text(legend_str)
+saveallforms(outdir, "yolo_objectness_select_hist", plt.gcf(), )
+plt.show()
+
 #%%
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\GAN_image_statistics\yolo_src"
 # use frequency instead of count?
@@ -56,11 +117,13 @@ sns.displot(data=df_all.reset_index(), x="confidence", hue="imgdir_name",
             kind="kde", fill=True, )
 saveallforms(figdir, "yolo_confidence_kdedist", plt.gcf(), )
 plt.show()
+
 #%%
 sns.displot(data=df_all.reset_index(), x="confidence", hue="imgdir_name",
             kind="hist", stat="probability", fill=True, kde=True)
 saveallforms(figdir, "yolo_confidence_histdist", plt.gcf(), )
 plt.show()
+
 #%%
 """hist plot how is it normalized?"""
 sns.displot(data=df_all.reset_index(), x="confidence", hue="imgdir_name",
