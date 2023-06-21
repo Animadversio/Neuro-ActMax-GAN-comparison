@@ -47,10 +47,10 @@ def yolo_process(imgpathlist, batch_size=100, size=256, savename=None, sumdir=su
     return results_dfs, yolo_stats_df
 
 
+#%%
 # Model
 yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
 # plt.switch_backend('module://backend_interagg')
-#%%
 for Expi in trange(1, 190+1):
     if BFEStats[Expi-1]["evol"] is None:
         continue
@@ -89,10 +89,31 @@ all_df["block"] = all_df.img_name.apply(lambda x: int(re.findall(r"block(\d+)", 
 all_df["imgid"] = all_df.img_name.apply(lambda x: int(re.findall(r"gen\d+_(\d+)", x)[0]))
 all_df["confidence_fill0"] = all_df.confidence.fillna(0)
 #%%
-#%%
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 all_df.to_csv(sumdir / f"Evol_invivo_all_yolo_stats.csv")
 all_df.to_csv(tabdir / f"Evol_invivo_all_yolo_stats.csv")
+
+#%%
+from core.yolo_lib import yolo_process_objconf, load_batch_imgpaths
+sumdir = (saveroot / "yolo_v5_objconf_summary")
+sumdir.mkdir(exist_ok=True)
+yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
+for Expi in trange(1, 190+1):
+    if BFEStats[Expi-1]["evol"] is None:
+        continue
+    expdir = saveroot / f"Both_Exp{Expi}"
+    expdir.mkdir(exist_ok=True)
+    imgfps_col0, resp_vec0, bsl_vec0, gen_vec0 = \
+        load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, output_fmt="vec")
+    imgfps_col1, resp_vec1, bsl_vec1, gen_vec1 = \
+        load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, output_fmt="vec")
+    results_dfs0, yolo_stats_df0 = yolo_process_objconf(yolomodel, imgfps_col0, batch_size=100,
+                        size=256, savename=f"Exp{Expi:03d}_thread0", sumdir=sumdir)
+    results_dfs1, yolo_stats_df1 = yolo_process_objconf(yolomodel, imgfps_col1, batch_size=100,
+                        size=256, savename=f"Exp{Expi:03d}_thread1", sumdir=sumdir)
+
+#%%
+load_batch_imgpaths(imgfps_col0[:10], )
 #%%
 meta_df = pd.read_csv(tabdir / "meta_activation_stats.csv", index_col=0)
 #%%
