@@ -1,6 +1,8 @@
 import torch
 import torchvision
 import numpy as np
+import math
+import cv2
 # # from ultralytics.yolo.utils.general import xywh2xyxy
 # try:
 #     from ultralytics.yolo.utils.metrics import box_iou
@@ -38,6 +40,72 @@ def box_iou(box1, box2, eps=1e-7):
 
     # IoU = inter / (area1 + area2 - inter)
     return inter / ((a2 - a1).prod(2) + (b2 - b1).prod(2) - inter + eps)
+
+
+def exif_transpose(image):
+    """
+    Transpose a PIL image accordingly if it has an EXIF Orientation tag.
+    Inplace version of https://github.com/python-pillow/Pillow/blob/master/src/PIL/ImageOps.py exif_transpose()
+
+    :param image: The image to transpose.
+    :return: An image.
+    """
+    exif = image.getexif()
+    orientation = exif.get(0x0112, 1)  # default 1
+    if orientation > 1:
+        method = {
+            2: Image.FLIP_LEFT_RIGHT,
+            3: Image.ROTATE_180,
+            4: Image.FLIP_TOP_BOTTOM,
+            5: Image.TRANSPOSE,
+            6: Image.ROTATE_270,
+            7: Image.TRANSVERSE,
+            8: Image.ROTATE_90}.get(orientation)
+        if method is not None:
+            image = image.transpose(method)
+            del exif[0x0112]
+            image.info['exif'] = exif.tobytes()
+    return image
+
+
+def make_divisible(x, divisor):
+    # Returns nearest x divisible by divisor
+    if isinstance(divisor, torch.Tensor):
+        divisor = int(divisor.max())  # to int
+    return math.ceil(x / divisor) * divisor
+
+
+def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+    # Resize and pad image while meeting stride-multiple constraints
+    shape = im.shape[:2]  # current shape [height, width]
+    if isinstance(new_shape, int):
+        new_shape = (new_shape, new_shape)
+
+    # Scale ratio (new / old)
+    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    if not scaleup:  # only scale down, do not scale up (for better val mAP)
+        r = min(r, 1.0)
+
+    # Compute padding
+    ratio = r, r  # width, height ratios
+    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
+    if auto:  # minimum rectangle
+        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
+    elif scaleFill:  # stretch
+        dw, dh = 0.0, 0.0
+        new_unpad = (new_shape[1], new_shape[0])
+        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
+
+    dw /= 2  # divide padding into 2 sides
+    dh /= 2
+
+    if shape[::-1] != new_unpad:  # resize
+        im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
+    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    return im, ratio, (dw, dh)
 
 
 def non_max_suppression_obj(
@@ -158,6 +226,8 @@ from pathlib import Path
 import pickle as pkl
 import pandas as pd
 from tqdm import tqdm, trange
+from torchvision import transforms
+from PIL import Image
 def yolo_process(yolomodel, imgpathlist, batch_size=100, size=256, savename=None, sumdir=Path("")):
     """Process images with yolo model and return results in a list of dataframes"""
     results_dfs = []
@@ -209,9 +279,7 @@ def nms_output2df(nms_results, class_names=None):
 def load_batch_imgpaths(imgpaths, size=256, ):
     # https://github.com/ultralytics/yolov5/blob/2334aa733872bc4bb3e1a1ba90e5fd319399596f/models/common.py#LL679C9-L679C9
     # transforms.ToTensor()  # normalizes to 0-1
-    from torchvision import transforms
     import matplotlib.pyplot as plt
-    from PIL import Image
     import torch.nn.functional as F
     transform = transforms.Compose([
         transforms.Resize(size),
@@ -222,44 +290,48 @@ def load_batch_imgpaths(imgpaths, size=256, ):
         im_pil = Image.open(imgpath).convert('RGB')
         imtsr = transform(im_pil)
         imglist.append(imtsr)
-        # im_np = plt.imread(imgpath)
-        # imtsr = torch.from_numpy(im_np.transpose(2, 0, 1)).unsqueeze(0)
-        # # imtsr = F.interpolate(imtsr, size=size, mode='bilinear',)
-        # imglist.append(imtsr)
-        # n, ims = (len(ims), list(ims)) if isinstance(ims, (list, tuple)) else (1, [ims])  # number, list of images
-        # shape0, shape1, files = [], [], []  # image and inference shapes, filenames
-        # for i, im in enumerate(ims):
-        #     f = f'image{i}'  # filename
-        #     if isinstance(im, (str, Path)):  # filename or uri
-        #         im, f = Image.open(requests.get(im, stream=True).raw if str(im).startswith('http') else im), im
-        #         im = np.asarray(exif_transpose(im))
-        #     elif isinstance(im, Image.Image):  # PIL Image
-        #         im, f = np.asarray(exif_transpose(im)), getattr(im, 'filename', f) or f
-        #     files.append(Path(f).with_suffix('.jpg').name)
-        #     if im.shape[0] < 5:  # image in CHW
-        #         im = im.transpose((1, 2, 0))  # reverse dataloader .transpose(2, 0, 1)
-        #     im = im[..., :3] if im.ndim == 3 else cv2.cvtColor(im, cv2.COLOR_GRAY2BGR)  # enforce 3ch input
-        #     s = im.shape[:2]  # HWC
-        #     shape0.append(s)  # image shape
-        #     g = max(size) / max(s)  # gain
-        #     shape1.append([int(y * g) for y in s])
-        #     ims[i] = im if im.data.contiguous else np.ascontiguousarray(im)  # update
-        # shape1 = [make_divisible(x, self.stride) for x in np.array(shape1).max(0)]  # inf shape
-        # x = [letterbox(im, shape1, auto=False)[0] for im in ims]  # pad
-        # x = np.ascontiguousarray(np.array(x).transpose((0, 3, 1, 2)))  # stack and BHWC to BCHW
-        # x = torch.from_numpy(x).to(p.device).type_as(p) / 255  # uint8 to fp16/32
-
-        # imglist.append(x)
     imgtsrs = torch.stack(imglist, 0)
     return imgtsrs
 
 
-def yolo_process_objconf(yolomodel, imgpathlist, batch_size=100, size=256, savename=None, sumdir=Path("")):
+def load_batch_imgpaths_resize(imgpaths, size=256, stride=32):
+    import cv2
+    if isinstance(size, int):  # expand
+        size = (size, size)
+    imglist = []
+    n, ims = (len(imgpaths), list(imgpaths)) if isinstance(imgpaths, (list, tuple)) \
+        else (1, [imgpaths])  # number, list of images
+    shape0, shape1 = [], []
+    for imgpath in imgpaths:
+        im_pil = Image.open(imgpath)
+        im = np.asarray(exif_transpose(im_pil))
+        if im.shape[0] < 5:  # image in CHW
+            im = im.transpose((1, 2, 0))  # reverse dataloader .transpose(2, 0, 1)
+        im = im[..., :3] if im.ndim == 3 else cv2.cvtColor(im, cv2.COLOR_GRAY2BGR)  # enforce 3ch input
+        s = im.shape[:2]  # HWC
+        s = im.shape[:2]  # HWC
+        shape0.append(s)  # image shape
+        g = max(size) / max(s)  # gain
+        shape1.append([int(y * g) for y in s])
+        if not im.data.contiguous:
+            im = np.ascontiguousarray(im)  # update
+        imglist.append(im)
+    shape1 = [make_divisible(x, stride) for x in np.array(shape1).max(0)]  # inf shape
+    x = [letterbox(im, shape1, auto=False)[0] for im in imglist]  # pad
+    x = np.ascontiguousarray(np.array(x).transpose((0, 3, 1, 2)))  # stack and BHWC to BCHW
+    imgtsrs = torch.from_numpy(x) / 255  # uint8 to fp16/32
+    return imgtsrs
+
+
+def yolo_process_objconf(yolomodel, imgpathlist, batch_size=100, size=256, savename=None, sumdir=Path(""), use_letterbox_resize=False):
     """Process images with yolo model and return results in a list of dataframes"""
     results_dfs = []
     for i in trange(0, len(imgpathlist), batch_size):
         # results = yolomodel(imgpathlist[i:i+batch_size], size=size)
-        imtsrs = load_batch_imgpaths(imgpathlist[i:i+batch_size], size=size)
+        if use_letterbox_resize:
+            imtsrs = load_batch_imgpaths_resize(imgpathlist[i:i+batch_size], size=size, stride=yolomodel.stride)
+        else:
+            imtsrs = load_batch_imgpaths(imgpathlist[i:i+batch_size], size=size)
         outtsr = yolomodel(imtsrs.cuda()).cpu()
         nms_result = non_max_suppression_obj(outtsr,
                                              yolomodel.conf, yolomodel.iou,
