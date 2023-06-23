@@ -10,13 +10,14 @@ from core.utils.plot_utils import saveallforms
 from core.utils.stats_utils import paired_strip_plot
 # Model
 # yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
-# plt.switch_backend('module://backend_interagg')
+plt.switch_backend('module://backend_interagg')
 # saveroot = Path(r"/n/scratch3/users/b/biw905/GAN_sample_fid")
 #%% load stats for reference image dataset
 saveroot = Path(r"F:\insilico_exps\GAN_sample_fid")
 sumdir = (saveroot / "yolo_summary")
-sumdir.mkdir(exist_ok=True)
+sumdir_obj = (saveroot / "yolo_objconf_summary")
 df_all = {}
+df_obj_all = {}
 for imgdir_name in [
     "pink_noise",
     "imagenet_valid",
@@ -33,27 +34,54 @@ for imgdir_name in [
     df = pd.read_csv(sumdir / f"{imgdir_name}_yolo_stats.csv", index_col=0)
     df["imgdir_name"] = imgdir_name
     df_all[imgdir_name] = df
+    df_obj = pd.read_csv(sumdir_obj / f"{imgdir_name}_yolo_objconf_stats.csv", index_col=0)
+    df_obj["imgdir_name"] = imgdir_name
+    df_obj_all[imgdir_name] = df_obj
+
 df_all = pd.concat(df_all.values())
+df_obj_all = pd.concat(df_obj_all.values())
 #%%
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 df_all.to_csv(sumdir / "GAN_samples_all_yolo_stats.csv")
 df_all.to_csv(tabdir / "GAN_samples_all_yolo_stats.csv")
+df_obj_all.to_csv(sumdir_obj / "GAN_samples_all_yolo_objconf_stats.csv")
+df_obj_all.to_csv(tabdir / "GAN_samples_all_yolo_objconf_stats.csv")
 
 
-#%%
+#%% Reload the table and analysis objectness
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 df_all = pd.read_csv(tabdir / "GAN_samples_all_yolo_stats.csv", index_col=0)
 #%%
 df_all["confidence_fill0"] = df_all["confidence"].fillna(0)
+df_obj_all["confidence_fill0"] = df_obj_all["confidence"].fillna(0)
+df_obj_all["obj_confidence_fill0"] = df_obj_all["obj_confidence"].fillna(0)
+df_obj_all["cls_confidence_fill0"] = df_obj_all["cls_confidence"].fillna(0)
 #%%
 # show more columns
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 100)
+#%%
 # count rate of non zero confidence
 sumstatdf = pd.concat([df_all.groupby("imgdir_name").agg({"confidence_fill0": ["mean", "sem"], "confidence":["mean", "sem"]}),
            df_all.groupby("imgdir_name").agg(detect_rate=("n_objs", lambda x: 1-np.mean(x == 0)))],
         axis=1)
 sumstatdf.to_csv(tabdir / "GAN_samples_all_yolo_stats_summary.csv")
+#%%
+df_all.groupby("imgdir_name").agg(detect_rate=("n_objs", lambda x: 1-np.mean(x == 0)))
+#%%
+sumstatdf = pd.concat([df_obj_all.groupby("imgdir_name").agg({"confidence": ["mean", "sem"],
+                                                   "confidence_fill0": ["mean", "sem"],
+                                                   "obj_confidence": ["mean", "sem"],
+                                                   "obj_confidence_fill0": ["mean", "sem"],
+                                                   "cls_confidence": ["mean", "sem"],
+                                                   "cls_confidence_fill0": ["mean", "sem"],
+                                                   }),
+              df_obj_all.groupby("imgdir_name").agg(detect_rate=("n_objs", lambda x: 1-np.mean(x == 0)))],
+                axis=1)
+sumstatdf.to_csv(tabdir / "GAN_samples_all_yolo_objconf_stats_summary.csv")
+sumstatdf
+
+
 #%%
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Figure_Evol_objectness\GAN_ref_src"
 #%%
@@ -80,21 +108,36 @@ plt.xticks(rotation=0)
 saveallforms(outdir, "yolo_objectness_select", plt.gcf(), )
 plt.show()
 #%%
-plt.figure(figsize=[4.5, 6])
-sns.violinplot(data=df_all.reset_index(), x="imgdir_name", y="confidence",
-               order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
-               cut=0, )
-sns.pointplot(data=df_all.reset_index(), x="imgdir_name", y="confidence_fill0",
-              order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
-              n_boot=0, errorbar="se", linestyles="none", color="red",
-              capsize=.4, errwidth=1)
-plt.gca().set_xticklabels(["ImageNet", "BigGAN (RND)", "DeePSim"])
-plt.xlabel("Image Space Name", fontsize=14)
-plt.ylabel("Max Confidence", fontsize=14)
-plt.suptitle("Objectness of ImageNet and GAN Samples")
-plt.xticks(rotation=0)
-saveallforms(outdir, "yolo_objectness_select_pnt", plt.gcf(), )
-plt.show()
+for valkey in ["confidence", "confidence_fill0",
+            "obj_confidence", "obj_confidence_fill0",
+            "cls_confidence", "cls_confidence_fill0"]:
+    plt.figure(figsize=[4.5, 6])
+    sns.violinplot(data=df_obj_all.reset_index(), x="imgdir_name", y=valkey,
+                order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std", ], cut=0, )  # "pink_noise"
+    plt.gca().set_xticklabels(["ImageNet", "BigGAN", "DeePSim", ])  # "Pink noise"
+    plt.xlabel("Image Space Name", fontsize=14)
+    plt.ylabel(f"Max {valkey}", fontsize=14)
+    plt.suptitle("Objectness of ImageNet and GAN Samples")
+    plt.xticks(rotation=0)
+    saveallforms(outdir, f"yolo_{valkey}_select", plt.gcf(), )
+    plt.show()
+#%%
+for valkey in ["confidence", "obj_confidence", "cls_confidence"]:
+    plt.figure(figsize=[4.5, 6])
+    sns.violinplot(data=df_obj_all.reset_index(), x="imgdir_name", y=valkey,
+                   order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
+                   cut=0, )
+    sns.pointplot(data=df_obj_all.reset_index(), x="imgdir_name", y=valkey+"_fill0",
+                  order=["imagenet_valid", "BigGAN_std_008", "DeePSim_4std"],
+                  n_boot=0, errorbar="se", linestyles="none", color="red",
+                  capsize=.4, errwidth=1)
+    plt.gca().set_xticklabels(["ImageNet", "BigGAN (RND)", "DeePSim"])
+    plt.xlabel("Image Space Name", fontsize=14)
+    plt.ylabel(f"Max {valkey}", fontsize=14)
+    plt.suptitle("Objectness of ImageNet and GAN Samples")
+    plt.xticks(rotation=0)
+    saveallforms(outdir, f"yolo_{valkey}_select_pnt", plt.gcf(), )
+    plt.show()
 #%%
 plt.figure(figsize=[5, 4.5])
 sns.kdeplot(data=df_all.reset_index(), x="confidence", hue="imgdir_name", cut=0,  fill=True,
