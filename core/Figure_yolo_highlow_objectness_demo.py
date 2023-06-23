@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 import pickle as pkl
 import numpy as np
+from copy import deepcopy
+
 import pandas as pd
 from tqdm import trange, tqdm
 import matplotlib.pyplot as plt
@@ -30,17 +32,99 @@ bothsucmsk = (meta_df.p_maxinit_0 < 0.05) & (meta_df.p_maxinit_1 < 0.05)
 FCsucsmsk = (meta_df.p_maxinit_0 < 0.05)
 BGsucsmsk = (meta_df.p_maxinit_1 < 0.05)
 #%%
-all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_v5_stats.csv", index_col=0)
+# all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_v5_stats.csv", index_col=0)
+# all_df["confidence_fill0"] = all_df.confidence.fillna(0)
+# GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_stats.csv', index_col=0)
+# GANimgtab["confidence_fill0"] = GANimgtab.confidence.fillna(0)
+all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_objconf_stats.csv", index_col=0)
 all_df["confidence_fill0"] = all_df.confidence.fillna(0)
-GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_stats.csv', index_col=0)
+all_df["obj_confidence_fill0"] = all_df.obj_confidence.fillna(0)
+all_df["cls_confidence_fill0"] = all_df.cls_confidence.fillna(0)
+GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_objconf_stats.csv', index_col=0)
 GANimgtab["confidence_fill0"] = GANimgtab.confidence.fillna(0)
+GANimgtab["obj_confidence_fill0"] = GANimgtab.obj_confidence.fillna(0)
+GANimgtab["cls_confidence_fill0"] = GANimgtab.cls_confidence.fillna(0)
+#%%
+def topk_df2montage(yolomodel, df, sort_col, top=True, k=16, offset=0, nrow=None, padding=2,
+                    savedir=None, savename=None, show=False):
+    if nrow is None:
+        nrow = int(np.sqrt(k))
+    sorted_df = df.sort_values(sort_col, ascending=not top)
+    top_imgs = []
+    for img_path in sorted_df[offset:offset+k].img_path.values:
+        img = plt.imread(img_path)
+        top_imgs.append(img)
+    select_df = sorted_df[offset:offset+k]
+    print_confidence_range(select_df)
+    top_imgs_render = yolomodel(deepcopy(top_imgs), size=256).render()
+    if savedir is not None:
+        savename_full = f"{savename}_{'top' if top else 'bot'}{offset}-{offset+k-1}"
+        plt.imsave(savedir / f"{savename_full}.png", make_grid_np(top_imgs, nrow=nrow, padding=padding))
+        plt.imsave(savedir / f"{savename_full}_yolo.png", make_grid_np(top_imgs_render, nrow=nrow, padding=padding))
+        select_df.to_csv(savedir / f"{savename_full}_df.csv")
+    if show:
+        plt.figure(figsize=(10, 10))
+        plt.imshow(make_grid_np(top_imgs_render, nrow=nrow, padding=padding))
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
+    return top_imgs, top_imgs_render, select_df
+#%%
+# thread 0 DeePSim
+valid_df = all_df[(all_df.thread == 0) & all_df.Expi.isin(meta_df[validmsk].index)]
+for k in [4, 9, 16]:
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_conf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "obj_confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_objconf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "cls_confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_clsconf", show=True)
+
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_conf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "obj_confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_objconf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "cls_confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="DeePSim_clsconf", show=True)
+
+#%%
+top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=True, k=4, offset=1,
+                                                       savedir=outdir, savename="DeePSim_conf", show=True)
+
+#%%
+#%%
+# thread 1 BigGAN
+valid_df = all_df[(all_df.thread == 1) & all_df.Expi.isin(meta_df[validmsk].index)]
+for k in [4, 9, 16]:
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_conf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "obj_confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_objconf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "cls_confidence", top=True, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_clsconf", show=True)
+
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_conf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "obj_confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_objconf", show=True)
+    top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "cls_confidence", top=False, k=k, offset=0,
+                                                           savedir=outdir, savename="BigGAN_clsconf", show=True)
+
+#%%
+top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=True, k=4, offset=1,
+                                                       savedir=outdir, savename="BigGAN_conf", show=True)
+#%%
+valid_df = all_df[(all_df.thread == 0) & all_df.Expi.isin(meta_df[validmsk].index)]
+top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "confidence", top=True, k=16, offset=0, nrow=4, show=True)
+top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "obj_confidence", top=True, k=16, offset=0, nrow=4, show=True)
+top_imgs, top_imgs_render, select_df = topk_df2montage(yolomodel, valid_df, "cls_confidence", top=True, k=16, offset=0, nrow=4, show=True)
+
+
 #%%
 img_renders = yolomodel(top_imgs, size=256).render()
 #%%
 valid_df = all_df[(all_df.thread == 0) & all_df.Expi.isin(meta_df[validmsk].index)]
 sorted_valid_df = valid_df.sort_values('confidence', ascending=False)
-# sorted_valid_df.head(9).img_path.values
-# sorted_valid_df.head(9).confidence.values
 top_imgs = []
 for img_path in sorted_valid_df.head(16).img_path.values:
     img = plt.imread(img_path)
@@ -51,9 +135,13 @@ plt.imsave(outdir / "DeePSim_top16_imgs.png", make_grid_np(top_imgs, nrow=4, pad
 print_confidence_range(sorted_valid_df.head(16))
 plt.imsave(outdir / "DeePSim_top9_imgs.png", make_grid_np(top_imgs[:9], nrow=3, padding=2))
 print_confidence_range(sorted_valid_df.head(9))
-img_yolo_renders = yolomodel(top_imgs, size=256).render()
+plt.imsave(outdir / "DeePSim_top4_imgs.png", make_grid_np(top_imgs[1:5], nrow=2, padding=2))
+print_confidence_range(sorted_valid_df.head(4))
+
+img_yolo_renders = yolomodel(deepcopy(top_imgs), size=256).render()
 plt.imsave(outdir / "DeePSim_top16_imgs_yolo.png", make_grid_np(img_yolo_renders, nrow=4, padding=2))
 plt.imsave(outdir / "DeePSim_top9_imgs_yolo.png", make_grid_np(img_yolo_renders[:9], nrow=3, padding=2))
+plt.imsave(outdir / "DeePSim_top4_imgs_yolo.png", make_grid_np(img_yolo_renders[1:5], nrow=2, padding=2))
 
 plt.figure(figsize=[6, 6])
 plt.imshow(make_grid_np(top_imgs, nrow=4, padding=2))
@@ -62,8 +150,6 @@ plt.tight_layout()
 plt.show()
 #%%
 sorted_valid_df = valid_df.sort_values('confidence', ascending=True) # , na_position='last'
-# sorted_valid_df.head(9).img_path.values
-# sorted_valid_df.head(9).confidence.values
 bot_imgs = []
 for img_path in sorted_valid_df.head(16).img_path.values:
     img = plt.imread(img_path)
@@ -73,16 +159,20 @@ plt.imsave(outdir / "DeePSim_bot16_imgs.png", make_grid_np(bot_imgs, nrow=4, pad
 print_confidence_range(sorted_valid_df.head(16))
 plt.imsave(outdir / "DeePSim_bot9_imgs.png", make_grid_np(bot_imgs[:9], nrow=3, padding=2))
 print_confidence_range(sorted_valid_df.head(9))
+plt.imsave(outdir / "DeePSim_bot4_imgs.png", make_grid_np(bot_imgs[1:5], nrow=2, padding=2))
+print_confidence_range(sorted_valid_df.head(4))
 
-img_yolo_renders = yolomodel(bot_imgs, size=256).render()
+img_yolo_renders = yolomodel(deepcopy(bot_imgs), size=256).render()
 plt.imsave(outdir / "DeePSim_bot16_imgs_yolo.png", make_grid_np(img_yolo_renders, nrow=4, padding=2))
 plt.imsave(outdir / "DeePSim_bot9_imgs_yolo.png", make_grid_np(img_yolo_renders[:9], nrow=3, padding=2))
+plt.imsave(outdir / "DeePSim_bot4_imgs_yolo.png", make_grid_np(img_yolo_renders[1:5], nrow=2, padding=2))
 
 plt.figure(figsize=[6, 6])
 plt.imshow(make_grid_np(bot_imgs, nrow=4, padding=2))
 plt.axis('off')
 plt.tight_layout()
 plt.show()
+
 #%%
 valid_df = all_df[(all_df.thread == 1) & all_df.Expi.isin(meta_df[validmsk].index)]
 sorted_valid_df = valid_df.sort_values('confidence', ascending=False)
@@ -130,6 +220,8 @@ plt.imshow(make_grid_np(bot_imgs, nrow=4, padding=2))
 plt.axis('off')
 plt.tight_layout()
 plt.show()
+
+
 #%%
 GANroot = Path(r"F:\insilico_exps\GAN_sample_fid")
 #%%
