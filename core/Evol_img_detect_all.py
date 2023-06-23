@@ -10,6 +10,8 @@ from neuro_data_analysis.neural_data_utils import get_all_masks
 from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr
 # from ultralytics import YOLO
 # model_new = YOLO("yolov8x.pt")
+tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
+meta_df = pd.read_csv(tabdir / "meta_activation_stats.csv", index_col=0)
 #%%
 _, BFEStats = load_neural_data()
 saveroot = Path(r"E:\Network_Data_Sync\BigGAN_Evol_yolo")
@@ -66,6 +68,40 @@ for Expi in trange(1, 190+1):
                                     savename=f"Exp{Expi:03d}_thread1", sumdir=sumdir)
 
 
+#%%
+def sweet_cat_dfs(sumdir, csv_pattern):
+    all_df_col = []
+    for Expi in trange(1, 190 + 1):
+        if BFEStats[Expi - 1]["evol"] is None:
+            continue
+
+        df0 = pd.read_csv(sumdir / (csv_pattern % (Expi, 0)), index_col=0)
+        df1 = pd.read_csv(sumdir / (csv_pattern % (Expi, 1)), index_col=0)
+        df0["thread"] = 0
+        df1["thread"] = 1
+        df0["Expi"] = Expi
+        df1["Expi"] = Expi
+        all_df_col.append(df0)
+        all_df_col.append(df1)
+
+    all_df = pd.concat(all_df_col)
+    all_df["img_name"] = all_df.img_path.apply(lambda x: x.split("\\")[-1])
+    # use re to match different part of the string "block001_thread000_gen_gen000_000009.bmp"
+    all_df["block"] = all_df.img_name.apply(lambda x: int(re.findall(r"block(\d+)", x)[0]))
+    all_df["imgid"] = all_df.img_name.apply(lambda x: int(re.findall(r"gen\d+_(\d+)", x)[0]))
+    all_df["confidence_fill0"] = all_df.confidence.fillna(0)
+    all_df["included"] = True
+    for Expi in meta_df.index:
+        part_df0 = all_df[(all_df.Expi == Expi) & (all_df.thread == 0)]
+        part_df1 = all_df[(all_df.Expi == Expi) & (all_df.thread == 1)]
+        maxblock = max(part_df0.block.max(), part_df1.block.max())
+        if (part_df0.block == maxblock).sum() < 10 or (part_df1.block == maxblock).sum() < 10:
+            print(f"Expi {Expi} last block {maxblock} has less than 10 images")
+            last_block_msk = (all_df.Expi == Expi) & (all_df.block == maxblock)
+            all_df.loc[last_block_msk, "included"] = False
+            print(f"excluded {last_block_msk.sum()} images from analysis")
+            continue
+    return all_df
 #%% Load all the yolo results and combine them into a single dataframe
 all_df_col = []
 for Expi in trange(1, 190+1):
@@ -89,7 +125,26 @@ all_df["block"] = all_df.img_name.apply(lambda x: int(re.findall(r"block(\d+)", 
 all_df["imgid"] = all_df.img_name.apply(lambda x: int(re.findall(r"gen\d+_(\d+)", x)[0]))
 all_df["confidence_fill0"] = all_df.confidence.fillna(0)
 #%%
-tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
+all_df["included"] = True
+for Expi in meta_df.index:
+    part_df0 = all_df[(all_df.Expi == Expi) & (all_df.thread == 0)]
+    part_df1 = all_df[(all_df.Expi == Expi) & (all_df.thread == 1)]
+    maxblock = max(part_df0.block.max(), part_df1.block.max())
+    if (part_df0.block == maxblock).sum() < 10 or (part_df1.block == maxblock).sum() < 10:
+        print(f"Expi {Expi} last block {maxblock} has less than 10 images")
+        last_block_msk = (all_df.Expi == Expi) & (all_df.block == maxblock)
+        all_df.loc[last_block_msk, "included"] = False
+        print(f"excluded {last_block_msk.sum()} images from analysis")
+        continue
+    # raise NotImplementedError
+    # all_df.loc[all_df.Expi == Expi, "invalid_last_block"]
+    # all_df.loc[all_df.Expi == Expi, "lastblock"] = meta_df.loc[Expi, "last_block"]
+    # all_df.loc[all_df.Expi==Expi, "visual_area"] = meta_df.loc[Expi, "visual_area"]
+    #
+#%%
+# use the visual area of the corresponding Expi in metadf in all_df
+all_df["visual_area"] = all_df.Expi.apply(lambda x: meta_df.loc[x, "visual_area"])
+#%%
 all_df.to_csv(sumdir / f"Evol_invivo_all_yolo_stats.csv")
 all_df.to_csv(tabdir / f"Evol_invivo_all_yolo_stats.csv")
 
@@ -113,29 +168,10 @@ for Expi in trange(1, 190+1):
                         size=256, savename=f"Exp{Expi:03d}_thread1", sumdir=sumdir)
 
 #%%
-load_batch_imgpaths(imgfps_col0[:10], )
-#%%
-meta_df = pd.read_csv(tabdir / "meta_activation_stats.csv", index_col=0)
-#%%
-all_df["included"] = True
-for Expi in meta_df.index:
-    part_df0 = all_df[(all_df.Expi == Expi) & (all_df.thread == 0)]
-    part_df1 = all_df[(all_df.Expi == Expi) & (all_df.thread == 1)]
-    maxblock = max(part_df0.block.max(), part_df1.block.max())
-    if (part_df0.block == maxblock).sum() < 10 or (part_df1.block == maxblock).sum() < 10:
-        print(f"Expi {Expi} last block {maxblock} has less than 10 images")
-        last_block_msk = (all_df.Expi == Expi) & (all_df.block == maxblock)
-        all_df.loc[last_block_msk, "included"] = False
-        print(f"excluded {last_block_msk.sum()} images from analysis")
-        continue
-    # raise NotImplementedError
-    # all_df.loc[all_df.Expi == Expi, "invalid_last_block"]
-    # all_df.loc[all_df.Expi == Expi, "lastblock"] = meta_df.loc[Expi, "last_block"]
-    # all_df.loc[all_df.Expi==Expi, "visual_area"] = meta_df.loc[Expi, "visual_area"]
-    #
-#%%
-# use the visual area of the corresponding Expi in metadf in all_df
+all_df = sweet_cat_dfs(sumdir, f'Exp%03d_thread%d_yolo_objconf_stats.csv')
 all_df["visual_area"] = all_df.Expi.apply(lambda x: meta_df.loc[x, "visual_area"])
+all_df.to_csv(sumdir / f"Evol_invivo_all_yolo_objconf_stats.csv")
+all_df.to_csv(tabdir / f"Evol_invivo_all_yolo_objconf_stats.csv")
 #%%
 Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, \
     sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
