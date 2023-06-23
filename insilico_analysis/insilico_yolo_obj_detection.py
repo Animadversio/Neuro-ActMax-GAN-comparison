@@ -11,16 +11,11 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 from tqdm import trange, tqdm
 # def sweep_dir(rootdir, unit_pattern, ):
-
+from core.yolo_lib import yolo_process_objconf, yolo_process
 
 #%%
 yolomodel = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True)
 # plt.switch_backend('module://backend_interagg')
-rootdir = r"'F:/insilico_exps/GAN_Evol_cmp/yolo_summary'"
-sumdir = Path(rootdir) / "yolo_summary"
-sumdir.mkdir(exist_ok=True)
-finalsumdir = Path(rootdir) / "final_summary"
-finalsumdir.mkdir(exist_ok=True)
 #%%
 yolomodel(imgcrops, size=256)
 #%%
@@ -51,15 +46,20 @@ def yolo_process_imgs(imglist, batch_size=100, size=256, savename=None, sumdir=s
     if len(yolo_stats_df) > 0:
         print("most common class", yolo_stats_df["class"].value_counts().index[0])
     return results_dfs, yolo_stats_df
-
+#%%
+from core.yolo_lib import yolo_process_objconf, yolo_process_objconf_arrs
 #%%
 rootdir = r"F:\insilico_exps\GAN_Evol_cmp"
-# unit_pattern = "resnet50_linf8_*"
-unit_pattern = r"tf_efficientnet*"
+sumdir = Path(rootdir) / "yolo_objconf_summary"
+sumdir.mkdir(exist_ok=True)
+finalsumdir = Path(rootdir) / "final_summary"
+finalsumdir.mkdir(exist_ok=True)
+unit_pattern = "resnet50_linf8_*"
+# unit_pattern = r"tf_efficientnet*"
 rootpath = Path(rootdir)
 unitdirs = list(rootpath.glob(unit_pattern))
 df_col = []
-for unitdir in tqdm(unitdirs[455:]):
+for unitdir in tqdm(unitdirs):
     if ".SelectAdaptivePool2dglobal_pool" in unitdir.name:
         # this layername has _ in it so it will fail the regex below
         parts = unitdir.name.split("_"+".SelectAdaptivePool2dglobal_pool"+"_")
@@ -118,159 +118,42 @@ for unitdir in tqdm(unitdirs[455:]):
         mean_scores = np.array(mean_scores)
         max_scores = np.array(max_scores)
         savename = f"{unitdir.name}_{optimmethod}_{RND:05d}"
-        results_dfs, yolo_stats_df = yolo_process_imgs(imgcrops, size=256, savename=savename, sumdir=unitdir)
+        # results_dfs, yolo_stats_df = yolo_process_imgs(imgcrops, size=256, savename=savename, sumdir=unitdir)
+        results_dfs, yolo_stats_df = yolo_process_objconf_arrs(yolomodel, imgcrops, size=256,
+                                                           savename=savename, sumdir=unitdir)
         for k, v in optimdict.items():
             yolo_stats_df[k] = v
         for k, v in unitdict.items():
             yolo_stats_df[k] = v
         yolo_stats_df["mean_score"] = mean_scores
         yolo_stats_df["max_score"] = max_scores
-        yolo_stats_df.to_csv(sumdir / f"yolo_stats_{savename}.csv")
-        # maxscores = scores_all.max(axis=0)
-        # maxstep = np.argmax(scores_all, axis=0)
+        # yolo_stats_df.to_csv(sumdir / f"yolo_stats_{savename}.csv")
+        yolo_stats_df.to_csv(sumdir / f"yolo_objconf_stats_{savename}.csv")
         df_col.append({**unitdict, **optimdict, "yolo_stats_df": yolo_stats_df, })
     #  raise  Exception
-    #
-    #     # break
     # df_evol = pd.DataFrame(df_col)
-
     # change datatype of columns GANname, layer, optimmethod, netname as string
     # df_evol = df_evol.astype({"GANname": str, "layer": str, "optimmethod": str, "netname": str,
     #                           "score": float, "maxscore": float, "maxstep": int, "RFresize": bool})
     # return df_evol
+#%%
+pkl.dump(df_col, open(finalsumdir / "resnet50_linf8_yolo_objconf_stats_df_all.pkl", "wb"))
+# pkl.dump(df_col, open(finalsumdir / "resnet50_linf8_yolo_stats_df_all.pkl", "wb"))
+df_all = pd.DataFrame(df_col)
+all_yolo_stats = pd.concat(df_all.yolo_stats_df.tolist())
+all_yolo_stats.to_csv(finalsumdir / "resnet50_linf8_yolo_objconf_stats_df_all.csv")
+#%%
 pkl.dump(df_col, open(finalsumdir / "efficientnet_yolo_stats_df_all.pkl", "wb"))
-#%%
-pkl.dump(df_col, open(finalsumdir / "resnet50_linf8_yolo_stats_df_all.pkl", "wb"))
-#%%
 df_all = pd.DataFrame(df_col)
 all_yolo_stats = pd.concat(df_all.yolo_stats_df.tolist())
 all_yolo_stats.to_csv(finalsumdir / "efficientnet_yolo_stats_df_all.csv")
 #%%
+
+
+#%%
+pkl.dump(df_col, open(finalsumdir / "resnet50_linf8_yolo_stats_df_all.pkl", "wb"))
 df_all = pd.DataFrame(df_col)
 all_yolo_stats = pd.concat(df_all.yolo_stats_df.tolist())
 all_yolo_stats.to_csv(finalsumdir / "resnet50_linf8_yolo_stats_df_all.csv")
 #%%
 plt.switch_backend('module://backend_interagg')
-
-#%%
-import seaborn as sns
-from core.utils.plot_utils import saveallforms
-
-def _shortenname(layername):
-    return layername.replace("Bottleneck","B").replace(".layer", "layer").replace(".Linear", "")
-
-#%%
-figdir = r'E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\insilico_yolo_objectness'
-all_yolo_stats["confidence_fill0"] = all_yolo_stats.confidence.fillna(0)
-#%%
-netname = "resnet50_linf8"
-layernames = all_yolo_stats.layer.unique()
-for layer in layernames:
-    for RFresize in [True, False]:
-        figh = plt.figure(figsize=[5, 5])
-        sns.lineplot(x="imgnum", y="confidence_fill0", hue="optimmethod",
-                     hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                     data=all_yolo_stats[(all_yolo_stats.layer == layer) &
-                                         (all_yolo_stats.RFresize == RFresize)],
-                     errorbar="se", estimator="mean", n_boot=0)
-        plt.xlabel("block", fontsize=18)
-        plt.ylabel("confidence", fontsize=18)
-        plt.title(f"confidence vs block net={netname}\nlayer={_shortenname(layer)}, RFresize={RFresize}", fontsize=18)
-        saveallforms(figdir, f"confidence_vs_block_{netname}_{layer}{'_RFrsz' if RFresize else '_full'}", figh,)
-        plt.tight_layout()
-        plt.show()
-        # raise Exception
-#%%
-layernames = all_yolo_stats.layer.unique()
-figh, axs = plt.subplots(2, 5, figsize=[25, 10], sharex=True, sharey=True)
-for ci, layer in enumerate(layernames):
-    for rj, RFresize in enumerate([True, False]):
-        sns.lineplot(x="imgnum", y="confidence_fill0", hue="optimmethod",
-                     hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                     data=all_yolo_stats[(all_yolo_stats.layer == layer) &
-                                         (all_yolo_stats.RFresize == RFresize)],
-                     errorbar="se", estimator="mean", n_boot=0, ax=axs[rj, ci],
-                     legend=True if (rj == 0) and (ci == 0) else False)
-        axs[rj, ci].set_xlabel("block", fontsize=18)
-        axs[rj, ci].set_ylabel("confidence", fontsize=18)
-        axs[rj, ci].set_title(f"{_shortenname(layer)}, RFresize={RFresize}", fontsize=18)
-plt.suptitle(f"confidence vs block net={netname}", fontsize=24)
-plt.tight_layout()
-saveallforms(figdir, f"confidence_vs_block_{netname}_merge", figh, )
-plt.show()
-#%%
-figh, axs = plt.subplots(2, 5, figsize=[25, 10], sharex=True, sharey=True)
-for ci, layer in enumerate(layernames):
-    for rj, RFresize in enumerate([True, False]):
-        sns.lineplot(x="imgnum", y="n_objs", hue="optimmethod",
-                     hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                     data=all_yolo_stats[(all_yolo_stats.layer == layer) &
-                                         (all_yolo_stats.RFresize == RFresize)],
-                     errorbar="se", estimator="mean", n_boot=0, ax=axs[rj, ci],
-                     legend=True if (rj == 0) and (ci == 0) else False)
-        axs[rj, ci].set_xlabel("block", fontsize=18)
-        axs[rj, ci].set_ylabel("detected object #", fontsize=18)
-        axs[rj, ci].set_title(f"{_shortenname(layer)}, RFresize={RFresize}", fontsize=18)
-plt.suptitle(f"object number vs block net={netname}", fontsize=24)
-plt.tight_layout()
-saveallforms(figdir, f"objnum_vs_block_{netname}_merge", figh, )
-plt.show()
-#%%
-
-layernames = all_yolo_stats.layer.unique()
-for netname in all_yolo_stats.netname.unique():
-    figh, axs = plt.subplots(2, len(layernames), figsize=[5 * len(layernames), 10],
-                             sharex=True, sharey=True)
-    for ci, layer in enumerate(layernames):
-        for rj, RFresize in enumerate([True, False]):
-            sns.lineplot(x="imgnum", y="confidence_fill0", hue="optimmethod",
-                         hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                         data=all_yolo_stats[(all_yolo_stats.netname == netname) &
-                                             (all_yolo_stats.layer == layer) &
-                                             (all_yolo_stats.RFresize == RFresize)],
-                         errorbar="se", estimator="mean", n_boot=0, ax=axs[rj, ci],
-                         legend=True if (rj == 0) and (ci == 0) else False)
-            axs[rj, ci].set_xlabel("block", fontsize=18)
-            axs[rj, ci].set_ylabel("confidence", fontsize=18)
-            axs[rj, ci].set_title(f"{_shortenname(layer)}, RFresize={RFresize}", fontsize=18)
-    plt.suptitle(f"confidence vs block net={netname}", fontsize=24)
-    plt.tight_layout()
-    saveallforms(figdir, f"confidence_vs_block_{netname}_merge", figh, )
-    plt.show()
-
-    figh, axs = plt.subplots(2, len(layernames), figsize=[5 * len(layernames), 10],
-                             sharex=True, sharey=True)
-    for ci, layer in enumerate(layernames):
-        for rj, RFresize in enumerate([True, False]):
-            sns.lineplot(x="imgnum", y="n_objs", hue="optimmethod",
-                         hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                         data=all_yolo_stats[(all_yolo_stats.netname == netname) &
-                                             (all_yolo_stats.layer == layer) &
-                                             (all_yolo_stats.RFresize == RFresize)],
-                         errorbar="se", estimator="mean", n_boot=0, ax=axs[rj, ci],
-                         legend=True if (rj == 0) and (ci == 0) else False)
-            axs[rj, ci].set_xlabel("block", fontsize=18)
-            axs[rj, ci].set_ylabel("detected object #", fontsize=18)
-            axs[rj, ci].set_title(f"{_shortenname(layer)}, RFresize={RFresize}", fontsize=18)
-    plt.suptitle(f"object number vs block net={netname}", fontsize=24)
-    plt.tight_layout()
-    saveallforms(figdir, f"objnum_vs_block_{netname}_merge", figh, )
-    plt.show()
-
-    for layer in layernames:
-        for RFresize in [True, False]:
-            figh = plt.figure(figsize=[5, 5])
-            sns.lineplot(x="imgnum", y="confidence_fill0", hue="optimmethod",
-                         hue_order=['CholCMA', 'HessCMA', 'CholCMA_fc6', 'HessCMA500_fc6'],
-                         data=all_yolo_stats[(all_yolo_stats.netname == netname) &
-                                             (all_yolo_stats.layer == layer) &
-                                             (all_yolo_stats.RFresize == RFresize)],
-                         errorbar="se", estimator="mean", n_boot=0)
-            plt.xlabel("block", fontsize=18)
-            plt.ylabel("confidence", fontsize=18)
-            plt.title(f"confidence vs block net={netname}\nlayer={_shortenname(layer)}, RFresize={RFresize}",
-                      fontsize=18)
-            saveallforms(figdir, f"confidence_vs_block_{netname}_{layer}{'_RFrsz' if RFresize else '_full'}", figh, )
-            plt.tight_layout()
-            plt.show()
-
