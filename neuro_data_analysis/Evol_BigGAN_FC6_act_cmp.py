@@ -13,11 +13,19 @@ from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping
 from os.path import join
 from collections import OrderedDict
 from easydict import EasyDict as edict
+from tqdm import tqdm
+from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr, \
+    extract_evol_activation_array, extract_all_evol_trajectory, pad_resp_traj
+from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping, get_all_masks
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
 os.makedirs(outdir, exist_ok=True)
 #%%
 _, BFEStats = load_neural_data()
-
+resp_col, meta_df = extract_all_evol_trajectory(BFEStats, )
+resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
+Amsk, Bmsk, V1msk, V4msk, ITmsk, \
+    length_msk, spc_msk, sucsmsk, \
+    bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 #%%
 # data structure to contain a collection of trajectories
 # each trajectory is an 1D array of length n_blocks
@@ -34,11 +42,12 @@ for Expi in range(1, len(BFEStats) + 1):
     ephysFN = S["meta"]['ephysFN']
     prefchan = int(S['evol']['pref_chan'][0])
     prefunit = int(S['evol']['unit_in_pref_chan'][0])
+    imgsize = S["evol"]["imgsize"][0]
+    imgpos  = S["evol"]["imgpos"][0]
     visual_area = area_mapping(prefchan, Animal, expdate)
     spacenames = S['evol']['space_names']
     space1 = spacenames[0] if isinstance(spacenames[0], str) else spacenames[0][0]
     space2 = spacenames[1] if isinstance(spacenames[1], str) else spacenames[1][0]
-
     # load the evolution trajectory of each pair
     resp_arr0, bsl_arr0, gen_arr0, _, _, _ = extract_evol_activation_array(S, 0)
     resp_arr1, bsl_arr1, gen_arr1, _, _, _ = extract_evol_activation_array(S, 1)
@@ -114,9 +123,6 @@ np.save(join(outdir, "resp_traj_extrap_arr.npy"), resp_extrap_arr)
 pkl.dump({"resp_col": resp_col, "meta_col": meta_col}, open(join(outdir, "resp_traj_col.pkl"), "wb"))
 
 #%%
-from tqdm import tqdm
-from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr, \
-    extract_evol_activation_array
 _, BFEStats = load_neural_data()
 #%%
 act_S_col = []
@@ -165,6 +171,8 @@ for Expi in tqdm(range(1, len(BFEStats)+1)):  # 66 is not good
     act_S_col.append(stats)
 #%%
 act_df = pd.DataFrame(act_S_col)
+
+
 #%%
 tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
 meta_df = pd.read_csv(join(tabdir, "meta_stats.csv"), index_col=False)
@@ -173,6 +181,11 @@ meta_df.rename(columns={"Unnamed: 0": "Expi"}, inplace=True)
 meta_act_df = meta_df.merge(act_df, on=["Expi", "ephysFN"], how="left")  #.to_csv(join(tabdir, "meta_stats.csv"), index=False)
 meta_act_df.to_csv(join(tabdir, "meta_activation_stats.csv"), index=False)
 
+
+#%%
+tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats_w_optimizer.csv"), index_col=False)
+meta_df = pd.read_csv(join(tabdir, "meta_stats_w_optimizer.csv"), index_col=False)
 #%%
 normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1,2), keepdims=True)
 #%% masks
@@ -183,7 +196,6 @@ V4msk = meta_df.visual_area == "V4"
 ITmsk = meta_df.visual_area == "IT"
 length_msk = (meta_df.blockN > 14)
 spc_msk = (meta_df.space1 == "fc6") & meta_df.space2.str.contains("BigGAN")
-
 baseline_jump_list = ["Beto-18082020-002",
                       "Beto-07092020-006",
                       "Beto-14092020-002",
@@ -195,6 +207,9 @@ assert bsl_unstable_msk.sum() == len(baseline_jump_list)
 bsl_stable_msk = ~bsl_unstable_msk
 validmsk = length_msk & bsl_stable_msk & spc_msk
 sucsmsk = (meta_df.p_maxinit_0 < 0.05) | (meta_df.p_maxinit_1 < 0.05)
+bothsucsmsk = (meta_df.p_maxinit_0 < 0.05) & (meta_df.p_maxinit_1 < 0.05)
+FCsucsmsk = (meta_df.p_maxinit_0 < 0.05)
+BGsucsmsk = (meta_df.p_maxinit_1 < 0.05)
 #%%
 # print summary of the inclusion criteria
 print("total number of experiments: %d" % len(meta_df))
@@ -206,6 +221,7 @@ print("  - unstable baseline: %d" % bsl_unstable_msk.sum())
 print("  - not fc6-BigGAN: %d" % (~spc_msk).sum())
 #%%
 # use pycharm backend
+import seaborn as sns
 import matplotlib
 
 matplotlib.use("module://backend_interagg")
@@ -213,7 +229,6 @@ matplotlib.use("module://backend_interagg")
 meta_df.loc[validmsk, "t_FCBG_max_01"].plot.hist(bins=20)
 plt.show()
 #%%
-import seaborn as sns
 # sns.set_context("talk")
 # use frequency instead of count
 for msk, label in [(validmsk, "val"),
@@ -245,6 +260,98 @@ for msk, label in [(validmsk, "val"),
         plt.title(f"FC max resp vs BG max resp   mask: {label}")
         saveallforms(outdir, f"tval_FCBG_max_01_hist_{label}{'' if common_norm else '_norm'}")
         plt.show()
+#%%
+import sys
+from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
+sys.stdout = open(join(tabdir, "Evol_activation_cmp.txt"), "w")
+print("\nDeePSim > BigGAN, end generation")
+for msk, label in [(validmsk, "valid"),
+                   (validmsk & sucsmsk, "valid any success"),
+                   (validmsk & sucsmsk & V1msk, "V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
+                   (validmsk & sucsmsk & V4msk, "V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
+                   (validmsk & sucsmsk & ITmsk, "IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, -1, 0], normresp_extrap_arr[msk, -1, 1],)
+
+for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
+                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
+                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
+                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, -1, 0], normresp_extrap_arr[msk, -1, 1],)
+
+
+print("\nDeePSim > BigGAN, max generation")
+for msk, label in [(validmsk, "valid"),
+                   (validmsk & sucsmsk, "valid any success"),
+                   (validmsk & sucsmsk & V1msk, "V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
+                   (validmsk & sucsmsk & V4msk, "V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
+                   (validmsk & sucsmsk & ITmsk, "IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, :, 0].max(axis=1), normresp_extrap_arr[msk, :, 1].max(axis=1),)
+
+for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
+                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
+                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
+                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, :, 0].max(axis=1), normresp_extrap_arr[msk, :, 1].max(axis=1),)
+
+
+print("\nDeePSim > BigGAN, initial generation")
+for msk, label in [(validmsk, "valid"),
+                   (validmsk & sucsmsk, "valid any success"),
+                   (validmsk & sucsmsk & V1msk, "V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
+                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
+                   (validmsk & sucsmsk & V4msk, "V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
+                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
+                   (validmsk & sucsmsk & ITmsk, "IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
+                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, 0, 0], normresp_extrap_arr[msk, 0, 1],)
+
+for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
+                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
+                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
+                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
+                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
+                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
+                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
+    print(f"[{label}]", end=" ")
+    ttest_rel_print(normresp_extrap_arr[msk, 0, 0], normresp_extrap_arr[msk, 0, 1],)
+
+sys.stdout = sys.__stdout__
+
 #%%
 # plotting utilities
 def add_identity(ax, *line_args, **line_kwargs):
