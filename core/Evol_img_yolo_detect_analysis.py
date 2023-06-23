@@ -10,11 +10,13 @@ from core.utils.plot_utils import saveallforms
 from neuro_data_analysis.neural_data_utils import get_all_masks
 from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural_data, get_expstr
 from core.utils.stats_utils import ttest_ind_print, ttest_rel_print, ttest_ind_print_df
-_, BFEStats = load_neural_data()
-saveroot = Path(r"E:\Network_Data_Sync\BigGAN_Evol_yolo")
 
+#%%
+_, BFEStats = load_neural_data()
+
+saveroot = Path(r"E:\Network_Data_Sync\BigGAN_Evol_yolo")
 tabdir = Path(r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
-meta_df = pd.read_csv(tabdir / "meta_activation_stats.csv", index_col=0)
+meta_df = pd.read_csv(tabdir / "meta_activation_stats_w_optimizer.csv", index_col=0)
 Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, \
     sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 bothsucmsk = (meta_df.p_maxinit_0 < 0.05) & (meta_df.p_maxinit_1 < 0.05)
@@ -22,7 +24,8 @@ FCsucsmsk = (meta_df.p_maxinit_0 < 0.05)
 BGsucsmsk = (meta_df.p_maxinit_1 < 0.05)
 #%%
 
-GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_stats.csv', index_col=0)
+# GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_stats.csv', index_col=0)
+GANimgtab = pd.read_csv(tabdir / 'GAN_samples_all_yolo_objconf_stats.csv', index_col=0)
 GANimgtab["confidence_fill0"] = GANimgtab.confidence.fillna(0)
 #%% Load in the yolo stats for evolution images
 sumdir = (saveroot / "yolo_v5_summary")
@@ -41,6 +44,7 @@ for Expi in trange(1, 190+1):
     all_df_col.append(df1)
 
 all_df = pd.concat(all_df_col)
+#%%
 # split all_df into name
 all_df["img_name"] = all_df.img_path.apply(lambda x: x.split("\\")[-1])
 # use re to match different part of the string "block001_thread000_gen_gen000_000009.bmp"
@@ -74,9 +78,75 @@ for Expi in tqdm(meta_df.index):
 all_df.to_csv(sumdir / f"Evol_invivo_all_yolo_v5_stats.csv")
 all_df.to_csv(tabdir / f"Evol_invivo_all_yolo_v5_stats.csv")
 #%%
-all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_v5_stats.csv", index_col=0)
+# all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_v5_stats.csv", index_col=0)
+all_df = pd.read_csv(tabdir / f"Evol_invivo_all_yolo_objconf_stats.csv", index_col=0)
 #%%
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_proto_Yolo_stats"
+#%%
+# redirect output to a text file.
+import sys
+"""Compare Initial 5 gen and Final 5 gen with reference"""
+
+sys.stdout = open(tabdir / "yolo_Evol_reference_stats.txt", "w")
+for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
+    for area in ["V4", "IT"]:
+        for success_str, success_mask in zip(["All", "Both", "Any", "None", "FC", "FC Not", "BG", "BG Not"],
+                                             [True, bothsucmsk, sucsmsk, ~sucsmsk, FCsucsmsk, ~FCsucsmsk, BGsucsmsk, ~BGsucsmsk]):
+            titlestr = f"{area} {GANname} {success_str} Success"
+            if success_str == "All":
+                titlestr = f"{area} {GANname} All"
+            print(f"\n[{titlestr}]")
+            commonmsk = (all_df.visual_area == area) & \
+                        (all_df.included) & (all_df.thread == thread) & \
+                        (all_df.Expi.isin(meta_df[validmsk & success_mask].index))
+            if GANname == "DeePSim":
+                GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == "DeePSim_4std"]
+            elif GANname == "BigGAN":
+                GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == 'BigGAN_std_008']
+            else:
+                raise NotImplementedError
+            ttest_ind_print_df(all_df, (all_df.block < 5) & commonmsk,
+                                 (all_df.block > all_df.maxblock - 5) & commonmsk, "confidence_fill0", sem=True)
+            print(f"Initial 5 gen vs {GANname} reference", end=" ")
+            ttest_ind_print(all_df.confidence_fill0[(all_df.block < 5) & commonmsk], GAN_ref_data, sem=True)
+            print(f"Last 5 gen vs {GANname} reference", end=" ")
+            ttest_ind_print(all_df.confidence_fill0[(all_df.block > all_df.maxblock - 5) & commonmsk], GAN_ref_data, sem=True)
+
+# redirect output back to console
+sys.stdout = sys.__stdout__
+
+#%%
+"""Compare Initial 5 gen and Final 5 gen between V4 and IT"""
+sys.stdout = open(tabdir / "yolo_Evol_area_cmp_stats.txt", "w")
+for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
+    for success_str, success_mask in zip(["All", "Both", "Any", "None", "FC", "FC Not", "BG", "BG Not"],
+                                         [True, bothsucmsk, sucsmsk, ~sucsmsk, FCsucsmsk, ~FCsucsmsk, BGsucsmsk, ~BGsucsmsk]):
+        titlestr = f"IT vs V4 {GANname} {success_str} Success"
+        if success_str == "All":
+            titlestr = f"IT vs V4 {GANname} All"
+        print(f"\n[{titlestr}]")
+        commonmsk = (all_df.included) & (all_df.thread == thread) & \
+                    (all_df.Expi.isin(meta_df[validmsk & success_mask].index))
+        if GANname == "DeePSim":
+            GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == "DeePSim_4std"]
+        elif GANname == "BigGAN":
+            GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == 'BigGAN_std_008']
+        else:
+            raise NotImplementedError
+        print(f"Initial 5 gen  IT vs V4", end=" ")
+        ttest_ind_print_df(all_df, (all_df.block < 5) & (all_df.visual_area == "IT") & commonmsk,
+                                   (all_df.block < 5) & (all_df.visual_area == "V4") & commonmsk, "confidence_fill0", sem=True)
+        print(f"Last 5 gen  IT vs V4", end=" ")
+        ttest_ind_print_df(all_df, (all_df.block > all_df.maxblock - 5) & (all_df.visual_area == "IT") & commonmsk,
+                                   (all_df.block > all_df.maxblock - 5) & (all_df.visual_area == "V4") & commonmsk, "confidence_fill0", sem=True)
+        # print(f"Initial 5 gen vs {GANname} reference", end=" ")
+        # ttest_ind_print(all_df.confidence_fill0[(all_df.block < 5) & commonmsk], GAN_ref_data, sem=True)
+        # print(f"Last 5 gen vs {GANname} reference", end=" ")
+        # ttest_ind_print(all_df.confidence_fill0[(all_df.block > all_df.maxblock - 5) & commonmsk], GAN_ref_data, sem=True)
+
+# redirect output back to console
+sys.stdout = sys.__stdout__
+
 #%%\
 for area in ["V4", "IT"]:
     for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
@@ -108,7 +178,6 @@ ttest_ind_print_df(all_df, (all_df.block < 4) & commonmsk,
                    (all_df.block > all_df.maxblock - 4) & commonmsk, "confidence_fill0", )
 
 #%%
-#%%
 for area in ["V4", "IT"]:
     for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
         for success_str, success_mask in zip(["Both", "Any", "None"], [bothsucmsk, sucsmsk, ~sucsmsk]):
@@ -134,6 +203,7 @@ for area in ["V4", "IT"]:
             saveallforms(figdir, f"yolo_confidence_score_dist_init_end_{area}_{GANname}_{success_str}_suc_with_GANref", fig, fmts=["png", "pdf"])
             # fig.savefig(tabdir / "yolo_confidence_score_dist.png")
             plt.show()
+
 #%%
 for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
     for success_str, success_mask in zip(["Both", "Any", "None"], [bothsucmsk, sucsmsk, ~sucsmsk]):
@@ -203,7 +273,7 @@ all_df["non_detected"] = all_df["confidence"].isna()
 #%%
 # value_str = "confidence_fill0"
 """ DeePSim GAN and BigGAN with both success mask """
-success_mask = bothsucmsk #sucsmsk
+success_mask = bothsucmsk  # sucsmsk
 success_str = "Both"
 for with_bar in [True, False]:
     for value_str in ["confidence_fill0", "confidence"]:
@@ -315,34 +385,6 @@ for with_bar in [True, False]:
             saveallforms(figdir, f"yolo_{value_str}_score_dist_V4_vs_IT_{GANname}_{success_str}_fail_violin{'bar' if with_bar else ''}", plt.gcf(), fmts=["png", "pdf"])
             plt.show()
 
-#%%
-# redirect output to a text file.
-import sys
-
-sys.stdout = open(tabdir / "yolo_Evol_reference_stats.txt", "w")
-for area in ["V4", "IT"]:
-    for GANname, thread in zip(["DeePSim", "BigGAN"], [0, 1]):
-        for success_str, success_mask in zip(["Both", "Any", "None"], [bothsucmsk, sucsmsk, ~sucsmsk]):
-            titlestr = f"{area} {GANname} {success_str} Success"
-            print(f"[{titlestr}]")
-            commonmsk = (all_df.visual_area == area) & \
-                        (all_df.included) & (all_df.thread == thread) & \
-                        (all_df.Expi.isin(meta_df[validmsk & success_mask].index))
-            if GANname == "DeePSim":
-                GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == "DeePSim_4std"]
-            elif GANname == "BigGAN":
-                GAN_ref_data = GANimgtab.confidence_fill0[GANimgtab.imgdir_name == 'BigGAN_std_008']
-            else:
-                raise NotImplementedError
-            ttest_ind_print_df(all_df, (all_df.block < 5) & commonmsk,
-                                 (all_df.block > all_df.maxblock - 5) & commonmsk, "confidence_fill0", )
-            print(f"Initial 5 gen vs {GANname} reference", end=" ")
-            ttest_ind_print(all_df.confidence_fill0[(all_df.block < 5) & commonmsk], GAN_ref_data, )
-            print(f"Last 5 gen vs {GANname} reference", end=" ")
-            ttest_ind_print(all_df.confidence_fill0[(all_df.block > all_df.maxblock - 5) & commonmsk], GAN_ref_data, )
-
-# redirect output back to console
-sys.stdout = sys.__stdout__
 
 #%% form a confidence score tensor for experiments
 confscore_col = []
