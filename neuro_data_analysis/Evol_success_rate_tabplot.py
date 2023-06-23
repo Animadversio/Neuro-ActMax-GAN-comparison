@@ -11,6 +11,7 @@ from core.utils.plot_utils import saveallforms
 from neuro_data_analysis.neural_data_lib import *
 from scipy.stats import sem, ttest_ind, ttest_rel, ttest_1samp
 
+
 def rate_CI(n, k, q):
     """ Confidence interval for success rate
     n: number of trials
@@ -34,8 +35,8 @@ from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping, get_
 
 # meta_df = get_meta_df(BFEStats)
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
-dfdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
-meta_df = pd.read_csv(join(dfdir, "meta_stats.csv"))
+dfdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+meta_df = pd.read_csv(join(dfdir, "meta_stats_w_optimizer.csv"))
 #%%
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
@@ -122,6 +123,7 @@ fig.show()
 
 
 #%%
+"""separated by visual areas and GAN Space"""
 sucs_criterion_label, sucs_label = "max > init, P<0.01", "maxinit"
 FC_suc_msk = (meta_df.p_maxinit_0 < 0.01) & (meta_df.t_maxinit_0 > 0)
 BG_suc_msk = (meta_df.p_maxinit_1 < 0.01) & (meta_df.t_maxinit_1 > 0)
@@ -153,6 +155,44 @@ SR_df = SR_df.set_index("label")
 # set dtypes
 SR_df = SR_df.astype({"FC_suc": int, "BG_suc": int, "total": int, "FC_rate": float, "BG_rate": float})
 SR_df.to_csv(join(outdir, f"SuccessRate_space_split_{sucs_label}.csv"))
+
+#%%
+"""separated by visual areas and GAN Space"""
+sucs_criterion_label, sucs_label = "max > init, P<0.01", "maxinit"
+FC_suc_msk = (meta_df.p_maxinit_0 < 0.01) & (meta_df.t_maxinit_0 > 0)
+BG_suc_msk = (meta_df.p_maxinit_1 < 0.01) & (meta_df.t_maxinit_1 > 0)
+# sucs_criterion_label, sucs_label = "end > init, P<0.01", "endinit"
+# FC_suc_msk = (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 > 0)
+# BG_suc_msk = (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 > 0)
+# sucs_criterion_label, sucs_label = "end < init, P<0.01", "endinitdecrs"
+# FC_suc_msk = (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 < 0)
+# BG_suc_msk = (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 < 0)
+# build a dataframe of success rate for plotting
+SR_df = []
+# BG_cmshess_msk = meta_df.optim_names2 != 'CMAES'
+# BG_cma_msk = meta_df.optim_names2 == 'CMAES'
+BG_cmshess_msk = meta_df.optim_names1 != 'CMAES'
+BG_cma_msk = meta_df.optim_names1 == 'CMAES'
+for msk, label in zip([validmsk & V1msk & BG_cmshess_msk, validmsk & V1msk & BG_cma_msk,
+                       validmsk & V4msk & BG_cmshess_msk, validmsk & V4msk & BG_cma_msk,
+                       validmsk & ITmsk & BG_cmshess_msk, validmsk & ITmsk & BG_cma_msk,],
+                      ["V1 HessCMA", "V1 CMA", "V4 HessCMA", "V4 CMA", "IT HessCMA", "IT CMA",]):
+    SR = edict(label=label, FC_suc=sum(msk & FC_suc_msk), BG_suc=sum(msk & BG_suc_msk), total=sum(msk))
+
+    SR["FC_rate"] = SR.FC_suc / SR.total if SR.total > 0 else np.nan
+    SR["BG_rate"] = SR.BG_suc / SR.total if SR.total > 0 else np.nan
+    SR["FC_CI_1"] = rate_CI(SR.total, SR.FC_suc, 0.05)
+    SR["FC_CI_2"] = rate_CI(SR.total, SR.FC_suc, 0.95)
+    SR["BG_CI_1"] = rate_CI(SR.total, SR.BG_suc, 0.05)
+    SR["BG_CI_2"] = rate_CI(SR.total, SR.BG_suc, 0.95)
+    print(SR)
+    SR_df.append(SR)
+SR_df = pd.DataFrame(SR_df)
+SR_df = SR_df.set_index("label")
+# set dtypes
+SR_df = SR_df.astype({"FC_suc": int, "BG_suc": int, "total": int, "FC_rate": float, "BG_rate": float})
+SR_df
+# SR_df.to_csv(join(outdir, f"SuccessRate_optimizer_split_{sucs_label}.csv"))
 
 #%%
 fig, ax = plt.subplots(1, 1, figsize=[3.5, 3.3])
@@ -224,6 +264,7 @@ ax.set_title(f"Success Rate of DeePSim and BigGAN\n{sucs_criterion_label} 90% CI
 plt.tight_layout()
 saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_space_per_area_bar_annot", fig, fmts=["png", "pdf", "svg"])
 fig.show()
+
 #%%
 # same plot but with bar and errorbar
 fig, ax = plt.subplots(1, 1, figsize=[3.0, 3.75])
@@ -252,6 +293,7 @@ ax.set_title(f"Success Rate of DeePSim and BigGAN\n{sucs_criterion_label} 90% CI
 plt.tight_layout()
 saveallforms(outdir, f"evol_{sucs_label}_success_rate_per_space_per_area_bar_annot_noV1", fig, fmts=["png", "pdf", "svg"])
 fig.show()
+
 #%%
 from statsmodels.stats.proportion import proportions_ztest
 # count: number of successes, i.e., A1 and A2
@@ -369,7 +411,6 @@ plt.show()
 import numpy as np
 import scipy.stats
 
-
 def mean_CI_up(data, confidence=0.95):
     """Util function to calculate the upper bound of the confidence interval of the data"""
     a = 1.0 * np.array(data)
@@ -386,7 +427,7 @@ def mean_CI_low(data, confidence=0.95):
     m, se = np.mean(a), scipy.stats.sem(a)
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
     return m-h
-
+#%%
 # df.groupby("visual_area")[["endinit_tval_FC", "endinit_tval_BG"]].mean()
 tval_table = df.groupby("visual_area").agg({"endinit_tval_FC":(np.mean, mean_CI_up, mean_CI_low),
                                "endinit_tval_BG":(np.mean, mean_CI_up, mean_CI_low),}).iloc[[1,2,0]]#.sem()
@@ -414,4 +455,3 @@ plt.ylabel("T-value between end and init response")
 plt.legend()
 saveallforms(outdir, "evol_success_tval_lineplot")
 plt.show()
-#%% 
