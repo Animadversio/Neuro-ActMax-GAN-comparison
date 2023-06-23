@@ -20,19 +20,27 @@ from easydict import EasyDict as edict
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
 tabdir = (r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
 
-_, BFEStats = load_neural_data()
-resp_col, _ = extract_all_evol_trajectory(BFEStats, )
-resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
-#%%
 meta_df = pd.read_csv(Path(tabdir) / "meta_activation_stats_w_optimizer.csv")
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
-#%%
 FCsucsmsk = meta_df.p_maxinit_0 < 0.01
 BGsucsmsk = meta_df.p_maxinit_1 < 0.01
 bothsucsmsk = FCsucsmsk & BGsucsmsk
 anysucsmsk = FCsucsmsk | BGsucsmsk
+#%%
+gprtrajdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_GPregress"
+resp_gpr_col = OrderedDict()
+for Expi in trange(1, 191):
+    if os.path.exists(join(gprtrajdir, f"Exp{Expi:03d}_evol_traj_gpr_avg.npz")):
+        data = np.load(join(gprtrajdir, f"Exp{Expi:03d}_evol_traj_gpr_avg.npz"))
+        resp_tsr = np.stack([data["traj_pred_mean0"], data["traj_pred_mean1"],
+                             data['traj_pred_std0'],  data['traj_pred_std1']], axis=-1)
+        resp_gpr_col[Expi] = resp_tsr
+#%%
+_, BFEStats = load_neural_data()
+resp_col, _ = extract_all_evol_trajectory(BFEStats, )
+# resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
 #%%
 # compute time constant from traj for two trajs
 def compute_time_constant(traj, bsl=0, thresh=0.632):
@@ -49,10 +57,12 @@ def compute_time_constant(traj, bsl=0, thresh=0.632):
 # compute time constant for all neurons
 thresh = 0.8
 timeconst_col = OrderedDict()
-for Expi, resp_arr in tqdm(resp_col.items()):
+for Expi, resp_arr in tqdm(resp_gpr_col.items()):
     print(f"Processing {Expi}")
-    bsl0 = resp_arr[:, 4].mean(axis=0)
-    bsl1 = resp_arr[:, 5].mean(axis=0)
+    # original baseline
+    bsl0 = resp_col[Expi][:, 4].mean(axis=0)
+    bsl1 = resp_col[Expi][:, 5].mean(axis=0)
+    # compute time constant
     FC_tc0, FC_tc_cnt = compute_time_constant(resp_arr[:, 0], bsl=bsl0, thresh=thresh)  # thresh=0.632)
     BG_tc0, BG_tc_cnt = compute_time_constant(resp_arr[:, 1], bsl=bsl1, thresh=thresh)  # thresh=0.632)
     FC_tc0bsl0, FC_tc_cnt_bsl0 = compute_time_constant(resp_arr[:, 0], bsl=0, thresh=thresh)  # thresh=0.632)
@@ -66,35 +76,42 @@ for Expi, resp_arr in tqdm(resp_col.items()):
            "FC_tc0_bslinit": FC_tc0bslinit, "FC_tc_cnt_bslinit": FC_tc_cnt_bslinit,
            "BG_tc0_bslinit": BG_tc0bslinit, "BG_tc_cnt_bslinit": BG_tc_cnt_bslinit,}
     timeconst_col[Expi] = col
+
 timeconst_df = pd.DataFrame(timeconst_col).T
-timeconst_df.to_csv(join(tabdir, "Evol_traj_time_constant.csv"))
+timeconst_df.to_csv(join(tabdir, "Evol_traj_time_constant_GPregress.csv"))
 #%%
 timeconst_meta_df = pd.merge(meta_df, timeconst_df, left_on="Expi", right_index=True,)
 #%%
 """independent comparison of time constants between areas"""
 print("Time constant of optimization trajectory")
-print("BigGAN V4 vs IT")
+print("BigGAN V4 vs IT [BigGAN successs]")
+ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc0")
 ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc_cnt")
 ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc0_bslinit")
-print("DeePSiM V4 vs IT")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt")  # yes V4 < IT
+ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc_cnt_bslinit")
+print("DeePSiM V4 vs IT [DeePSim success]")
 ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0")  # yes V4 < IT
+ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt")  # yes V4 < IT
 ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0_bslinit")
-print("DeePSim V1 vs V4")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt")
+ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt_bslinit")
+print("DeePSim V1 vs V4 [DeePSim success]")
 ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0")
+ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt")
 ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0_bslinit")
+ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt_bslinit")
 
 """paired Compare time constants of FC and BG"""
 print("Time constant of optimization trajectory")
-print("IT cortex, FC vs BG")
+print("IT cortex, FC vs BG [Both success]")
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0", "BG_tc0")  # yes FC > BG
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc_cnt", "BG_tc_cnt")  # yes FC > BG
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0_bslinit", "BG_tc0_bslinit")  # yes FC > BG
-print("V4 cortex, FC vs BG")
+ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc_cnt_bslinit", "BG_tc_cnt_bslinit")  # yes FC > BG
+print("V4 cortex, FC vs BG [Both success]")
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0", "BG_tc0")
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc_cnt", "BG_tc_cnt")
 ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0_bslinit", "BG_tc0_bslinit")
+ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc_cnt_bslinit", "BG_tc_cnt_bslinit")
 #%%
 plt.figure(figsize=[6, 6])
 # sns.scatterplot(data=timeconst_meta_df[validmsk], x="FC_tc0", y="FC_tc_cnt",
@@ -136,6 +153,7 @@ plt.suptitle("Time constant of optimization trajectory\n[Both succeed]")
 
 plt.legend()
 plt.show()
+
 
 #%%
 timeconst_meta_df_thread0 = pd.merge(meta_df, timeconst_df[["FC_tc0", "FC_tc1", "FC_tc00", "FC_tc10"]], left_on="Expi", right_index=True,)
