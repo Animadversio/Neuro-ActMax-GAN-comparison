@@ -294,7 +294,7 @@ def load_batch_imgpaths(imgpaths, size=256, ):
     return imgtsrs
 
 
-def load_batch_imgpaths_resize(imgpaths, size=256, stride=32):
+def load_batch_imgs_resize(imgpaths, size=256, stride=32):
     import cv2
     if isinstance(size, int):  # expand
         size = (size, size)
@@ -303,8 +303,14 @@ def load_batch_imgpaths_resize(imgpaths, size=256, stride=32):
         else (1, [imgpaths])  # number, list of images
     shape0, shape1 = [], []
     for imgpath in imgpaths:
-        im_pil = Image.open(imgpath)
-        im = np.asarray(exif_transpose(im_pil))
+        if isinstance(imgpath, (str, Path)):
+            im_pil = Image.open(imgpath)
+            im = np.asarray(exif_transpose(im_pil))
+        elif isinstance(imgpath, Image.Image):
+            im = np.asarray(exif_transpose(imgpath))
+        elif isinstance(imgpath, np.ndarray):
+            im = imgpath
+
         if im.shape[0] < 5:  # image in CHW
             im = im.transpose((1, 2, 0))  # reverse dataloader .transpose(2, 0, 1)
         im = im[..., :3] if im.ndim == 3 else cv2.cvtColor(im, cv2.COLOR_GRAY2BGR)  # enforce 3ch input
@@ -323,13 +329,14 @@ def load_batch_imgpaths_resize(imgpaths, size=256, stride=32):
     return imgtsrs
 
 
-def yolo_process_objconf(yolomodel, imgpathlist, batch_size=100, size=256, savename=None, sumdir=Path(""), use_letterbox_resize=False):
+def yolo_process_objconf(yolomodel, imgpathlist, batch_size=100, size=256, savename=None, sumdir=Path(""),
+                         use_letterbox_resize=False):
     """Process images with yolo model and return results in a list of dataframes"""
     results_dfs = []
     for i in trange(0, len(imgpathlist), batch_size):
         # results = yolomodel(imgpathlist[i:i+batch_size], size=size)
         if use_letterbox_resize:
-            imtsrs = load_batch_imgpaths_resize(imgpathlist[i:i+batch_size], size=size, stride=yolomodel.stride)
+            imtsrs = load_batch_imgs_resize(imgpathlist[i:i + batch_size], size=size, stride=yolomodel.stride)
         else:
             imtsrs = load_batch_imgpaths(imgpathlist[i:i+batch_size], size=size)
         outtsr = yolomodel(imtsrs.cuda()).cpu()
@@ -365,6 +372,68 @@ def yolo_process_objconf(yolomodel, imgpathlist, batch_size=100, size=256, saven
                               "class": None,
                               "n_objs": len(single_df),
                               "img_path": imgpathlist[i]}
+
+    yolo_stats_df = pd.DataFrame(yolo_stats).T
+    if savename is not None:
+        yolo_stats_df.to_csv(sumdir / f"{savename}_yolo_objconf_stats.csv")
+        pkl.dump(results_dfs, open(sumdir / f"{savename}_objconf_dfs.pkl", "wb"))
+        print(f"Saved to {sumdir / f'{savename}_objconf_dfs.pkl'}")
+        print(f"Saved to {sumdir / f'{savename}_yolo_objconf_stats.csv'}")
+    print("Fraction of images with objects", (yolo_stats_df.n_objs > 0).mean())
+    print("confidence", yolo_stats_df.confidence.mean(), "confidence with 0 filled",
+          yolo_stats_df.confidence.fillna(0).mean())
+    print("obj_confidence", yolo_stats_df.obj_confidence.mean(), "obj_confidence with 0 filled",
+          yolo_stats_df.obj_confidence.fillna(0).mean())
+    print("cls_confidence", yolo_stats_df.cls_confidence.mean(), "cls_confidence with 0 filled",
+          yolo_stats_df.cls_confidence.fillna(0).mean())
+    print("n_objs", yolo_stats_df.n_objs.mean(), )
+    if len(yolo_stats_df) > 0:
+        most_common_class = yolo_stats_df["class"].value_counts().index[0]
+        print("most common class", most_common_class, " name:", yolomodel.names[most_common_class])
+    return results_dfs, yolo_stats_df
+
+
+def yolo_process_objconf_arrs(yolomodel, imgarr, batch_size=100, size=256, savename=None, sumdir=Path(""), ):
+    """Process images with yolo model and return results in a list of dataframes"""
+    results_dfs = []
+    for i in trange(0, len(imgarr), batch_size):
+        # results = yolomodel(imgpathlist[i:i+batch_size], size=size)
+        imtsrs = load_batch_imgs_resize(imgarr[i:i+batch_size],
+                                        size=size, stride=yolomodel.stride)
+        # TODO use size
+        outtsr = yolomodel(imtsrs.cuda()).cpu()
+        nms_result = non_max_suppression_obj(outtsr,
+                                             yolomodel.conf, yolomodel.iou,
+                                             yolomodel.classes, yolomodel.agnostic,
+                                             yolomodel.multi_label,
+                                             max_det=yolomodel.max_det)  # NMS
+        result_df = nms_output2df(nms_result, yolomodel.names)
+        results_dfs.extend(result_df)
+        # yolo_results[i] = results
+
+    yolo_stats = {}
+    for i, single_df in tqdm(enumerate(results_dfs)):
+        if len(single_df) > 0:
+            max_row = single_df.loc[single_df.confidence.argmax()]
+            yolo_stats[i] = {"xmin": max_row.xmin,
+                             "ymin": max_row.ymin,
+                             "xmax": max_row.xmax,
+                             "ymax": max_row.ymax,
+                             "confidence": max_row.confidence,
+                             'obj_confidence': max_row.obj_conf,
+                             'cls_confidence': max_row.cls_conf,
+                             "class": max_row["class"],
+                             "n_objs": len(single_df),
+                             "imgnum": i}
+        else:
+            yolo_stats[i] = { "xmin": None, "ymin": None,
+                              "xmax": None, "ymax": None,
+                              "confidence": None,
+                              'obj_confidence': None,
+                              'cls_confidence': None,
+                              "class": None,
+                              "n_objs": len(single_df),
+                              "imgnum": i}
 
     yolo_stats_df = pd.DataFrame(yolo_stats).T
     if savename is not None:
