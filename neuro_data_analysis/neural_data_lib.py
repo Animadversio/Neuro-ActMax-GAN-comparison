@@ -46,6 +46,15 @@ def load_neural_data():
     return BFEStats_merge, BFEStats
 
 
+def add_entry2neural_data():
+    """
+    Load neural data from a .pkl file.
+    """
+    BFEStats_merge = pickle.load(open(join(matroot, "Both_BigGAN_FC6_Evol_Stats.pkl"), "rb"))
+    BFEStats = pickle.load(open(join(matroot, "Both_BigGAN_FC6_Evol_Stats_expsep.pkl"), "rb"))
+    return BFEStats_merge, BFEStats
+
+
 def get_expstr(BFEStats, Expi):
     S = BFEStats[Expi - 1]  # Expi follows matlab convention, starts from 1
     space_names = S['evol']['space_names']
