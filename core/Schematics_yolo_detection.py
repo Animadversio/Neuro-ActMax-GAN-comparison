@@ -48,3 +48,14 @@ for seed in range(100):
     # plt.axis("off")
     # plt.tight_layout()
     # plt.show()
+#%%
+imgdir = r"E:\Datasets\imagenet-valid\valid"
+imgpathlist = sorted(list(Path(imgdir).glob("*.JPEG")))
+result = yolomodel(imgpathlist[:100], size=256)
+annot_imgs = result.render()
+for i in range(100):
+    plt.imsave(outdir / f"imagenet_valid_{i:03d}.png", annot_imgs[i])
+    img = plt.imread(imgpathlist[i])
+    plt.imsave(outdir / f"imagenet_valid_{i:03d}_orig.png", img)
+#%%
+
