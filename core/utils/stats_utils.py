@@ -42,30 +42,42 @@ def ttest_1samp_print(seq, scalar):
     return tval, pval
 
 
-def ttest_rel_print(seq1, seq2):
+def ttest_rel_print(seq1, seq2, sem=False):
     tval, pval = ttest_rel(seq1, seq2)
-    result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)})tval: {tval:.2f}, pval: {pval:.1e}"
-    print(f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)})tval: {tval:.2f}, pval: {pval:.1e}")
+    df = len(seq1) - 1
+    if sem:
+        sem1 = seq1.std() / np.sqrt(len(seq1))
+        sem2 = seq2.std() / np.sqrt(len(seq2))
+        result_str = f"{seq1.mean():.3f}+-{sem1:.3f} ~ {seq2.mean():.3f}+-{sem2:.3f} (N={len(seq1)}) t={tval:.2f}, p={pval:.1e} df={df}"
+    else:
+        result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)}) t={tval:.2f}, p={pval:.1e} df={df}"
+    print(result_str)
     return tval, pval, result_str
 
 
-def ttest_ind_print(seq1, seq2):
+def ttest_ind_print(seq1, seq2, sem=False):
     tval, pval = ttest_ind(seq1, seq2, nan_policy="omit")
-    result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) tval: {tval:.2f}, pval: {pval:.1e}"
-    print(f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) tval: {tval:.2f}, pval: {pval:.1e}")
+    df = len(seq1) + len(seq2) - 2
+    if sem:
+        sem1 = seq1.std() / np.sqrt(len(seq1))
+        sem2 = seq2.std() / np.sqrt(len(seq2))
+        result_str = f"{seq1.mean():.3f}+-{sem1:.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{sem2:.3f} (N={len(seq2)}) t={tval:.2f}, p={pval:.1e} df={df}"
+    else:
+        result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) t={tval:.2f}, p={pval:.1e} df={df}"
+    print(result_str)
     return tval, pval, result_str
 
 
-def ttest_rel_print_df(df, msk, col1, col2):
+def ttest_rel_print_df(df, msk, col1, col2, sem=False):
     if msk is None:
         msk = np.ones(len(df), dtype=bool)
     print(f"{col1} ~ {col2} (N={msk.sum()})", end=" ")
-    return ttest_rel_print(df[msk][col1], df[msk][col2])
+    return ttest_rel_print(df[msk][col1], df[msk][col2], sem=sem)
 
 
-def ttest_ind_print_df(df, msk1, msk2, col):
+def ttest_ind_print_df(df, msk1, msk2, col, sem=False):
     print(f"{col} (N={msk1.sum()}) ~ (N={msk2.sum()})", end=" ")
-    return ttest_ind_print(df[msk1][col], df[msk2][col])
+    return ttest_ind_print(df[msk1][col], df[msk2][col], sem=sem)
 
 
 import matplotlib.pyplot as plt
