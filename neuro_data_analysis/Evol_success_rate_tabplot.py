@@ -1,6 +1,11 @@
 """
 Plot the success rate of Evolution and estimates its error bar for different cortices.
 """
+import sys
+
+#%%
+import numpy as np
+import scipy.stats
 import datetime
 import scipy
 import scipy.special
@@ -28,6 +33,26 @@ def rate_CI(n, k, q):
     return scipy.special.betaincinv(k+1, n+1-k, q)
 
 
+def rate_CI_data(data, confidence=0.95):
+    return rate_CI(len(data), np.sum(data), confidence)
+
+
+def mean_CI_up(data, confidence=0.95):
+    """Util function to calculate the upper bound of the confidence interval of the data"""
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m+h
+
+
+def mean_CI_low(data, confidence=0.95):
+    """Util function to calculate the lower bound of the confidence interval of the data"""
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m-h
 # rate_CI(10, 1, [0.1, 0.9])
 #%%
 from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping, get_all_masks, \
@@ -41,17 +66,126 @@ meta_df = pd.read_csv(join(dfdir, "meta_stats_w_optimizer.csv"))
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+#%%
+# pandas config for printing, long table, not truncate
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.width', None)
+#%%
+def _print_stat_row(row):
+    print(f"{int(row['count']):d}/{int(row['total']):d} rate={row['rate']:.2f} [{row['CI0.05']:.2f}, {row['CI0.95']:.2f}]")
+
+
+def print_stats_df(stats_sumdf, prefix="max>init"):
+    for area in ["V1", "V4", "IT"]:
+        print(f"[{area}]", )#end=": "
+        print("DeePSim", end=": ")
+        _print_stat_row(stats_sumdf.loc[area, prefix+" FC"])
+        print("BigGAN", end=": ")
+        _print_stat_row(stats_sumdf.loc[area, prefix+" BG"])
+        print("Both", end=": ")
+        _print_stat_row(stats_sumdf.loc[area, prefix+" both"])
+
+
+def visualize_success_rate(stats_sumdf, prefix="max>init", ax=None, title=None, ylim=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" FC"].rate, color="b", marker="o", label="DeePSim")
+    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" FC"]["CI0.05"],
+                                        stats_sumdf.loc[:, prefix+" FC"]["CI0.95"],
+                                        color="b", alpha=0.2)
+    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" BG"].rate, color="r", marker="o", label="BigGAN")
+    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" BG"]["CI0.05"],
+                                        stats_sumdf.loc[:, prefix+" BG"]["CI0.95"],
+                                        color="r", alpha=0.2)
+    # annotate the number of trials
+    for i, area in enumerate(["V1", "V4", "IT"]):
+        ax.annotate(f"{int(stats_sumdf.loc[area, prefix+' FC']['count']):d}/{int(stats_sumdf.loc[area, prefix+' FC']['total']):d}",
+                    (i + 0.02, stats_sumdf.loc[area, prefix+" FC"].rate+0.025))
+        ax.annotate(f"{int(stats_sumdf.loc[area, prefix+' BG']['count']):d}/{int(stats_sumdf.loc[area, prefix+' BG']['total']):d}",
+                    (i + 0.02, stats_sumdf.loc[area, prefix+" BG"].rate-0.025))
+    ax.set_ylim(ylim)
+    ax.set_title(title)
+    ax.legend(loc="best")
+    ax.set_ylabel("Success rate")
+    ax.set_xlabel("Visual areas")
+    plt.tight_layout()
+    return ax
+
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
+tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+for thresh in [0.05, 0.01, 0.005, 0.001]:
+    aggfunclist = ["sum", "mean", lambda x: rate_CI_data(x, 0.05),
+                   lambda x: rate_CI_data(x, 0.95), "count"]
+    meta_df["max>init FC"] = (meta_df.p_maxinit_0 < thresh) & (meta_df.t_maxinit_0 > 0)
+    meta_df["max>init BG"] = (meta_df.p_maxinit_1 < thresh) & (meta_df.t_maxinit_1 > 0)
+    meta_df["max>init both"] = meta_df["max>init FC"] & meta_df["max>init BG"]
+    meta_df["end>init FC"] = (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 > 0)
+    meta_df["end>init BG"] = (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 > 0)
+    meta_df["end>init both"] = meta_df["end>init FC"] & meta_df["end>init BG"]
+    meta_df["end<init FC"] = (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 < 0)
+    meta_df["end<init BG"] = (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 < 0)
+    meta_df["end<init both"] = meta_df["end<init FC"] & meta_df["end<init BG"]
+    stats_sumdf = meta_df[validmsk].groupby("visual_area").agg(
+               {"max>init FC": aggfunclist,
+                "max>init BG": aggfunclist,
+                "max>init both": aggfunclist,
+                "end>init FC": aggfunclist,
+                "end>init BG": aggfunclist,
+                "end>init both": aggfunclist,
+                "end<init FC": aggfunclist,
+                "end<init BG": aggfunclist,
+                "end<init both": aggfunclist,
+                }).loc[["V1", "V4", "IT"]]
+    stats_sumdf.rename(columns={"sum":"count", "mean":"rate",'<lambda_0>':'CI0.05', '<lambda_1>':'CI0.95', "count":"total"}, inplace=True)
+    # stats_sumdf.rename(columns={("end>init both", "total"): ("", "total")}, inplace=True)
+    stats_sumdf.to_csv(join(tabdir, f"Evol_success_rate_{thresh:.3f}.csv"))
+    sys.stdout = open(join(tabdir, f"Evol_success_rate_{thresh:.3f}_summary.txt"), "w")
+    print(f"t-test thresh = {thresh:.3f}")
+    print("success criterion = max>init")
+    print_stats_df(stats_sumdf, "max>init")
+    print("\nsuccess criterion = end>init")
+    print_stats_df(stats_sumdf, "end>init")
+    print("\nsuccess criterion = end<init")
+    print_stats_df(stats_sumdf, "end<init")
+    sys.stdout.close()
+    visualize_success_rate(stats_sumdf, prefix="max>init", title=f"max > init, thresh={thresh:.3f}")
+    saveallforms(figdir, f"succss_rate_max-init_thr{thresh:.3f}_per_area")
+    visualize_success_rate(stats_sumdf, prefix="end>init", title=f"end > init, thresh={thresh:.3f}")
+    saveallforms(figdir, f"succss_rate_end-init_thr{thresh:.3f}_per_area")
+    visualize_success_rate(stats_sumdf, prefix="end<init", title=f"end < init, thresh={thresh:.3f}")
+    saveallforms(figdir, f"succss_rate_init-end_thr{thresh:.3f}_per_area")
+
+sys.stdout = sys.__stdout__
+
 
 #%%
+for statname, funname in stats_sumdf.columns:
+    # stats_sumdf
+    if funname == "sum":
+        stats_sumdf.rename(columns={(statname, funname): (statname, "count")}, inplace=True)
+    elif funname == "mean":
+        stats_sumdf.rename(columns={(statname, funname): (statname, "rate")}, inplace=True)
+    elif funname == "<lambda_0>":
+        stats_sumdf.rename(columns={(statname, funname): (statname, "CI0.05")}, inplace=True)
+    elif funname == "<lambda_1>":
+        stats_sumdf.rename(columns={(statname, funname): (statname, "CI0.95")}, inplace=True)
+    elif funname == "count":
+        stats_sumdf.rename(columns={(statname, funname): (statname, "total")}, inplace=True)
+
+stats_sumdf # .to_csv(join(dfdir, "stats_sumdf.csv"))
+# meta_df.groupby("visual_area")[["endinit_success_BG", "endinit_success_FC"]].mean()
+#%%
+thresh = 0.05
 for msk, label in zip([validmsk & V1msk, validmsk & V4msk, validmsk & ITmsk],
                       ["V1", "V4", "IT"]):
     print(label, f"N={sum(msk)}")
-    print("max > init FC", sum(msk & (meta_df.p_maxinit_0 < 0.01) & (meta_df.t_maxinit_0 > 0)))
-    print("max > init BG", sum(msk & (meta_df.p_maxinit_1 < 0.01) & (meta_df.t_maxinit_1 > 0)))
-    print("end > init FC", sum(msk & (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 > 0)))
-    print("end > init BG", sum(msk & (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 > 0)))
-    print("end < init FC", sum(msk & (meta_df.p_endinit_0 < 0.01) & (meta_df.t_endinit_0 < 0)))
-    print("end < init BG", sum(msk & (meta_df.p_endinit_1 < 0.01) & (meta_df.t_endinit_1 < 0)))
+    print("max > init FC", sum(msk & (meta_df.p_maxinit_0 < thresh) & (meta_df.t_maxinit_0 > 0)))
+    print("max > init BG", sum(msk & (meta_df.p_maxinit_1 < thresh) & (meta_df.t_maxinit_1 > 0)))
+    print("end > init FC", sum(msk & (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 > 0)))
+    print("end > init BG", sum(msk & (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 > 0)))
+    print("end < init FC", sum(msk & (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 < 0)))
+    print("end < init BG", sum(msk & (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 < 0)))
 #%%
 """ Separate the success rate of between different BG spaces """
 cls_msk = meta_df.space2 == "BigGAN_class"
@@ -407,26 +541,7 @@ plt.title("Success rate of Evolution per visual area\nT-test of end vs init; mea
 plt.legend()
 saveallforms(outdir, "evol_endinit_success_rate_per_area_annot")
 plt.show()
-#%%
-import numpy as np
-import scipy.stats
 
-def mean_CI_up(data, confidence=0.95):
-    """Util function to calculate the upper bound of the confidence interval of the data"""
-    a = 1.0 * np.array(data)
-    n = len(a)
-    m, se = np.mean(a), scipy.stats.sem(a)
-    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
-    return m+h
-
-
-def mean_CI_low(data, confidence=0.95):
-    """Util function to calculate the lower bound of the confidence interval of the data"""
-    a = 1.0 * np.array(data)
-    n = len(a)
-    m, se = np.mean(a), scipy.stats.sem(a)
-    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
-    return m-h
 #%%
 # df.groupby("visual_area")[["endinit_tval_FC", "endinit_tval_BG"]].mean()
 tval_table = df.groupby("visual_area").agg({"endinit_tval_FC":(np.mean, mean_CI_up, mean_CI_low),
