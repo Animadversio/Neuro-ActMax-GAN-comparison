@@ -3,6 +3,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import ToTensor, ToPILImage, \
     Normalize, Compose, Resize, CenterCrop
+import matplotlib.pyplot as plt
+from PIL import Image
 from imageio import imread, imsave
 from glob import glob
 from os.path import join
@@ -13,7 +15,7 @@ class ImagePathDataset(Dataset):
     Modeling Matlab ImageDatastore, using a set of image paths to create the dataset.
     TODO: Support image data without labels.
     """
-    def __init__(self, imgfp_vect, scores, img_dim=(227, 227), transform=None):
+    def __init__(self, imgfp_vect, scores=None, img_dim=(227, 227), transform=None):
         self.imgfps = imgfp_vect
         if scores is None:
             self.scores = torch.tensor([0.0] * len(imgfp_vect))
@@ -34,16 +36,62 @@ class ImagePathDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.imgfps[idx]
-        img = imread(img_path)
-        if len(img.shape) == 2:
-            img = img[:, :, None]
-        if img.shape[2] == 4:
-            img = img[:, :, :3]
-        elif img.shape[2] == 1:
-            img = img.repeat(3, axis=2)
+        img = Image.open(img_path)
+        # img = plt.imread(img_path)
+        # if len(img.shape) == 2:
+        #     img = img[:, :, None]
+        # if img.shape[2] == 4:
+        #     img = img[:, :, :3]
+        # elif img.shape[2] == 1:
+        #     img = img.repeat(3, axis=2)
         imgtsr = self.transform(img)
         score = self.scores[idx]
         return imgtsr, score
+
+
+class ImagePathDataset_pure(Dataset):
+    """
+    Modeling Matlab ImageDatastore, using a set of image paths to create the dataset.
+    TODO: Support image data without labels.
+    """
+    def __init__(self, imgfp_vect, img_dim=(227, 227), transform=None):
+        self.imgfps = imgfp_vect
+        # self.img_dim = img_dim
+        if transform is None:
+            self.transform = Compose([ToTensor(),
+                                      Normalize(mean=[0.485, 0.456, 0.406],
+                                                std=[0.229, 0.224, 0.225]),
+                                      Resize(img_dim)])
+        else:
+            print(f"The {img_dim} setting is overwritten by the size in custom transform")
+            self.transform = transform
+
+    def __len__(self):
+        return len(self.imgfps)
+
+    def __getitem__(self, index):
+        if isinstance(index, int):
+            # Handle single index
+            img_path = self.imgfps[index]
+            img = Image.open(img_path)
+            imgtsr = self.transform(img)
+            return imgtsr
+        elif isinstance(index, slice):
+            # Handle slice indexing
+            data_list = [self[i] for i in range(*index.indices(len(self)))]
+            return torch.stack(data_list, dim=0)
+        else:
+            raise TypeError("Unsupported indexing type.")
+
+        # img = plt.imread(img_path)
+        # if len(img.shape) == 2:
+        #     img = img[:, :, None]
+        # if img.shape[2] == 4:
+        #     img = img[:, :, :3]
+        # elif img.shape[2] == 1:
+        #     img = img.repeat(3, axis=2)
+        imgtsr = self.transform(img)
+        return imgtsr
 
 
 # ImageNet Validation Dataset
