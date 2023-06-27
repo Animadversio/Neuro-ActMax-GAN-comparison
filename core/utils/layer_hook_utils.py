@@ -70,11 +70,11 @@ layername_dict ={"alexnet":["conv1", "conv1_relu", "pool1",
 
 
 # Hooks based methods to get layer and module names
-def named_apply(model, name, func, prefix=None):
+def recursive_named_apply(model, name, func, prefix=None):
     # resemble the apply function but suits the functions here.
     cprefix = "" if prefix is None else prefix + "." + name
     for cname, child in model.named_children():
-        named_apply(child, cname, func, cprefix)
+        recursive_named_apply(child, cname, func, cprefix)
 
     func(model, name, "" if prefix is None else prefix)
 
@@ -144,7 +144,7 @@ def get_module_names(model, input_size, device="cpu", show=True):
 
     # register hook recursively at any module in the hierarchy
     # model.apply(register_hook)
-    named_apply(model, "", register_hook)
+    recursive_named_apply(model, "", register_hook)
 
     # make a forward pass
     model(x)
@@ -210,6 +210,160 @@ def recursive_print(module, prefix="", depth=0, deepest=3):
             else:
                 print(f"{prefix}({name}): {type(child).__name__}")
         recursive_print(child, prefix + "  ", depth + 1, deepest)
+
+
+
+#@title Helper Function to inspect input output structure
+from collections import OrderedDict
+def recursive_named_apply_w_depth(model, name, func, prefix=None, depth=0, deepest=3):
+    # resemble the apply function but suits the functions here.
+    if depth >= deepest:
+        return
+    cprefix = name if prefix is None else prefix + "." + name #
+    for cname, child in model.named_children():
+        recursive_named_apply_w_depth(child, cname, func, prefix=cprefix,
+                              depth=depth + 1, deepest=deepest)
+
+    func(model, name, "" if prefix is None else prefix)
+
+
+def get_module_name_shapes(model, inputs_list, hook_root_module=None, hook_root_prefix="",
+                           deepest=3, show=True, show_input=True):
+    """Get the module names and shapes of the model.
+    Args:
+        model: the model to inspect
+        inputs_list: a list of inputs to the model
+        hook_root_module: the module to start hooking. If None, hook from the model
+        hook_root_prefix: the prefix of the module to start hooking. If None, "".
+        deepest: the depth to inspect the model, start from the `hook_root_module`. Default 3
+        show: whether to print the result. Default True
+        show_input: whether to print the input shape. Default True
+    Returns:
+        module_names: a dict of module names
+        module_types: a dict of module types
+        module_spec: a dict of module input and output shapes
+
+    Example:
+        get_module_name_shapes(pipe.unet, [torch.randn(1,4,96,96).cuda().half(),
+                                   torch.rand(1,).cuda().half(),
+                                   torch.randn(1,77,1024).cuda().half()],
+                       hook_root_module=pipe.unet.up_blocks,
+                       hook_root_prefix=".up_blocks", deepest=4,
+                       show_input=True);
+    """
+    module_names = OrderedDict()
+    module_types = OrderedDict()
+    module_spec = OrderedDict()
+    def register_hook(module, name, prefix):
+        # register forward hook and save the handle to the `hooks` for removal.
+        def hook(module, args, kwargs, output):
+            # during forward pass, this hook will append the ReceptiveField information to `receptive_field`
+            # if a module is called several times, this hook will append several times as well.
+            class_name = str(module.__class__).split(".")[-1].split("'")[0]
+            if (isinstance(module, nn.Sequential)
+                or isinstance(module, nn.ModuleList)
+                or isinstance(module, nn.Container)):
+                module_name = prefix + "." + name
+            else:
+                module_name = prefix + "." + name #+f" [{class_name}]"
+
+            module_idx = len(module_names)
+            module_names[str(module_idx)] = module_name
+            module_types[str(module_idx)] = class_name
+            module_spec[str(module_idx)] = OrderedDict()
+
+            module_spec[str(module_idx)]["inshape"] = []
+            if isinstance(args, torch.Tensor):
+                module_spec[str(module_idx)]["inshape"] = tuple(args.shape)
+            elif isinstance(args, list) or isinstance(args, tuple):
+                module_spec[str(module_idx)]["inshape"] = []
+                for intensor in args:
+                    if isinstance(intensor, torch.Tensor):
+                        module_spec[str(module_idx)]["inshape"]\
+                          .append(tuple(intensor.shape))
+            else:
+                module_spec[str(module_idx)]["inshape"] = [None,]
+
+            for k, value in kwargs.items():
+                if isinstance(value, torch.Tensor):
+                      module_spec[str(module_idx)]["inshape"]\
+                          .append(tuple(value.shape))
+
+            if isinstance(output, torch.Tensor):
+                module_spec[str(module_idx)]["outshape"] = tuple(output.shape)
+            elif isinstance(output, list) or isinstance(output, tuple):
+                module_spec[str(module_idx)]["outshape"] = []
+                for out in output:
+                    if isinstance(out, torch.Tensor):
+                        module_spec[str(module_idx)]["outshape"]\
+                          .append(tuple(out.shape))
+            else:
+                module_spec[str(module_idx)]["outshape"] = (None,)
+        if (
+                True
+                # not isinstance(module, nn.Sequential)
+                # and not isinstance(module, nn.ModuleList)
+                # and not (module == model)
+        ):
+            hooks.append(module.register_forward_hook(hook, with_kwargs=True))
+
+    # create properties
+    # receptive_field = OrderedDict()
+    module_names["0"] = "Image"
+    module_types["0"] = "Input"
+    module_spec["0"] = OrderedDict()
+    module_spec["0"]["inshape"] = tuple(inputs_list[0].shape)
+    module_spec["0"]["outshape"] = tuple(inputs_list[0].shape)
+    hooks = []
+
+    # register hook recursively at any module in the hierarchy
+    if hook_root_module is None:
+        hook_root_module = model
+    assert isinstance(hook_root_module, nn.Module)
+    recursive_named_apply_w_depth(hook_root_module, hook_root_prefix,
+                                  register_hook, prefix=None, depth=0, deepest=deepest)
+
+    # make a forward pass
+    try:
+      model(*inputs_list)
+    except Exception as e:
+      print(e)
+      for h in hooks:
+        h.remove()
+      raise e
+
+    # remove these hooks
+    for h in hooks:
+        h.remove()
+    if show:
+        print("-"*150)
+        if show_input:
+            line_new = "{:>14}  {:>48}    {:>24}    {:>28}   {:<32} ".format("Layer Id", "inshape", "outshape", "Type", "Module Path", )
+        else:
+            line_new = "{:>14}  {:>20}    {:>28}   {:<32} ".format("Layer Id", "outshape", "Type", "Module Path", )
+        print(line_new)
+        print("="*150)
+        for layer in module_names:
+            # input_shape, output_shape, trainable, nb_params
+            if show_input:
+                line_new = "{:7} {:8}  {:>48}    {:>24}    {:>28}   {:<32} ".format(
+                "",
+                layer,
+                str(module_spec[layer]["inshape"]),
+                str(module_spec[layer]["outshape"]),
+                f"[{module_types[layer]}]",
+                module_names[layer],
+                )
+            else:
+                line_new = "{:7} {:8}  {:>24}    {:>28}   {:<32} ".format(
+                "",
+                layer,
+                str(module_spec[layer]["outshape"]),
+                f"[{module_types[layer]}]",
+                module_names[layer],
+                )
+            print(line_new)
+    return module_names, module_types, module_spec
 
 
 def register_hook_by_module_names(target_name, target_hook, model, input_size=(3, 256, 256), device="cpu", ):
