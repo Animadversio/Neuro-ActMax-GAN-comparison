@@ -214,7 +214,6 @@ def recursive_print(module, prefix="", depth=0, deepest=3):
 
 
 #@title Helper Function to inspect input output structure
-from collections import OrderedDict
 def recursive_named_apply_w_depth(model, name, func, prefix=None, depth=0, deepest=3):
     # resemble the apply function but suits the functions here.
     if depth >= deepest:

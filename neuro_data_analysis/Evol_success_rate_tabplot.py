@@ -2,8 +2,6 @@
 Plot the success rate of Evolution and estimates its error bar for different cortices.
 """
 import sys
-
-#%%
 import numpy as np
 import scipy.stats
 import datetime
@@ -73,11 +71,11 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.width', None)
 #%%
 def _print_stat_row(row):
-    print(f"{int(row['count']):d}/{int(row['total']):d} rate={row['rate']:.2f} [{row['CI0.05']:.2f}, {row['CI0.95']:.2f}]")
+    print(f"{int(row['count']):d}/{int(row['total']):d} rate={row['rate']:.3f} [{row['CI0.05']:.3f}, {row['CI0.95']:.3f}]")
 
 
 def print_stats_df(stats_sumdf, prefix="max>init"):
-    for area in ["V1", "V4", "IT"]:
+    for area in ["V1", "V4", "IT", "Total"]:
         print(f"[{area}]", )#end=": "
         print("DeePSim", end=": ")
         _print_stat_row(stats_sumdf.loc[area, prefix+" FC"])
@@ -90,13 +88,14 @@ def print_stats_df(stats_sumdf, prefix="max>init"):
 def visualize_success_rate(stats_sumdf, prefix="max>init", ax=None, title=None, ylim=None):
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" FC"].rate, color="b", marker="o", label="DeePSim")
-    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" FC"]["CI0.05"],
-                                        stats_sumdf.loc[:, prefix+" FC"]["CI0.95"],
+    plot_index = ["V1", "V4", "IT"]
+    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[plot_index, prefix+" FC"].rate, color="b", marker="o", label="DeePSim")
+    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[plot_index, prefix+" FC"]["CI0.05"].to_list(),
+                                        stats_sumdf.loc[plot_index, prefix+" FC"]["CI0.95"].to_list(),
                                         color="b", alpha=0.2)
-    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" BG"].rate, color="r", marker="o", label="BigGAN")
-    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[:, prefix+" BG"]["CI0.05"],
-                                        stats_sumdf.loc[:, prefix+" BG"]["CI0.95"],
+    ax.plot(["V1", "V4", "IT"], stats_sumdf.loc[plot_index, prefix+" BG"].rate, color="r", marker="o", label="BigGAN")
+    ax.fill_between(["V1", "V4", "IT"], stats_sumdf.loc[plot_index, prefix+" BG"]["CI0.05"].to_list(),
+                                        stats_sumdf.loc[plot_index, prefix+" BG"]["CI0.95"].to_list(),
                                         color="r", alpha=0.2)
     # annotate the number of trials
     for i, area in enumerate(["V1", "V4", "IT"]):
@@ -112,6 +111,7 @@ def visualize_success_rate(stats_sumdf, prefix="max>init", ax=None, title=None, 
     plt.tight_layout()
     return ax
 
+
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\SuccessRate"
 tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
 for thresh in [0.05, 0.01, 0.005, 0.001]:
@@ -126,6 +126,12 @@ for thresh in [0.05, 0.01, 0.005, 0.001]:
     meta_df["end<init FC"] = (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 < 0)
     meta_df["end<init BG"] = (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 < 0)
     meta_df["end<init both"] = meta_df["end<init FC"] & meta_df["end<init BG"]
+    meta_df["max>end FC"] = (meta_df.p_maxend_0 < thresh) & (meta_df.t_maxend_0 > 0)
+    meta_df["max>end BG"] = (meta_df.p_maxend_1 < thresh) & (meta_df.t_maxend_1 > 0)
+    meta_df["max>end both"] = meta_df["max>end FC"] & meta_df["max>end BG"]
+    meta_df["max>end max>init FC"] = (meta_df.p_maxend_0 < thresh) & (meta_df.t_maxend_0 > 0) & (meta_df.p_maxinit_0 < thresh) & (meta_df.t_maxinit_0 > 0)
+    meta_df["max>end max>init BG"] = (meta_df.p_maxend_1 < thresh) & (meta_df.t_maxend_1 > 0) & (meta_df.p_maxinit_1 < thresh) & (meta_df.t_maxinit_1 > 0)
+    meta_df["max>end max>init both"] = meta_df["max>end max>init FC"] & meta_df["max>end max>init BG"]
     stats_sumdf = meta_df[validmsk].groupby("visual_area").agg(
                {"max>init FC": aggfunclist,
                 "max>init BG": aggfunclist,
@@ -136,10 +142,45 @@ for thresh in [0.05, 0.01, 0.005, 0.001]:
                 "end<init FC": aggfunclist,
                 "end<init BG": aggfunclist,
                 "end<init both": aggfunclist,
+                "max>end FC": aggfunclist,
+                "max>end BG": aggfunclist,
+                "max>end both": aggfunclist,
+                "max>end max>init FC": aggfunclist,
+                "max>end max>init BG": aggfunclist,
+                "max>end max>init both": aggfunclist,
                 }).loc[["V1", "V4", "IT"]]
-    stats_sumdf.rename(columns={"sum":"count", "mean":"rate",'<lambda_0>':'CI0.05', '<lambda_1>':'CI0.95', "count":"total"}, inplace=True)
+    total_sumdf = meta_df[validmsk].agg(
+        {"max>init FC": aggfunclist,
+         "max>init BG": aggfunclist,
+         "max>init both": aggfunclist,
+         "end>init FC": aggfunclist,
+         "end>init BG": aggfunclist,
+         "end>init both": aggfunclist,
+         "end<init FC": aggfunclist,
+         "end<init BG": aggfunclist,
+         "end<init both": aggfunclist,
+         "max>end FC": aggfunclist,
+         "max>end BG": aggfunclist,
+         "max>end both": aggfunclist,
+        "max>end max>init FC": aggfunclist,
+        "max>end max>init BG": aggfunclist,
+        "max>end max>init both": aggfunclist,
+         })
+    total_sumdf_row = total_sumdf.melt(ignore_index=False).T
+    total_sumdf_row = total_sumdf_row.drop("variable").rename(index={"value": "Total"})
+    # Adjust columns to multi-index
+    total_sumdf_row.columns = pd.MultiIndex.from_product(
+        [total_sumdf.columns, ['sum', 'mean', '<lambda_0>', '<lambda_1>', 'count']])
+    # turn the rownames into multiindex of columns
+    stats_sumdf = pd.concat([stats_sumdf, total_sumdf_row])
+    stats_sumdf.rename(columns={"sum": "count", "mean": "rate", '<lambda_0>': 'CI0.05', '<lambda_1>': 'CI0.95', "count": "total"}, inplace=True)
+    stats_sumdf.loc[:, (slice(None), ["total", "count"])] = \
+        stats_sumdf.loc[:, (slice(None), ["total", "count"])].astype(int)
+    stats_sumdf.loc[:, (slice(None), ["rate", "CI0.05", "CI0.95"])] = \
+        stats_sumdf.loc[:, (slice(None), ["rate", "CI0.05", "CI0.95"])].astype(float)
     # stats_sumdf.rename(columns={("end>init both", "total"): ("", "total")}, inplace=True)
     stats_sumdf.to_csv(join(tabdir, f"Evol_success_rate_{thresh:.3f}.csv"))
+
     sys.stdout = open(join(tabdir, f"Evol_success_rate_{thresh:.3f}_summary.txt"), "w")
     print(f"t-test thresh = {thresh:.3f}")
     print("success criterion = max>init")
@@ -148,6 +189,10 @@ for thresh in [0.05, 0.01, 0.005, 0.001]:
     print_stats_df(stats_sumdf, "end>init")
     print("\nsuccess criterion = end<init")
     print_stats_df(stats_sumdf, "end<init")
+    print("\nsuccess criterion = max>end")
+    print_stats_df(stats_sumdf, "max>end")
+    print("\nsuccess criterion = max>end max>init")
+    print_stats_df(stats_sumdf, "max>end max>init")
     sys.stdout.close()
     visualize_success_rate(stats_sumdf, prefix="max>init", title=f"max > init, thresh={thresh:.3f}")
     saveallforms(figdir, f"succss_rate_max-init_thr{thresh:.3f}_per_area")
@@ -155,26 +200,137 @@ for thresh in [0.05, 0.01, 0.005, 0.001]:
     saveallforms(figdir, f"succss_rate_end-init_thr{thresh:.3f}_per_area")
     visualize_success_rate(stats_sumdf, prefix="end<init", title=f"end < init, thresh={thresh:.3f}")
     saveallforms(figdir, f"succss_rate_init-end_thr{thresh:.3f}_per_area")
+    visualize_success_rate(stats_sumdf, prefix="max>end", title=f"max > end, thresh={thresh:.3f}")
+    saveallforms(figdir, f"succss_rate_max-end_thr{thresh:.3f}_per_area")
 
 sys.stdout = sys.__stdout__
+#%% plot contingency table
+from scipy.stats import chi2_contingency
+def test_independence_contingency(A, B):
+    AB = sum(A & B)
+    AnB = sum(A & ~B)
+    nAB = sum(~A & B)
+    nAnB = sum(~A & ~B)
+    nA = sum(A)
+    nB = sum(B)
+    n = len(A)
+    table = np.array([[AB, AnB], [nAB, nAnB]])
+    chi2, p, dof, ex = chi2_contingency(table)
+    print(f"chi2 = {chi2:.2f}, p = {p:.1e}, dof = {dof}")
+    # format the table
+    print(f"ex =\n {ex[0,0]:.1f} {ex[0,1]:.1f}\n {ex[1,0]:.1f} {ex[1,1]:.1f}")
+    print(f"AB = {AB}, A~B = {AnB}, ~AB = {nAB}, ~A~B = {nAnB}")
+    print(f"nA = {nA}, nB = {nB}, n = {n}")
+    print(f"AB/nA = {AB/nA:.3f}, AB/nB = {AB/nB:.3f}, AB/n = {AB/n:.3f}")
+    print(f"AnB/nA = {AnB/nA:.3f}, AnB/nB = {AnB/nB:.3f}, AnB/n = {AnB/n:.3f}")
+    print(f"nAB/nA = {nAB/nA:.3f}, nAB/nB = {nAB/nB:.3f}, nAB/n = {nAB/n:.3f}")
+    return chi2, p, dof, ex
 
+
+def plot_contingency_table(A, B, title="", ax=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+    plt.sca(ax)
+    AB = sum(A & B)
+    AnB = sum(A & ~B)
+    nAB = sum(~A & B)
+    nAnB = sum(~A & ~B)
+    nA = sum(A)
+    nB = sum(B)
+    n = len(A)
+    table = np.array([[AB, AnB], [nAB, nAnB]])
+    print(title)
+    print("observed table\n", table)
+    try:
+        chi2, p, dof, ex = chi2_contingency(table)
+        test_independence_contingency(A, B)
+    except ValueError:
+        chi2, p, dof, ex = np.nan, np.nan, np.nan, np.nan
+    plt.imshow(table, cmap="Blues_r")
+    # annotate
+    for i in range(2):
+        for j in range(2):
+            plt.text(j, i, f"{table[i, j]}",
+                     ha="center", va="center", color="black", fontsize=16)
+    # plt.colorbar()
+    plt.xticks([0, 1], [f"Success\n{nB}", f"Fail\n{n-nB}"], fontsize=16)
+    plt.yticks([0, 1], [f"Success\n{nA}", f"Fail\n{n-nA}"], fontsize=16)
+    plt.xlabel("B", fontsize=16)
+    plt.ylabel("A", fontsize=16)
+    plt.title(f"{title} N={n}\nchi2 = {chi2:.2f}, p = {p:.1e}, dof = {dof}", fontsize=16)
+    plt.tight_layout()
+    # if title is not None:
+    #     plt.title(title)
+    return chi2, p, dof, ex
+
+
+figh, axs = plt.subplots(1, 4, figsize=[18, 5.5])
+plot_contingency_table(meta_df[validmsk&V1msk]["max>init FC"],
+                       meta_df[validmsk&V1msk]["max>init BG"], title="[V1 sessions]", ax=axs[0])
+plt.ylabel("DeePSim", fontsize=16); plt.xlabel("BigGAN", fontsize=16)
+plot_contingency_table(meta_df[validmsk&V4msk]["max>init FC"],
+                       meta_df[validmsk&V4msk]["max>init BG"], title="[V4 sessions]", ax=axs[1])
+plt.ylabel("DeePSim", fontsize=16); plt.xlabel("BigGAN", fontsize=16)
+plot_contingency_table(meta_df[validmsk&ITmsk]["max>init FC"],
+                      meta_df[validmsk&ITmsk]["max>init BG"], title="[IT sessions]", ax=axs[2])
+plt.ylabel("DeePSim", fontsize=16); plt.xlabel("BigGAN", fontsize=16)
+plot_contingency_table(meta_df[validmsk]["max>init FC"],
+                       meta_df[validmsk]["max>init BG"], title="[all sessions]", ax=axs[3])
+plt.ylabel("DeePSim", fontsize=16); plt.xlabel("BigGAN", fontsize=16)
+plt.show()
+#%%
+for thresh in [0.05, 0.01, 0.005, 0.001]:
+    sys.stdout = open(join(tabdir, f"contingency_tables_{thresh:.3f}.txt"), "w")
+    meta_df["max>init FC"] = (meta_df.p_maxinit_0 < thresh) & (meta_df.t_maxinit_0 > 0)
+    meta_df["max>init BG"] = (meta_df.p_maxinit_1 < thresh) & (meta_df.t_maxinit_1 > 0)
+    meta_df["end>init FC"] = (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 > 0)
+    meta_df["end>init BG"] = (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 > 0)
+    meta_df["end<init FC"] = (meta_df.p_endinit_0 < thresh) & (meta_df.t_endinit_0 < 0)
+    meta_df["end<init BG"] = (meta_df.p_endinit_1 < thresh) & (meta_df.t_endinit_1 < 0)
+    meta_df["max>end FC"] = (meta_df.p_maxend_0 < thresh) & (meta_df.t_maxend_0 > 0)
+    meta_df["max>end BG"] = (meta_df.p_maxend_1 < thresh) & (meta_df.t_maxend_1 > 0)
+    for suc_crit_str, crit_savestr in zip(["max>init", "end>init", "end<init", "max>end"],
+                                     ["max-init", "end-init", "init-end", "max-end"],):
+        print(f"success criterion: {suc_crit_str}")
+        print(f"thresh: {thresh}")
+
+        figh, axs = plt.subplots(1, 4, figsize=[18, 5.5])
+        plot_contingency_table(meta_df[validmsk & V1msk][suc_crit_str + " FC"],
+                               meta_df[validmsk & V1msk][suc_crit_str + " BG"],
+                               title="[V1 sessions]", ax=axs[0])
+        plt.ylabel("DeePSim", fontsize=16);
+        plt.xlabel("BigGAN", fontsize=16)
+        plot_contingency_table(meta_df[validmsk & V4msk][suc_crit_str + " FC"],
+                               meta_df[validmsk & V4msk][suc_crit_str + " BG"],
+                               title="[V4 sessions]", ax=axs[1])
+        plt.ylabel("DeePSim", fontsize=16);
+        plt.xlabel("BigGAN", fontsize=16)
+        plot_contingency_table(meta_df[validmsk & ITmsk][suc_crit_str + " FC"],
+                               meta_df[validmsk & ITmsk][suc_crit_str + " BG"],
+                               title="[IT sessions]", ax=axs[2])
+        plt.ylabel("DeePSim", fontsize=16);
+        plt.xlabel("BigGAN", fontsize=16)
+        plot_contingency_table(meta_df[validmsk][suc_crit_str + " FC"],
+                               meta_df[validmsk][suc_crit_str + " BG"],
+                               title="[all sessions]", ax=axs[3])
+        plt.ylabel("DeePSim", fontsize=16);
+        plt.xlabel("BigGAN", fontsize=16)
+        plt.suptitle(f"{suc_crit_str}  p<{thresh}", fontsize=16)
+        saveallforms(figdir, f"Evol_success_contingency_{crit_savestr}_p{thresh:.3f}", figh)
+        plt.show()
+        print("\n\n\n")
+    sys.stdout.close()
+
+sys.stdout = sys.__stdout__
+#%%
+
+test_independence_contingency(meta_df["max>init FC"][ITmsk&validmsk], meta_df["max>init BG"][ITmsk&validmsk])
 
 #%%
-for statname, funname in stats_sumdf.columns:
-    # stats_sumdf
-    if funname == "sum":
-        stats_sumdf.rename(columns={(statname, funname): (statname, "count")}, inplace=True)
-    elif funname == "mean":
-        stats_sumdf.rename(columns={(statname, funname): (statname, "rate")}, inplace=True)
-    elif funname == "<lambda_0>":
-        stats_sumdf.rename(columns={(statname, funname): (statname, "CI0.05")}, inplace=True)
-    elif funname == "<lambda_1>":
-        stats_sumdf.rename(columns={(statname, funname): (statname, "CI0.95")}, inplace=True)
-    elif funname == "count":
-        stats_sumdf.rename(columns={(statname, funname): (statname, "total")}, inplace=True)
-
-stats_sumdf # .to_csv(join(dfdir, "stats_sumdf.csv"))
-# meta_df.groupby("visual_area")[["endinit_success_BG", "endinit_success_FC"]].mean()
+from statsmodels.stats.proportion import proportions_ztest
+proportions_ztest([78, 69], [106, 106])
+#%%
+proportions_ztest([10, 00], [106, 38])
 #%%
 thresh = 0.05
 for msk, label in zip([validmsk & V1msk, validmsk & V4msk, validmsk & ITmsk],
@@ -570,3 +726,45 @@ plt.ylabel("T-value between end and init response")
 plt.legend()
 saveallforms(outdir, "evol_success_tval_lineplot")
 plt.show()
+
+
+#%% dev zone
+stats_sumdf = meta_df[validmsk].groupby("visual_area").agg(
+               {"max>init FC": aggfunclist,
+                "max>init BG": aggfunclist,
+                "max>init both": aggfunclist,
+                "end>init FC": aggfunclist,
+                "end>init BG": aggfunclist,
+                "end>init both": aggfunclist,
+                "end<init FC": aggfunclist,
+                "end<init BG": aggfunclist,
+                "end<init both": aggfunclist,
+                "max>end FC": aggfunclist,
+                "max>end BG": aggfunclist,
+                "max>end both": aggfunclist,
+                }).loc[["V1", "V4", "IT"]]
+#%%
+total_sumdf = meta_df[validmsk].agg(
+               {"max>init FC": aggfunclist,
+                "max>init BG": aggfunclist,
+                "max>init both": aggfunclist,
+                "end>init FC": aggfunclist,
+                "end>init BG": aggfunclist,
+                "end>init both": aggfunclist,
+                "end<init FC": aggfunclist,
+                "end<init BG": aggfunclist,
+                "end<init both": aggfunclist,
+                "max>end FC": aggfunclist,
+                "max>end BG": aggfunclist,
+                "max>end both": aggfunclist,
+                })
+total_sumdf_row = total_sumdf.melt(ignore_index=False).T
+total_sumdf_row = total_sumdf_row.drop("variable").rename(index={"value": "Total"})
+total_sumdf_row.columns = pd.MultiIndex.from_product([total_sumdf.columns, ['sum', 'mean', '<lambda_0>', '<lambda_1>', 'count']])
+# set dtype sum count to int
+total_sumdf_row.loc[:, (slice(None), ["sum", "count"])] = total_sumdf_row.loc[:, (slice(None), ["sum", "count"])].astype(int)
+# turn the rownames into multiindex of columns
+# total_sumdf_row.index = pd.MultiIndex.from_product([['Total'], total_sumdf.index])
+# Adjust columns to multi-index
+stats_sumdf = pd.concat([stats_sumdf, total_sumdf_row])  #.to_csv(join(tabdir, f"Evol_success_rate_{thresh:.3f}.csv"))
+
