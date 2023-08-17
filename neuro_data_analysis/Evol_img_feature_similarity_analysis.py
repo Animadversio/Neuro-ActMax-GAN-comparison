@@ -1,3 +1,8 @@
+"""
+Compute similarity between images via pre-extracted features from all Evolution images
+in E:\Network_Data_Sync\BigGAN_Evol_feat_extract
+
+"""
 import re
 from pathlib import Path
 import pickle as pkl

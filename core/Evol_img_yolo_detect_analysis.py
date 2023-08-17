@@ -54,7 +54,6 @@ all_df["imgid"] = all_df.img_name.apply(lambda x: int(re.findall(r"gen\d+_(\d+)"
 all_df["confidence_fill0"] = all_df.confidence.fillna(0)
 # use the visual area of the corresponding Expi in metadf in all_df
 all_df["visual_area"] = all_df.Expi.apply(lambda x: meta_df.loc[x, "visual_area"])
-
 EXCLUSION_MINBLOCKSIZE = 10
 all_df["included"] = True
 all_df["maxblock"] = all_df.groupby("Expi")["block"].transform(max)
