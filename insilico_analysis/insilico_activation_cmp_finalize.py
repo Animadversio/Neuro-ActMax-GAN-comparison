@@ -12,7 +12,7 @@ from easydict import EasyDict as edict
 import numpy as np
 import pandas as pd
 from core.utils.plot_utils import saveallforms
-from core.utils.stats_utils import ttest_rel_print_df, ttest_rel_df
+from core.utils.stats_utils import ttest_rel_print_df, ttest_rel_df, ttest_ind_print_df, ttest_ind_df, ttest_ind_print
 from contextlib import redirect_stdout
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\insilico_Evol_activation_cmp"
 #%%
@@ -36,7 +36,6 @@ FC6_evol_norm_pivot = df_evol_norm[FC6msk].pivot(index=["netname", "layershort",
                                         columns='optimmethod', values='score_norm')
 BG_evol_norm_pivot = df_evol_norm[BGmsk].pivot(index=["netname", "layershort", "RFresize", "unitid", "RND"],
                                         columns='optimmethod', values='score_norm')
-#%%
 # assert FC6_evol_norm_pivot[["netname", "layershort", "RFresize", "unitid"]].equals(BG_evol_norm_pivot[["netname", "layershort", "RFresize", "unitid"]])
 assert FC6_evol_norm_pivot.droplevel(4).index.equals(BG_evol_norm_pivot.droplevel(4).index)
 #%%
@@ -48,6 +47,7 @@ BGFC6_evol_norm_pivot_merge = pd.merge(FC6_evol_norm_pivot, BG_evol_norm_pivot,
                                        on=["netname", "layershort", "RFresize", "unitid"], how='inner')
 print(BGFC6_evol_norm_pivot_merge.shape)
 BGFC6_evol_norm_pivot_merge.reset_index(inplace=True)
+
 #%%
 optim2plot = ['CholCMA_fc6', 'CholCMA', 'HessCMA'] # 'HessCMA500_fc6',
 xtick_annot = ["DeePSim", "BG CholCMA", "BG HessCMA"]
@@ -65,33 +65,7 @@ for layername in BGFC6_evol_norm_pivot_merge.layershort.unique():
     plt.ylabel("Max Normalized activation")
     plt.show()
 
-#%%
-optim2plot = ['CholCMA_fc6', 'CholCMA', 'HessCMA'] # 'HessCMA500_fc6',
-xtick_annot = ["DeePSim", "BigGAN CholCMA", "BigGAN HessCMA"]
-layername = "fc"
-RFresize = False
-for layername in BGFC6_evol_norm_pivot_sel.layershort.unique():
-    print(f"Layer: {layername}")
-    plotdata = BGFC6_evol_norm_pivot_sel[(BGFC6_evol_norm_pivot_sel["layershort"] == layername) &
-                                       (BGFC6_evol_norm_pivot_sel["RFresize"] == RFresize)]
-    ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[1])
-    ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[2])
-    ttest_rel_print_df(plotdata, None, optim2plot[2], optim2plot[1])
-    # fraction of time BG is better than FC6
-    print(f"Fraction BG (CholCMA) > FC6: {np.mean(plotdata[optim2plot[1]] > plotdata[optim2plot[0]])}")
-    print(f"Fraction of BG (HessCMA) > FC6: {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[0]])}")
-    print(f"Fraction of BG (HessCMA) > BG (CholCMA): {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[1]])}")
-    figh = plt.figure(figsize=(4.5, 6))
-    # each row plot as a line
-    plt.plot(plotdata[optim2plot].to_numpy().T, alpha=0.08, color="black")
-    plt.plot(plotdata[optim2plot].mean(axis=0).to_numpy(), "-o", color="red", linewidth=4, )
-    plt.xticks([0, 1, 2], xtick_annot)
-    plt.title(f"{layername} optim comparison")
-    plt.ylabel("Max Normalized activation")
-    saveallforms(outdir, f"{netname_prefix}{layername}_{'RFrsz' if RFresize else ''}_optim_cmp", figh, fmts=["png", "pdf", "svg"])
-    plt.show()
-#%%
-# create combined plot, each panel is a layer
+#%% create combined plot, each panel is a layer
 optim2plot = ['CholCMA_fc6', 'CholCMA', 'HessCMA'] # 'HessCMA500_fc6',
 xtick_annot = ["DeePSim", "BigGAN\nCholCMA", "BigGAN\nHessCMA"]
 RFresize = False
@@ -108,6 +82,7 @@ for i, layername in enumerate(BGFC6_evol_norm_pivot_sel.layershort.unique()):
     axes[i].set_ylim([-0.05, 1.05])
     if i == 0:
         axes[i].set_ylabel("Max Normalized activation")
+
 
 plt.suptitle(f"{netname_prefix}{'RFrsz' if RFresize else ''} optim comparison")
 plt.tight_layout()
@@ -143,24 +118,70 @@ saveallforms(outdir, f"{netname_prefix}_alllayers_{'RFrsz' if RFresize else ''}_
 plt.show()
 
 #%%
-from contextlib import redirect_stdout
-# print the ttest results into txt file in figdir
 optim2plot = ['CholCMA_fc6', 'CholCMA', 'HessCMA'] # 'HessCMA500_fc6',
-RFresize = True
-with open(join(outdir, f"stats_{netname_prefix}{'RFrsz' if RFresize else ''}_optim_cmp.txt"), 'w') as f:
-    with redirect_stdout(f):
-        for layername in BGFC6_evol_norm_pivot_sel.layershort.unique():
-            print(f"Layer: {layername}")
+xtick_annot = ["DeePSim", "BigGAN CholCMA", "BigGAN HessCMA"]
+layername = "fc"
+RFresize = False
+for layername in BGFC6_evol_norm_pivot_sel.layershort.unique():
+    print(f"Layer: {layername}")
+    plotdata = BGFC6_evol_norm_pivot_sel[(BGFC6_evol_norm_pivot_sel["layershort"] == layername) &
+                                       (BGFC6_evol_norm_pivot_sel["RFresize"] == RFresize)]
+    ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[1])
+    ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[2])
+    ttest_rel_print_df(plotdata, None, optim2plot[2], optim2plot[1])
+    # fraction of time BG is better than FC6
+    print(f"Fraction BG (CholCMA) > FC6: {np.mean(plotdata[optim2plot[1]] > plotdata[optim2plot[0]])}")
+    print(f"Fraction of BG (HessCMA) > FC6: {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[0]])}")
+    print(f"Fraction of BG (HessCMA) > BG (CholCMA): {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[1]])}")
+    figh = plt.figure(figsize=(4.5, 6))
+    # each row plot as a line
+    plt.plot(plotdata[optim2plot].to_numpy().T, alpha=0.08, color="black")
+    plt.plot(plotdata[optim2plot].mean(axis=0).to_numpy(), "-o", color="red", linewidth=4, )
+    plt.xticks([0, 1, 2], xtick_annot)
+    plt.title(f"{layername} optim comparison")
+    plt.ylabel("Max Normalized activation")
+    saveallforms(outdir, f"{netname_prefix}{layername}_{'RFrsz' if RFresize else ''}_optim_cmp", figh, fmts=["png", "pdf", "svg"])
+    plt.show()
+#%%
+#%%
+# print the ttest results into txt file in figdir
+layerlist = BGFC6_evol_norm_pivot_sel.layershort.unique()
+optim2plot = ['CholCMA_fc6', 'CholCMA', 'HessCMA'] # 'HessCMA500_fc6',
+with redirect_stdout(open(join(outdir, f"stats_{netname_prefix}_optim_cmp_latex.txt"), 'w')):
+    for RFresize in [False, True]:
+        for layername in layerlist:
+            print(f"Layer: {layername}  RF resize={RFresize}")
             plotdata = BGFC6_evol_norm_pivot_sel[(BGFC6_evol_norm_pivot_sel["layershort"] == layername) &
                                                  (BGFC6_evol_norm_pivot_sel["RFresize"] == RFresize)]
-            ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[1])
-            ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[2])
-            ttest_rel_print_df(plotdata, None, optim2plot[2], optim2plot[1])
+            ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[1], sem=True, latex=True)
+            ttest_rel_print_df(plotdata, None, optim2plot[0], optim2plot[2], sem=True, latex=True)
+            ttest_rel_print_df(plotdata, None, optim2plot[2], optim2plot[1], sem=True, latex=True)
             # fraction of time BG is better than FC6
+            print("Final activation comparison: ")
             print(f"Fraction BG (CholCMA) > FC6: {np.mean(plotdata[optim2plot[1]] > plotdata[optim2plot[0]])}")
             print(f"Fraction of BG (HessCMA) > FC6: {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[0]])}")
             print(f"Fraction of BG (HessCMA) > BG (CholCMA): {np.mean(plotdata[optim2plot[2]] > plotdata[optim2plot[1]])}")
             print("\n")
+
+with redirect_stdout(open(join(outdir, f"stats_{netname_prefix}_layer_cmp_latex.txt"), 'w')):
+    print(f"Diff activation between {optim2plot[0]} and {optim2plot[1]}, independent t-test between layers:")
+    print("")
+    for RFresize in [False, True]:
+        diffdata_col = {}
+        for layername in layerlist:
+            plotdata = BGFC6_evol_norm_pivot_sel[(BGFC6_evol_norm_pivot_sel["layershort"] == layername) &
+                                                 (BGFC6_evol_norm_pivot_sel["RFresize"] == RFresize)]
+            diffdata = plotdata[optim2plot[0]] - plotdata[optim2plot[1]]
+            diffdata_col[layername] = diffdata
+
+        for layername0 in layerlist[:-1]:
+            print(f"Layer: {layername0} vs {layerlist[-1]}  RF resize={RFresize}", end="\n")
+            ttest_ind_print(diffdata_col[layername0], diffdata_col[layerlist[-1]], sem=True, latex=True)
+
+        for layername0 in layerlist[:-2]:
+            print(f"Layer: {layername0} vs {layerlist[-2]}  RF resize={RFresize}", end="\n")
+            ttest_ind_print(diffdata_col[layername0], diffdata_col[layerlist[-2]], sem=True, latex=True)
+
 
 #%%
 
