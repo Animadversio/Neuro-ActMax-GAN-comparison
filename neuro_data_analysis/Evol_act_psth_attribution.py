@@ -25,12 +25,8 @@ meta_df = pd.read_csv(tabdir / "meta_activation_stats.csv", index_col=0)
 Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, \
     sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 #%%
-bothsucmsk = (meta_df.p_maxinit_0 < 0.01) & (meta_df.p_maxinit_1 < 0.01)
-FCsucsmsk = (meta_df.p_maxinit_0 < 0.01)
-BGsucsmsk = (meta_df.p_maxinit_1 < 0.01)
-#%%
 _, BFEStats = load_neural_data()
-psth_col, meta_df = extract_all_evol_trajectory_psth(BFEStats)
+psth_col, _ = extract_all_evol_trajectory_psth(BFEStats)
 psth_extrap_arr, extrap_mask_arr, max_len = pad_psth_traj(psth_col)
 # shape of psth_extrap_arr is (n_exp, n_blocks, 4, n_timepoint)
 # shape of extrap_mask_arr is (n_exp, n_blocks)
@@ -141,6 +137,78 @@ CoM_init_block_tsr = np.stack(CoM_init_block_tsr, axis=-1)
 CoM_max_block_tsr = np.stack(CoM_max_block_tsr, axis=-1)
 
 #%% Plot the difference attribution
+from contextlib import redirect_stdout
+from pathlib import Path
+thresh = 0.01  # 0.01
+anysucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
+bothsucmsk = (meta_df.p_maxinit_0 < thresh) & (meta_df.p_maxinit_1 < thresh)
+FCsucsmsk = (meta_df.p_maxinit_0 < thresh)
+BGsucsmsk = (meta_df.p_maxinit_1 < thresh)
+
+with redirect_stdout((Path(tabdir)/f"Evol_act_increase_attrib_thr{thresh}.txt").open("w")):
+    for texify in [False, True]:
+        print("experiments with both success, paired t test")
+        for suc_label, successmsk in zip(["both", ], # "any", "first", "last"
+                                         [bothsucmsk, ]): # sucsmsk, anysuc, lastsucmsk
+            for i, (visual_area, area_mask) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4msk, ITmsk])):
+                mask = area_mask & validmsk & successmsk
+                print(f"Area: {visual_area}, {suc_label} success N={mask.sum()}")
+                diff_attrib = diff_attrib_norm_bin_tsr[mask]
+                for tid, window_start in enumerate(range(0, 200, bin_size)):
+                    window_end = window_start + bin_size
+                    print(f"[{window_start},{window_end}]ms, ", end="")
+                    tval, pval, result_str = ttest_rel_print(diff_attrib[:, tid, 0],
+                                                             diff_attrib[:, tid, 1], sem=True, latex=texify)
+                    if pval < 0.05: print("**")
+            print("")
+
+        print("all success experiments, non-paired test")
+        for suc_label, successmsk in zip(["both", ], #"first", "last"
+                                         [bothsucmsk, ]): #  anysuc, lastsucmsk
+            for i, (visual_area, area_mask) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4msk, ITmsk])):
+                mask1 = area_mask & validmsk & FCsucsmsk
+                mask2 = area_mask & validmsk & BGsucsmsk
+                print(f"Area: {visual_area}, {suc_label} FC success={mask1.sum()}, BG success={mask2.sum()}")
+                diff_attrib_FC = diff_attrib_norm_bin_tsr[mask1]
+                diff_attrib_BG = diff_attrib_norm_bin_tsr[mask2]
+                for tid, window_start in enumerate(range(0, 200, bin_size)):
+                    window_end = window_start + bin_size
+                    print(f"[{window_start},{window_end}]ms, ", end="")
+                    tval, pval, result_str = ttest_ind_print(diff_attrib_FC[:, tid, 0],
+                                                             diff_attrib_BG[:, tid, 1], sem=True, latex=texify)
+                    if pval < 0.05: print("**")
+
+            print("")
+
+#%%
+"""Systematic plot output of different center of mass between DeePSim and BigGAN"""
+for thresh in [0.01, 0.05]:  # 0.01
+    anysucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
+    bothsucmsk = (meta_df.p_maxinit_0 < thresh) & (meta_df.p_maxinit_1 < thresh)
+    FCsucsmsk = (meta_df.p_maxinit_0 < thresh)
+    BGsucsmsk = (meta_df.p_maxinit_1 < thresh)
+    for target_tsr, label in zip([CoM_init_block_tsr, CoM_last_block_tsr, CoM_max_block_tsr],
+                                 ["init", "last", "max"]):
+        for success_msk, success_str in zip([bothsucmsk, anysucsmsk, ~anysucsmsk, True],
+                                            ["bothsuc", "anysuc", "nonsucs", "all"]):
+            figh, axs = plt.subplots(1, 2, figsize=[8, 4.5], sharex=True, sharey=True)
+            for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
+                ax = axs[i]
+                mask = area_mask & validmsk & success_msk  # & bothsucmsk
+                ax.scatter(target_tsr[mask, 0], target_tsr[mask, 1], s=25, alpha=0.6)
+                ax.set_xlabel("CoM of PSTH DeePSim")
+                ax.set_ylabel("CoM of PSTH BigGAN")
+                ax.axline([115, 115], slope=1, color="k", linestyle="--")
+                tval, pval, statstr = ttest_rel_print(target_tsr[mask, 0],
+                                                      target_tsr[mask, 1], sem=True)
+                ax.set_title(visual_area + f" N={mask.sum()}\n" + statstr.replace("(N", "\n(N"))
+                ax.set_aspect('equal', 'box')
+            plt.suptitle(f"Center of Mass of PSTH in {label} block\n[{success_str} sessions p < {thresh}]")
+            plt.tight_layout()
+            saveallforms(figdir, f"scatter_PSTH_{label}_block_Center_of_Mass_{success_str}_thresh{thresh}", )#_bothsuc
+            plt.show()
+
+
 #%%
 figh, axs = plt.subplots(1, 3, figsize=[12, 4], sharex=True, sharey=True, )
 for i, (visual_area, mask1) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4msk, ITmsk])):
@@ -176,31 +244,10 @@ for i, (visual_area, mask1) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
     # ax.set_xlim([0, 200])
     # ax.set_ylim([0, 200])
     ax.set_aspect('equal', 'box')
-plt.tight_layout()
+# plt.tight_layout()
 saveallforms(figdir, "scatter_PSTH_Center_of_Mass_bothsuc", )
 plt.show()
 #%%
-target_tsr = CoM_init_block_tsr
-for target_tsr, label in zip([CoM_init_block_tsr, CoM_last_block_tsr, CoM_max_block_tsr],
-                                ["init", "last", "max"]):
-    for success_msk, success_str in zip([bothsucmsk, sucsmsk, ~sucsmsk],
-                                        ["bothsuc", "anysuc", "nonsucs"]):
-        figh, axs = plt.subplots(1, 2, figsize=[8, 4.5], sharex=True, sharey=True)
-        for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
-            ax = axs[i]
-            mask = area_mask & validmsk & success_msk # & bothsucmsk
-            ax.scatter(target_tsr[mask, 0], target_tsr[mask, 1], s=25, alpha=0.6)
-            ax.set_xlabel("CoM of PSTH DeePSim")
-            ax.set_ylabel("CoM of PSTH BigGAN")
-            ax.axline([100, 100], slope=1, color="k", linestyle="--")
-            tval, pval, statstr = ttest_rel_print(target_tsr[mask, 0],
-                                          target_tsr[mask, 1], sem=True)
-            ax.set_title(visual_area + f" N={mask.sum()}\n" + statstr.replace("(N", "\n(N"))
-            ax.set_aspect('equal', 'box')
-        plt.suptitle(f"Center of Mass of PSTH {label} block\n[{success_str} sessions]")
-        plt.tight_layout()
-        saveallforms(figdir, f"scatter_PSTH_{label}_block_Center_of_Mass_{success_str}", )#_bothsuc
-        plt.show()
 
 #%%
 figh, axs = plt.subplots(1, 2, figsize=[8, 3.5], sharex=True, sharey=True)
@@ -252,7 +299,7 @@ for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
     ax.set_xlim([0, 200])
 plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
 plt.tight_layout()
-saveallforms(figdir, "act_increase_attrib_bothsucs", figh)
+saveallforms(figdir, "act_increase_attrib_bothsucs_thr005", figh)
 plt.show()
 
 #%%
@@ -277,11 +324,38 @@ for i, (visual_area, area_mask) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4m
     ax.set_xlabel("Time (ms)")
     ax.set_ylabel("Fraction of activation difference")
     ax.set_xlim([0, 200])
-    # ax.set_ylim([-0.02, 0.09])
+    ax.set_ylim([-0.05, 0.15])
     ax.legend()
 plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
 plt.tight_layout()
-saveallforms(figdir, "act_increase_attrib_threadsucs_3area", figh)
+saveallforms(figdir, "act_increase_attrib_threadsucs_3area_thr005", figh)
 plt.show()
 
 #%%
+thread_colors = ['b', 'r']
+figh, axs = plt.subplots(1, 2, figsize=[6, 3.5], sharex=True, sharey=True)
+time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
+for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
+    ax = axs[i]
+    for thread, GANname, thread_sucsmsk in zip([0, 1],
+                                               ["DeePSim", "BigGAN"],
+                                               [FCsucsmsk, BGsucsmsk]):
+        mask = area_mask & validmsk & thread_sucsmsk
+        diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
+        diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
+        ax.plot(time_ticks, diff_attrib[:, thread], color=thread_colors[thread],
+                label=f"{GANname} N={mask.sum()}")
+        ax.fill_between(time_ticks,
+                        diff_attrib[:, thread] - diff_attrib_sem[:, thread],
+                        diff_attrib[:, thread] + diff_attrib_sem[:, thread], color=thread_colors[thread], alpha=0.3)
+    ax.axhline(0, color='k', ls='--', lw=1)
+    ax.set_title(visual_area)
+    ax.set_xlabel("Time (ms)")
+    ax.set_ylabel("Fraction of activation difference")
+    ax.set_xlim([0, 200])
+    ax.set_ylim([-0.03, 0.15])
+    ax.legend()
+plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
+plt.tight_layout()
+saveallforms(figdir, "act_increase_attrib_threadsucs_thr005", figh)
+plt.show()
