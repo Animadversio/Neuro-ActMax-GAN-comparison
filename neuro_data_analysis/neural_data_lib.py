@@ -376,12 +376,20 @@ def extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200)):
         t_endinit_1, p_endinit_1 = ttest_ind(np.concatenate(resp_arr1[-2:]), np.concatenate(resp_arr1[:2]))
         # ttest between the max two blocks and the first two blocks
         max_id0 = np.argmax(resp_m_traj_0)
+        max_id0 = np.argmax(resp_m_traj_0)
         max_id0 = max_id0 if max_id0 < len(resp_arr0) - 2 else len(resp_arr0) - 3
-        t_maxinit_0, p_maxinit_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr0[:2]))
+        t_maxinit_0, p_maxinit_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0 + 2]),
+                                             np.concatenate(resp_arr0[:2]))
+        t_maxend_0, p_maxend_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0 + 2]),
+                                           np.concatenate(resp_arr0[-2:]))
         max_id1 = np.argmax(resp_m_traj_1)
         max_id1 = max_id1 if max_id1 < len(resp_arr1) - 2 else len(resp_arr1) - 3
-        t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1+2]), np.concatenate(resp_arr1[:2]))
+        t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1 + 2]),
+                                             np.concatenate(resp_arr1[:2]))
+        t_maxend_1, p_maxend_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1 + 2]),
+                                           np.concatenate(resp_arr1[-2:]))
 
+        t_FCBG_init_01, p_FCBG_init_01 = ttest_ind(np.concatenate(resp_arr0[:2]), np.concatenate(resp_arr1[:2]))
         t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[-2:])) # fixed June13th
         t_FCBG_max_01, p_FCBG_max_01 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr1[max_id1:max_id1+2]))
 
@@ -392,8 +400,11 @@ def extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200)):
                         t_endinit_1=t_endinit_1, p_endinit_1=p_endinit_1,
                         t_maxinit_0=t_maxinit_0, p_maxinit_0=p_maxinit_0,
                         t_maxinit_1=t_maxinit_1, p_maxinit_1=p_maxinit_1,
+                        t_maxend_0=t_maxend_0, p_maxend_0=p_maxend_0,
+                        t_maxend_1=t_maxend_1, p_maxend_1=p_maxend_1,
                         t_FCBG_end_01=t_FCBG_end_01, p_FCBG_end_01=p_FCBG_end_01,
-                        t_FCBG_max_01=t_FCBG_max_01, p_FCBG_max_01=p_FCBG_max_01,)
+                        t_FCBG_max_01=t_FCBG_max_01, p_FCBG_max_01=p_FCBG_max_01,
+                        t_FCBG_init_01=t_FCBG_init_01, p_FCBG_init_01=p_FCBG_init_01,)
         meta_dict.update(stat_dict)
 
         # stack the trajectories together
