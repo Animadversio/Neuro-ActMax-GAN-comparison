@@ -18,6 +18,7 @@ from neuro_data_analysis.neural_data_lib import load_img_resp_pairs, load_neural
     extract_evol_activation_array, extract_all_evol_trajectory, pad_resp_traj
 from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping, get_all_masks
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
+tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
 os.makedirs(outdir, exist_ok=True)
 #%%
 _, BFEStats = load_neural_data()
@@ -26,101 +27,6 @@ resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
-#%%
-# data structure to contain a collection of trajectories
-# each trajectory is an 1D array of length n_blocks
-resp_col = OrderedDict()
-meta_col = OrderedDict()
-#%%
-for Expi in range(1, len(BFEStats) + 1):
-    S = BFEStats[Expi - 1]
-    if S["evol"] is None:
-        continue
-    expstr = get_expstr(BFEStats, Expi)
-    print(expstr)
-    Animal, expdate = parse_meta(S)
-    ephysFN = S["meta"]['ephysFN']
-    prefchan = int(S['evol']['pref_chan'][0])
-    prefunit = int(S['evol']['unit_in_pref_chan'][0])
-    imgsize = S["evol"]["imgsize"][0]
-    imgpos  = S["evol"]["imgpos"][0]
-    visual_area = area_mapping(prefchan, Animal, expdate)
-    spacenames = S['evol']['space_names']
-    space1 = spacenames[0] if isinstance(spacenames[0], str) else spacenames[0][0]
-    space2 = spacenames[1] if isinstance(spacenames[1], str) else spacenames[1][0]
-    # load the evolution trajectory of each pair
-    resp_arr0, bsl_arr0, gen_arr0, _, _, _ = extract_evol_activation_array(S, 0)
-    resp_arr1, bsl_arr1, gen_arr1, _, _, _ = extract_evol_activation_array(S, 1)
-
-    # if the lAST BLOCK has < 10 images, in either thread, then remove it
-    if len(resp_arr0[-1]) < 10 or len(resp_arr1[-1]) < 10:
-        resp_arr0 = resp_arr0[:-1]
-        resp_arr1 = resp_arr1[:-1]
-        bsl_arr0 = bsl_arr0[:-1]
-        bsl_arr1 = bsl_arr1[:-1]
-        gen_arr0 = gen_arr0[:-1]
-        gen_arr1 = gen_arr1[:-1]
-
-    resp_m_traj_0 = np.array([resp.mean() for resp in resp_arr0])
-    resp_m_traj_1 = np.array([resp.mean() for resp in resp_arr1])
-    resp_sem_traj_0 = np.array([sem(resp) for resp in resp_arr0])
-    resp_sem_traj_1 = np.array([sem(resp) for resp in resp_arr1])
-    bsl_m_traj_0 = np.array([bsl.mean() for bsl in bsl_arr0])
-    bsl_m_traj_1 = np.array([bsl.mean() for bsl in bsl_arr1])
-
-    # test the successfulness of the evolution
-    # ttest between the last two blocks and the first two blocks
-    t_endinit_0, p_endinit_0 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr0[:2]))
-    t_endinit_1, p_endinit_1 = ttest_ind(np.concatenate(resp_arr1[-2:]), np.concatenate(resp_arr1[:2]))
-    # ttest between the max two blocks and the first two blocks
-    max_id0 = np.argmax(resp_m_traj_0)
-    max_id0 = max_id0 if max_id0 < len(resp_arr0) - 2 else len(resp_arr0) - 3
-    t_maxinit_0, p_maxinit_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr0[:2]))
-    max_id1 = np.argmax(resp_m_traj_1)
-    max_id1 = max_id1 if max_id1 < len(resp_arr1) - 2 else len(resp_arr1) - 3
-    t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1+2]), np.concatenate(resp_arr1[:2]))
-
-    t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[-2:]))
-    t_FCBG_max_01, p_FCBG_max_01 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr1[max_id1:max_id1+2]))
-
-    # save the meta data
-    meta_dict = edict(Animal=Animal, expdate=expdate, ephysFN=ephysFN, prefchan=prefchan, prefunit=prefunit,
-                      visual_area=visual_area, space1=space1, space2=space2, blockN=len(resp_arr0))
-    stat_dict = edict(t_endinit_0=t_endinit_0, p_endinit_0=p_endinit_0,
-                    t_endinit_1=t_endinit_1, p_endinit_1=p_endinit_1,
-                    t_maxinit_0=t_maxinit_0, p_maxinit_0=p_maxinit_0,
-                    t_maxinit_1=t_maxinit_1, p_maxinit_1=p_maxinit_1,
-                    t_FCBG_end_01=t_FCBG_end_01, p_FCBG_end_01=p_FCBG_end_01,
-                    t_FCBG_max_01=t_FCBG_max_01, p_FCBG_max_01=p_FCBG_max_01,)
-    meta_dict.update(stat_dict)
-
-    # stack the trajectories together
-    resp_bunch = np.stack([resp_m_traj_0, resp_m_traj_1,
-                           resp_sem_traj_0, resp_sem_traj_1,
-                           bsl_m_traj_0, bsl_m_traj_1, ], axis=1)
-    resp_col[Expi] = resp_bunch
-    meta_col[Expi] = meta_dict
-#%%
-# get the longest trajectory
-max_len = max([resp_bunch.shape[0] for resp_bunch in resp_col.values()])
-# extrapolate the last block with the mean of last two blocks
-resp_extrap_col = OrderedDict()
-for Expi, resp_bunch in resp_col.items():
-    n_blocks = resp_bunch.shape[0]
-    if n_blocks < max_len:
-        extrap_vals = resp_bunch[-2:, :].mean(axis=0)
-        resp_bunch = np.concatenate([resp_bunch,
-             np.tile(extrap_vals, (max_len - n_blocks, 1))], axis=0)
-    resp_extrap_col[Expi] = resp_bunch
-
-# concatenate all trajectories
-resp_extrap_arr = np.stack([*resp_extrap_col.values()], axis=0)
-#%%
-meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
-#%%
-meta_df.to_csv(join(outdir, "meta_stats.csv"))
-np.save(join(outdir, "resp_traj_extrap_arr.npy"), resp_extrap_arr)
-pkl.dump({"resp_col": resp_col, "meta_col": meta_col}, open(join(outdir, "resp_traj_col.pkl"), "wb"))
 
 #%%
 _, BFEStats = load_neural_data()
@@ -148,7 +54,7 @@ for Expi in tqdm(range(1, len(BFEStats)+1)):  # 66 is not good
         bsl_arr1 = bsl_arr1[:-1]
         gen_arr1 = gen_arr1[:-1]
 
-    #%% max block mean response for each thread and their std. dev.
+    #% max block mean response for each thread and their std. dev.
     blck_m_0 = np.array([arr.mean() for arr in resp_arr0])  # np.mean(resp_arr0, axis=1)
     blck_m_1 = np.array([arr.mean() for arr in resp_arr1])  # np.mean(resp_arr1, axis=1)
 
@@ -226,6 +132,72 @@ import matplotlib
 
 matplotlib.use("module://backend_interagg")
 #%%
+# consider better testing method hierachical
+import sys
+from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
+# thresh = 0.05
+for thresh in [0.05, 0.01, 0.001]:
+    sucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
+    bothsucsmsk = (meta_df.p_maxinit_0 < thresh) & (meta_df.p_maxinit_1 < thresh)
+    FCsucsmsk = (meta_df.p_maxinit_0 < thresh)
+    BGsucsmsk = (meta_df.p_maxinit_1 < thresh)
+    sys.stdout = open(join(tabdir, f"Evol_activation_cmp_thr{thresh:.3f}.txt"), "w")
+    # sys.stdout = sys.__stdout__
+    print(f"Threshold: {thresh:.3f}")
+    for common_msk, common_label in [(validmsk, "valid"),
+                                    (validmsk & sucsmsk, "valid any success"),
+                                    (validmsk & bothsucsmsk, "valid both success"),]:
+        print(f"\n[{common_label} experiments]")
+        print("\nDeePSim > BigGAN, end generation")
+        for msk, label in [(validmsk, "All"),
+                           (validmsk & V1msk, "V1"),
+                           (validmsk & V1msk & Amsk, "A V1"),
+                           (validmsk & V1msk & Bmsk, "B V1"),
+                           (validmsk & V4msk, "V4"),
+                           (validmsk & V4msk & Amsk, "A V4"),
+                           (validmsk & V4msk & Bmsk, "B V4"),
+                           (validmsk & ITmsk, "IT"),
+                           (validmsk & ITmsk & Amsk, "A IT"),
+                           (validmsk & ITmsk & Bmsk, "B IT"),]:
+            print(f"[{label} {common_label}]", end=" ")
+            ttest_rel_print(normresp_extrap_arr[common_msk&msk, -1, 0],
+                            normresp_extrap_arr[common_msk&msk, -1, 1],sem=True, latex=True)
+
+        print("\nDeePSim > BigGAN, max generation")
+        for msk, label in [(validmsk, "All"),
+                           (validmsk & V1msk, "V1"),
+                           (validmsk & V1msk & Amsk, "A V1"),
+                           (validmsk & V1msk & Bmsk, "B V1"),
+                           (validmsk & V4msk, "V4"),
+                           (validmsk & V4msk & Amsk, "A V4"),
+                           (validmsk & V4msk & Bmsk, "B V4"),
+                           (validmsk & ITmsk, "IT"),
+                           (validmsk & ITmsk & Amsk, "A IT"),
+                           (validmsk & ITmsk & Bmsk, "B IT"),]:
+            print(f"[{label} {common_label}]", end=" ")
+            ttest_rel_print(normresp_extrap_arr[common_msk&msk, :, 0].max(axis=1),
+                            normresp_extrap_arr[common_msk&msk, :, 1].max(axis=1),sem=True, latex=True)
+
+
+        print("\nDeePSim > BigGAN, initial generation")
+        for msk, label in [(validmsk, "All"),
+                           (validmsk & V1msk, "V1"),
+                           (validmsk & V1msk & Amsk, "A V1"),
+                           (validmsk & V1msk & Bmsk, "B V1"),
+                           (validmsk & V4msk, "V4"),
+                           (validmsk & V4msk & Amsk, "A V4"),
+                           (validmsk & V4msk & Bmsk, "B V4"),
+                           (validmsk & ITmsk, "IT"),
+                           (validmsk & ITmsk & Amsk, "A IT"),
+                           (validmsk & ITmsk & Bmsk, "B IT"), ]:
+            print(f"[{label} {common_label}]", end=" ")
+            ttest_rel_print(normresp_extrap_arr[common_msk & msk, 0, 0],
+                            normresp_extrap_arr[common_msk & msk, 0, 1], sem=True, latex=True)
+
+sys.stdout = sys.__stdout__
+
+
+#%%
 meta_df.loc[validmsk, "t_FCBG_max_01"].plot.hist(bins=20)
 plt.show()
 #%%
@@ -260,98 +232,6 @@ for msk, label in [(validmsk, "val"),
         plt.title(f"FC max resp vs BG max resp   mask: {label}")
         saveallforms(outdir, f"tval_FCBG_max_01_hist_{label}{'' if common_norm else '_norm'}")
         plt.show()
-#%%
-import sys
-from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
-sys.stdout = open(join(tabdir, "Evol_activation_cmp.txt"), "w")
-print("\nDeePSim > BigGAN, end generation")
-for msk, label in [(validmsk, "valid"),
-                   (validmsk & sucsmsk, "valid any success"),
-                   (validmsk & sucsmsk & V1msk, "V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
-                   (validmsk & sucsmsk & V4msk, "V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
-                   (validmsk & sucsmsk & ITmsk, "IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, -1, 0], normresp_extrap_arr[msk, -1, 1],)
-
-for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
-                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
-                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
-                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, -1, 0], normresp_extrap_arr[msk, -1, 1],)
-
-
-print("\nDeePSim > BigGAN, max generation")
-for msk, label in [(validmsk, "valid"),
-                   (validmsk & sucsmsk, "valid any success"),
-                   (validmsk & sucsmsk & V1msk, "V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
-                   (validmsk & sucsmsk & V4msk, "V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
-                   (validmsk & sucsmsk & ITmsk, "IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, :, 0].max(axis=1), normresp_extrap_arr[msk, :, 1].max(axis=1),)
-
-for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
-                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
-                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
-                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, :, 0].max(axis=1), normresp_extrap_arr[msk, :, 1].max(axis=1),)
-
-
-print("\nDeePSim > BigGAN, initial generation")
-for msk, label in [(validmsk, "valid"),
-                   (validmsk & sucsmsk, "valid any success"),
-                   (validmsk & sucsmsk & V1msk, "V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Amsk, "A V1 any success"),
-                   (validmsk & sucsmsk & V1msk & Bmsk, "B V1 any success"),
-                   (validmsk & sucsmsk & V4msk, "V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Amsk, "A V4 any success"),
-                   (validmsk & sucsmsk & V4msk & Bmsk, "B V4 any success"),
-                   (validmsk & sucsmsk & ITmsk, "IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Amsk, "A IT any success"),
-                   (validmsk & sucsmsk & ITmsk & Bmsk, "B IT any success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, 0, 0], normresp_extrap_arr[msk, 0, 1],)
-
-for msk, label in [(validmsk & bothsucsmsk, "valid both success"),
-                   (validmsk & V1msk & bothsucsmsk, "V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Amsk, "A V1 Both success"),
-                   (validmsk & V1msk & bothsucsmsk & Bmsk, "B V1 Both success"),
-                   (validmsk & V4msk & bothsucsmsk, "V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Amsk, "A V4 Both success"),
-                   (validmsk & V4msk & bothsucsmsk & Bmsk, "B V4 Both success"),
-                   (validmsk & ITmsk & bothsucsmsk, "IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Amsk, "A IT Both success"),
-                   (validmsk & ITmsk & bothsucsmsk & Bmsk, "B IT Both success"),]:
-    print(f"[{label}]", end=" ")
-    ttest_rel_print(normresp_extrap_arr[msk, 0, 0], normresp_extrap_arr[msk, 0, 1],)
-
-sys.stdout = sys.__stdout__
-
 #%%
 # plotting utilities
 def add_identity(ax, *line_args, **line_kwargs):
@@ -513,3 +393,111 @@ ttest_ind(meta_df.loc[validmsk & V4msk, "t_FCBG_end_01"],
           meta_df.loc[validmsk & ITmsk, "t_FCBG_end_01"])
 #%%
 meta_df.loc[(meta_df.ephysFN == "Beto-16102020-003")].prefunit
+
+
+
+#%% scratch zone migrated to neural_data_lib.py
+# data structure to contain a collection of trajectories
+# each trajectory is an 1D array of length n_blocks
+resp_col = OrderedDict()
+meta_col = OrderedDict()
+#%%
+for Expi in range(1, len(BFEStats) + 1):
+    S = BFEStats[Expi - 1]
+    if S["evol"] is None:
+        continue
+    expstr = get_expstr(BFEStats, Expi)
+    print(expstr)
+    Animal, expdate = parse_meta(S)
+    ephysFN = S["meta"]['ephysFN']
+    prefchan = int(S['evol']['pref_chan'][0])
+    prefunit = int(S['evol']['unit_in_pref_chan'][0])
+    imgsize = S["evol"]["imgsize"][0]
+    imgpos  = S["evol"]["imgpos"][0]
+    visual_area = area_mapping(prefchan, Animal, expdate)
+    spacenames = S['evol']['space_names']
+    space1 = spacenames[0] if isinstance(spacenames[0], str) else spacenames[0][0]
+    space2 = spacenames[1] if isinstance(spacenames[1], str) else spacenames[1][0]
+    optim_names1 = S['evol']['optim_names'][0]
+    optim_names2 = S['evol']['optim_names'][1]
+    # load the evolution trajectory of each pair
+    resp_arr0, bsl_arr0, gen_arr0, _, _, _ = extract_evol_activation_array(S, 0)
+    resp_arr1, bsl_arr1, gen_arr1, _, _, _ = extract_evol_activation_array(S, 1)
+
+    # if the lAST BLOCK has < 10 images, in either thread, then remove it
+    if len(resp_arr0[-1]) < 10 or len(resp_arr1[-1]) < 10:
+        resp_arr0 = resp_arr0[:-1]
+        resp_arr1 = resp_arr1[:-1]
+        bsl_arr0 = bsl_arr0[:-1]
+        bsl_arr1 = bsl_arr1[:-1]
+        gen_arr0 = gen_arr0[:-1]
+        gen_arr1 = gen_arr1[:-1]
+
+    resp_m_traj_0 = np.array([resp.mean() for resp in resp_arr0])
+    resp_m_traj_1 = np.array([resp.mean() for resp in resp_arr1])
+    resp_sem_traj_0 = np.array([sem(resp) for resp in resp_arr0])
+    resp_sem_traj_1 = np.array([sem(resp) for resp in resp_arr1])
+    bsl_m_traj_0 = np.array([bsl.mean() for bsl in bsl_arr0])
+    bsl_m_traj_1 = np.array([bsl.mean() for bsl in bsl_arr1])
+
+    # test the successfulness of the evolution
+    # ttest between the last two blocks and the first two blocks
+    t_endinit_0, p_endinit_0 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr0[:2]))
+    t_endinit_1, p_endinit_1 = ttest_ind(np.concatenate(resp_arr1[-2:]), np.concatenate(resp_arr1[:2]))
+    # ttest between the max two blocks and the first two blocks
+    max_id0 = np.argmax(resp_m_traj_0)
+    max_id0 = max_id0 if max_id0 < len(resp_arr0) - 2 else len(resp_arr0) - 3
+    t_maxinit_0, p_maxinit_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr0[:2]))
+    t_maxend_0, p_maxend_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr0[-2:]))
+    max_id1 = np.argmax(resp_m_traj_1)
+    max_id1 = max_id1 if max_id1 < len(resp_arr1) - 2 else len(resp_arr1) - 3
+    t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1+2]), np.concatenate(resp_arr1[:2]))
+    t_maxend_1, p_maxend_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1+2]), np.concatenate(resp_arr1[-2:]))
+    # ttest between the last two blocks and the max two blocks
+
+    t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[-2:]))
+    t_FCBG_max_01, p_FCBG_max_01 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr1[max_id1:max_id1+2]))
+
+    # save the meta data
+    meta_dict = edict(Animal=Animal, expdate=expdate, ephysFN=ephysFN, prefchan=prefchan, prefunit=prefunit,
+                      visual_area=visual_area, space1=space1, space2=space2,
+                      optim_names1=optim_names1, optim_names2=optim_names2,
+                      blockN=len(resp_arr0))
+    stat_dict = edict(t_endinit_0=t_endinit_0, p_endinit_0=p_endinit_0,
+                    t_endinit_1=t_endinit_1, p_endinit_1=p_endinit_1,
+                    t_maxinit_0=t_maxinit_0, p_maxinit_0=p_maxinit_0,
+                    t_maxinit_1=t_maxinit_1, p_maxinit_1=p_maxinit_1,
+                    t_maxend_0=t_maxend_0, p_maxend_0=p_maxend_0,
+                    t_maxend_1=t_maxend_1, p_maxend_1=p_maxend_1,
+                    t_FCBG_end_01=t_FCBG_end_01, p_FCBG_end_01=p_FCBG_end_01,
+                    t_FCBG_max_01=t_FCBG_max_01, p_FCBG_max_01=p_FCBG_max_01,)
+    meta_dict.update(stat_dict)
+
+    # stack the trajectories together
+    resp_bunch = np.stack([resp_m_traj_0, resp_m_traj_1,
+                           resp_sem_traj_0, resp_sem_traj_1,
+                           bsl_m_traj_0, bsl_m_traj_1, ], axis=1)
+    resp_col[Expi] = resp_bunch
+    meta_col[Expi] = meta_dict
+#%%
+# get the longest trajectory
+max_len = max([resp_bunch.shape[0] for resp_bunch in resp_col.values()])
+# extrapolate the last block with the mean of last two blocks
+resp_extrap_col = OrderedDict()
+for Expi, resp_bunch in resp_col.items():
+    n_blocks = resp_bunch.shape[0]
+    if n_blocks < max_len:
+        extrap_vals = resp_bunch[-2:, :].mean(axis=0)
+        resp_bunch = np.concatenate([resp_bunch,
+             np.tile(extrap_vals, (max_len - n_blocks, 1))], axis=0)
+    resp_extrap_col[Expi] = resp_bunch
+
+# concatenate all trajectories
+resp_extrap_arr = np.stack([*resp_extrap_col.values()], axis=0)
+#%%
+meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
+#%%
+meta_df.to_csv(join(outdir, "meta_stats.csv"))
+meta_df.to_csv(join(tabdir, "meta_stats.csv"))
+np.save(join(outdir, "resp_traj_extrap_arr.npy"), resp_extrap_arr)
+pkl.dump({"resp_col": resp_col, "meta_col": meta_col}, open(join(outdir, "resp_traj_col.pkl"), "wb"))
