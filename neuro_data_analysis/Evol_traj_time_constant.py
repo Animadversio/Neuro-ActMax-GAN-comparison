@@ -19,7 +19,7 @@ from collections import OrderedDict
 from easydict import EasyDict as edict
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
 tabdir = (r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables")
-
+#%%
 _, BFEStats = load_neural_data()
 resp_col, _ = extract_all_evol_trajectory(BFEStats, )
 resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
@@ -71,39 +71,61 @@ timeconst_df.to_csv(join(tabdir, "Evol_traj_time_constant.csv"))
 #%%
 timeconst_meta_df = pd.merge(meta_df, timeconst_df, left_on="Expi", right_index=True,)
 #%%
-"""independent comparison of time constants between areas"""
-print("Time constant of optimization trajectory")
-print("BigGAN V4 vs IT")
-ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc_cnt")
-ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc0_bslinit")
-print("DeePSiM V4 vs IT")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt")  # yes V4 < IT
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0")  # yes V4 < IT
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0_bslinit")
-print("DeePSim V1 vs V4")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0")
-ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0_bslinit")
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_traj_time_constant"
+timeconst_df = pd.read_csv(join(tabdir, "Evol_traj_time_constant.csv"), index_col=0)
+timeconst_meta_df = pd.merge(meta_df, timeconst_df, left_on="Expi", right_index=True,)
+#%%
+# redict the print to a file
+from contextlib import redirect_stdout
+with open(join(figdir, "Evol_time_constant_stats.txt"), 'w') as f:
+    with redirect_stdout(f):
+        for latexify in [False, True, ]:
+            """independent comparison of time constants between areas"""
+            print("\nTime constant of optimization trajectory across areas")
+            print("BigGAN V4 vs IT [Valid & BG success]")
+            ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc0", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc_cnt", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc0_bslinit", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&BGsucsmsk&V4msk, validmsk&BGsucsmsk&ITmsk, "BG_tc_cnt_bslinit", latex=latexify)
+            print("DeePSiM V4 vs IT [Valid & FC success]")
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0", latex=latexify)  # yes V4 < IT
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt", latex=latexify)  # yes V4 < IT
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0_bslinit", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V4msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt_bslinit", latex=latexify)
+            print("DeePSim V1 vs IT [Valid & FC success]")
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&ITmsk, "FC_tc0_bslinit", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&ITmsk, "FC_tc_cnt_bslinit", latex=latexify)
+            print("DeePSim V1 vs V4 [Valid & FC success]")
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc0_bslinit", latex=latexify)
+            ttest_ind_print_df(timeconst_meta_df, validmsk&FCsucsmsk&V1msk, validmsk&FCsucsmsk&V4msk, "FC_tc_cnt_bslinit", latex=latexify)
 
-"""paired Compare time constants of FC and BG"""
-print("Time constant of optimization trajectory")
-print("IT cortex, FC vs BG")
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0", "BG_tc0")  # yes FC > BG
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc_cnt", "BG_tc_cnt")  # yes FC > BG
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0_bslinit", "BG_tc0_bslinit")  # yes FC > BG
-print("V4 cortex, FC vs BG")
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0", "BG_tc0")
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc_cnt", "BG_tc_cnt")
-ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0_bslinit", "BG_tc0_bslinit")
+            """paired Compare time constants of FC and BG"""
+            print("\nTime constant of optimization trajectory across BG and FC")
+            print("IT cortex, FC vs BG [Valid & both success]")
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0", "BG_tc0", latex=latexify)  # yes FC > BG
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc_cnt", "BG_tc_cnt", latex=latexify)  # yes FC > BG
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc0_bslinit", "BG_tc0_bslinit", latex=latexify)  # yes FC > BG
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&ITmsk, "FC_tc_cnt_bslinit", "BG_tc_cnt_bslinit", latex=latexify)  # yes FC > BG
+            print("V4 cortex, FC vs BG [Valid & both success]")
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0", "BG_tc0", latex=latexify)
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc_cnt", "BG_tc_cnt", latex=latexify)
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc0_bslinit", "BG_tc0_bslinit", latex=latexify)
+            ttest_rel_print_df(timeconst_meta_df, validmsk&bothsucsmsk&V4msk, "FC_tc_cnt_bslinit", "BG_tc_cnt_bslinit", latex=latexify)
+
+            print("")
+
 #%%
 plt.figure(figsize=[6, 6])
 # sns.scatterplot(data=timeconst_meta_df[validmsk], x="FC_tc0", y="FC_tc_cnt",
 #                 hue="visual_area", style="visual_area", s=100, alpha=0.7)
 # sns.scatterplot(data=timeconst_meta_df[validmsk], x="FC_tc_cnt_bslinit", y="BG_tc_cnt_bslinit",
 #                 hue="visual_area", style="visual_area", s=100, alpha=0.7)
-sns.scatterplot(data=timeconst_meta_df[validmsk], x="FC_tc_bslinit", y="BG_tc_bslinit",
+sns.scatterplot(data=timeconst_meta_df[validmsk], x="FC_tc0_bslinit", y="BG_tc0_bslinit",
                 hue="visual_area", style="visual_area", s=100, alpha=0.7)
-# plt.plot([0, 1], [0, 1], 'k--')
 plt.axline([0, 0], [1, 1], ls='--', c='k')
 # plt.xlim([0, 1])
 # plt.ylim([0, 1])
@@ -138,67 +160,91 @@ plt.legend()
 plt.show()
 
 #%%
-timeconst_meta_df_thread0 = pd.merge(meta_df, timeconst_df[["FC_tc0", "FC_tc1", "FC_tc00", "FC_tc10"]], left_on="Expi", right_index=True,)
-timeconst_meta_df_thread1 = pd.merge(meta_df, timeconst_df[["BG_tc0", "BG_tc1", "BG_tc00", "BG_tc10"]], left_on="Expi", right_index=True,)
+"""Prepare table for plotting"""
+timeconst_meta_df_thread0 = pd.merge(meta_df, timeconst_df[["FC_tc0", "FC_tc_cnt", "FC_tc0_bsl0", "FC_tc_cnt_bsl0"]], left_on="Expi", right_index=True,)
+timeconst_meta_df_thread1 = pd.merge(meta_df, timeconst_df[["BG_tc0", "BG_tc_cnt", "BG_tc0_bsl0", "BG_tc_cnt_bsl0"]], left_on="Expi", right_index=True,)
 timeconst_meta_df_thread0["GANthread"] = meta_df.space1
 # timeconst_meta_df_thread0["optimthread"] = meta_df.space1 #TODO:?
 timeconst_meta_df_thread0["thread"] = 0
 timeconst_meta_df_thread1["GANthread"] = meta_df.space2
 timeconst_meta_df_thread1["thread"] = 1
-timeconst_meta_df_thread0.rename(columns={"FC_tc0": "tc0", "FC_tc1": "tc1", "FC_tc00": "tc00", "FC_tc10": "tc10"
+timeconst_meta_df_thread0.rename(columns={"FC_tc0": "tc0", "FC_tc_cnt": "tc_cnt", "FC_tc0_bsl0": "tc0_bsl0", "FC_tc_cnt_bsl0": "tc_cnt_bsl0"
                                           }, inplace=True)
-timeconst_meta_df_thread1.rename(columns={"BG_tc0": "tc0", "BG_tc1": "tc1", "BG_tc00": "tc00", "BG_tc10": "tc10"
+timeconst_meta_df_thread1.rename(columns={"BG_tc0": "tc0", "BG_tc_cnt": "tc_cnt", "BG_tc0_bsl0": "tc0_bsl0", "BG_tc_cnt_bsl0": "tc_cnt_bsl0"
                                           }, inplace=True)
 timeconst_meta_df_threads = pd.concat([timeconst_meta_df_thread0, timeconst_meta_df_thread1], ignore_index=True)
 
 #%%
-msk = bothsucsmsk & validmsk
-plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-              x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-              alpha=0.4, jitter=0.25, palette=["blue", "red"])
-sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-                x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-                palette=["blue", "red"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
-plt.suptitle("Time constant of optimization trajectory\n[Both threads succeed]")
-plt.legend()
-plt.show()
+for timeconst_key in ["tc0", "tc_cnt", "tc0_bsl0", "tc_cnt_bsl0"]:
+    msk = bothsucsmsk & validmsk
+    plt.figure(figsize=[4, 6])
+    sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                  alpha=0.4, jitter=0.25, palette=["blue", "red"])
+    sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                    x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                    palette=["blue", "red"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
+    plt.suptitle("Time constant of optimization trajectory\n[Both threads succeed]")
+    plt.legend()
+    saveallforms(figdir, f"Evol_timeconst_{timeconst_key}_bothsuc")
+    plt.show()
 #%%
-msk = anysucsmsk&validmsk
-plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-              x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-              alpha=0.4, jitter=0.25, palette=["blue", "red"])
-sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-                x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-                palette=["blue", "red"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
-plt.suptitle("Time constant of optimization trajectory\n[Any threads succeed]")
-plt.legend()
-plt.show()
+for timeconst_key in ["tc0", "tc_cnt", "tc0_bsl0", "tc_cnt_bsl0"]:
+    msk = anysucsmsk&validmsk
+    plt.figure(figsize=[4, 6])
+    sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                  alpha=0.4, jitter=0.25, palette=["blue", "red"])
+    sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                    x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                    palette=["blue", "red"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
+    plt.suptitle("Time constant of optimization trajectory\n[Any threads succeed]")
+    plt.legend()
+    saveallforms(figdir, f"Evol_timeconst_{timeconst_key}_anysuc")
+    plt.show()
+# %%
+for timeconst_key in ["tc0", "tc_cnt", "tc0_bsl0", "tc_cnt_bsl0"]:
+    msks = (FCsucsmsk & validmsk, BGsucsmsk & validmsk)
+    plt.figure(figsize=[4, 6])
+    sns.stripplot(data=timeconst_meta_df_threads[pd.concat(msks).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                  alpha=0.4, jitter=0.25, palette=["blue", "red"])
+    sns.pointplot(data=timeconst_meta_df_threads[pd.concat(msks).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                  palette=["blue", "red"], ci=68, join=False, scale=1.0, errwidth=1, capsize=0.2)
+    plt.suptitle("Time constant of optimization trajectory\n[Each succeed]")
+    plt.legend()
+    saveallforms(figdir, f"Evol_timeconst_{timeconst_key}_eachsuc")
+    plt.show()
 #%%
-msk = bothsucsmsk&validmsk
-plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-              x="visual_area", y="tc0", hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
-              alpha=0.4, jitter=0.25, palette=["blue", "red", "magenta"])
-sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-                x="visual_area", y="tc0", hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
-                palette=["blue", "red", "magenta"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
-plt.suptitle("Time constant of optimization trajectory\n[Both success]") # ('ci', 68)
-plt.legend()
-plt.show()
+for timeconst_key in ["tc0", "tc_cnt", "tc0_bsl0", "tc_cnt_bsl0"]:
+    msk = bothsucsmsk&validmsk
+    plt.figure(figsize=[4, 6])
+    sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
+                  alpha=0.4, jitter=0.25, palette=["blue", "red", "magenta"])
+    sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                    x="visual_area", y=timeconst_key, hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
+                    palette=["blue", "red", "magenta"], errorbar="se", join=False, scale=1.0, errwidth=1, capsize=0.2)
+    plt.suptitle("Time constant of optimization trajectory\n[Both success]") # ('ci', 68)
+    plt.legend()
+    saveallforms(figdir, f"Evol_timeconst_{timeconst_key}_bothsuc_optim")
+    plt.show()
 #%%
-msk = anysucsmsk&validmsk
-plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-              x="visual_area", y="tc0", hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
-              alpha=0.4, jitter=0.25, palette=["blue", "red", "magenta"])
-sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-                x="visual_area", y="tc0", hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
-                palette=["blue", "red", "magenta"], join=False, errorbar="se", scale=1.0, errwidth=1, capsize=0.2)
-plt.suptitle("Time constant of optimization trajectory\n[Any success]")  # ('ci', 68)
-plt.legend()
-plt.show()
+for timeconst_key in ["tc0", "tc_cnt", "tc0_bsl0", "tc_cnt_bsl0"]:
+    msk = anysucsmsk&validmsk
+    plt.figure(figsize=[4, 6])
+    sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                  x="visual_area", y=timeconst_key, hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
+                  alpha=0.4, jitter=0.25, palette=["blue", "red", "magenta"])
+    sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
+                    x="visual_area", y=timeconst_key, hue="GANthread", order=["V1", "V4", "IT"], dodge=True,
+                    palette=["blue", "red", "magenta"], join=False, errorbar="se", scale=1.0, errwidth=1, capsize=0.2)
+    plt.suptitle("Time constant of optimization trajectory\n[Any success]")  # ('ci', 68)
+    plt.legend()
+    saveallforms(figdir, f"Evol_timeconst_{timeconst_key}_anysuc_optim")
+    plt.show()
+
 #%%
 # interactive pycharm
 plt.switch_backend('module://backend_interagg')
@@ -207,24 +253,12 @@ plt.switch_backend('module://backend_interagg')
 msk = sucsmsk&validmsk
 plt.figure(figsize=[4, 6])
 sns.stripplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-              x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
+              x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
               alpha=0.4, jitter=0.25, palette=["blue", "red"])
 sns.pointplot(data=timeconst_meta_df_threads[pd.concat([msk, msk]).reset_index()[0]],
-                x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
+                x="visual_area", y=timeconst_key, hue="thread", order=["V1", "V4", "IT"], dodge=True,
                 palette=["blue", "red"], ci=68, join=False, scale=1.0, errwidth=1, capsize=0.2)
 plt.suptitle("Time constant of optimization trajectory")
-plt.legend()
-plt.show()
-#%%
-msks = (FCsucsmsk&validmsk, BGsucsmsk&validmsk)
-plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df_threads[pd.concat(msks).reset_index()[0]],
-              x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-              alpha=0.4, jitter=0.25, palette=["blue", "red"])
-sns.pointplot(data=timeconst_meta_df_threads[pd.concat(msks).reset_index()[0]],
-                x="visual_area", y="tc1", hue="thread", order=["V1", "V4", "IT"], dodge=True,
-                palette=["blue", "red"], ci=68, join=False, scale=1.0, errwidth=1, capsize=0.2)
-plt.suptitle("Time constant of optimization trajectory\n[Each succeed]")
 plt.legend()
 plt.show()
 #%%
@@ -233,7 +267,6 @@ pd.set_option('display.max_columns', None)
 timeconst_meta_df[validmsk&FCsucsmsk].groupby("visual_area", sort=False)[["FC_tc0", "FC_tc1", "BG_tc0", "BG_tc1"]].agg(["mean", "sem"],)
 #%%
 timeconst_meta_df[validmsk&BGsucsmsk].groupby("visual_area", sort=False)[["FC_tc0", "FC_tc1", "BG_tc0", "BG_tc1"]].agg(["mean", "sem"],)
-#%%
 #%%
 plt.figure(figsize=[4, 6])
 sns.boxplot(data=timeconst_meta_df[FCsucsmsk], x="visual_area", y="FC_tc0",
