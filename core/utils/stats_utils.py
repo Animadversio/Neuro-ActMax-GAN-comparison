@@ -42,42 +42,58 @@ def ttest_1samp_print(seq, scalar):
     return tval, pval
 
 
-def ttest_rel_print(seq1, seq2, sem=False):
-    tval, pval = ttest_rel(seq1, seq2)
+def latexify_tststs(tval, pval, df):
+    latex_stat_str = "t_{%d}=%.3f " % (df, tval) + ("p=%.1e}" % pval).replace("e", r"\times 10^{").replace("+0", "").replace("-0", "-")
+    return latex_stat_str
+
+def ttest_rel_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
+    tval, pval = ttest_rel(seq1, seq2, nan_policy=nan_policy)
     df = len(seq1) - 1
+    latex_stat_str = latexify_tststs(tval, pval, df)
     if sem:
         sem1 = seq1.std() / np.sqrt(len(seq1))
         sem2 = seq2.std() / np.sqrt(len(seq2))
         result_str = f"{seq1.mean():.3f}+-{sem1:.3f} ~ {seq2.mean():.3f}+-{sem2:.3f} (N={len(seq1)}) t={tval:.2f}, p={pval:.1e} df={df}"
+        latex_str = f"{seq1.mean():.3f}\pm{sem1:.3f} ~ {seq2.mean():.3f}\pm{sem2:.3f} (N={len(seq1)}) " + latex_stat_str
     else:
         result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq1)}) t={tval:.2f}, p={pval:.1e} df={df}"
-    print(result_str)
+        latex_str = f"{seq1.mean():.3f}\pm{seq1.std():.3f} ~ {seq2.mean():.3f}\pm{seq2.std():.3f} (N={len(seq1)}) " + latex_stat_str
+    if latex:
+        print(latex_str)
+    else:
+        print(result_str)
     return tval, pval, result_str
 
 
-def ttest_ind_print(seq1, seq2, sem=False):
-    tval, pval = ttest_ind(seq1, seq2, nan_policy="omit")
+def ttest_ind_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
+    tval, pval = ttest_ind(seq1, seq2, nan_policy=nan_policy)
     df = len(seq1) + len(seq2) - 2
+    latex_stat_str = latexify_tststs(tval, pval, df)
     if sem:
         sem1 = seq1.std() / np.sqrt(len(seq1))
         sem2 = seq2.std() / np.sqrt(len(seq2))
         result_str = f"{seq1.mean():.3f}+-{sem1:.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{sem2:.3f} (N={len(seq2)}) t={tval:.2f}, p={pval:.1e} df={df}"
+        latex_str = f"{seq1.mean():.3f}\pm{sem1:.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}\pm{sem2:.3f} (N={len(seq2)}) " + latex_stat_str
     else:
         result_str = f"{seq1.mean():.3f}+-{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}+-{seq2.std():.3f} (N={len(seq2)}) t={tval:.2f}, p={pval:.1e} df={df}"
-    print(result_str)
+        latex_str = f"{seq1.mean():.3f}\pm{seq1.std():.3f} (N={len(seq1)}) ~ {seq2.mean():.3f}\pm{seq2.std():.3f} (N={len(seq2)}) " + latex_stat_str
+    if latex:
+        print(latex_str)
+    else:
+        print(result_str)
     return tval, pval, result_str
 
 
-def ttest_rel_print_df(df, msk, col1, col2, sem=False):
+def ttest_rel_print_df(df, msk, col1, col2, sem=False, latex=False):
     if msk is None:
         msk = np.ones(len(df), dtype=bool)
     print(f"{col1} ~ {col2} (N={msk.sum()})", end=" ")
-    return ttest_rel_print(df[msk][col1], df[msk][col2], sem=sem)
+    return ttest_rel_print(df[msk][col1], df[msk][col2], sem=sem, latex=latex)
 
 
-def ttest_ind_print_df(df, msk1, msk2, col, sem=False):
+def ttest_ind_print_df(df, msk1, msk2, col, sem=False, latex=False):
     print(f"{col} (N={msk1.sum()}) ~ (N={msk2.sum()})", end=" ")
-    return ttest_ind_print(df[msk1][col], df[msk2][col], sem=sem)
+    return ttest_ind_print(df[msk1][col], df[msk2][col], sem=sem, latex=latex)
 
 
 import matplotlib.pyplot as plt
