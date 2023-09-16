@@ -46,6 +46,36 @@ def load_neural_data():
     return BFEStats_merge, BFEStats
 
 
+def print_values(value):
+    if isinstance(value, list) and len(value) == 1:
+        print("[list] 1 - ", end="")
+        print_values(value[0])
+    elif isinstance(value, list):
+        print("[list] (%d)" % len(value), end="")
+    elif isinstance(value, tuple):
+        print("[tup]", value, end="")
+    elif isinstance(value, np.ndarray):
+        print("[arr]", value.shape, end="")
+    elif isinstance(value, str):
+        print("[str]", value, end="")
+
+
+def print_structure(d, indent=0):
+    """
+    Recursively prints the hierarchical structure of a dictionary.
+
+    Parameters:
+    - d: The dictionary to print
+    - indent: The current indentation level (used for recursive calls)
+    """
+    for key, value in d.items():
+        print(' ' * indent + '|--', key, end=" ")
+        print_values(value)
+        print()
+        if isinstance(value, dict):
+            print_structure(value, indent + 4)
+
+
 def add_entry2neural_data():
     """
     Load neural data from a .pkl file.
@@ -308,6 +338,7 @@ def _map_evol_imglist_2_imgfps(imglist, stimpath, sfx="bmp"):
 
 
 def extract_all_evol_trajectory(BFEStats):
+    """Restricted version to default response window 50-200ms"""
     return extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200))
 
 
