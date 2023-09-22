@@ -127,12 +127,14 @@ def pad_psth_traj(psth_col):
 
 psth_extrap_arr, extrap_mask_arr, max_len = pad_psth_traj(psth_col)
 #%%
-dfdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
-meta_df = pd.read_csv(join(dfdir, "meta_stats.csv"))
+dfdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+meta_df = pd.read_csv(join(dfdir, "meta_stats_w_optimizer.csv"))
 # meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
         length_msk, spc_msk, sucsmsk, \
         bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+bothsucsmsk = (meta_df.p_maxinit_0 < 0.05) & (meta_df.p_maxinit_1 < 0.05)
+anysucsmsk = (meta_df.p_maxinit_0 < 0.05) | (meta_df.p_maxinit_1 < 0.05)
 #%%
 normalizer = psth_extrap_arr[:, :, 0:2, 50:200].mean(axis=-1).max(axis=(1, 2))
 norm_psth_extrap_arr = psth_extrap_arr / normalizer[:, None, None, None]
@@ -211,6 +213,46 @@ for block in range(max_len):
     saveallforms([figdir], f"maxnorm_psth_traj_val_area_anim_sep_block{block:02d}", figh=figh)
     plt.show()
 # %%
+#%%
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_dynam_psth_cmp"
+os.makedirs(figdir, exist_ok=True)
+# plot the trajectories
+for commonmsk, fnamestr, titlestr in [(validmsk & sucsmsk, "val_succ", "Valid & Succ"),
+                                      (validmsk & bothsucsmsk, "val_bothsucc", "Valid & Both Succ"),
+                                      (validmsk, "val", "Valid"),]:
+    for block in range(max_len):
+        figh, axs = plt.subplots(1, 3, figsize=(9, 3.25), squeeze=False)
+        rowi = 0
+        for colj, (msk_minor, lable_minor) in enumerate(zip([V1msk, V4msk, ITmsk],
+                                                  ["V1", "V4", "IT"])):
+            msk = msk_minor & commonmsk
+            axs[rowi, colj].plot(norm_psth_extrap_arr[msk, block, 0, :].T, color="blue", alpha=0.2, lw=0.7, label=None)
+            axs[rowi, colj].plot(norm_psth_extrap_arr[msk, block, 1, :].T, color="red", alpha=0.2, lw=0.7, label=None)
+            mean_psth_FC = norm_psth_extrap_arr[msk, block, 0, :].mean(axis=0)
+            sem_psth_FC = norm_psth_extrap_arr[msk, block, 0, :].std(axis=0) / np.sqrt(msk.sum())
+            mean_psth_BG = norm_psth_extrap_arr[msk, block, 1, :].mean(axis=0)
+            sem_psth_BG =norm_psth_extrap_arr[msk, block, 1, :].std(axis=0) / np.sqrt(msk.sum())
+            axs[rowi, colj].plot(mean_psth_FC, color="blue", lw=3, label="DeePSim")
+            axs[rowi, colj].fill_between(np.arange(len(mean_psth_FC)),
+                                            mean_psth_FC-sem_psth_FC,
+                                            mean_psth_FC+sem_psth_FC,
+                                            color="blue", alpha=0.25, label=None)
+            axs[rowi, colj].plot(mean_psth_BG, color="red", lw=3, label="BigGAN")
+            axs[rowi, colj].fill_between(np.arange(len(mean_psth_BG)),
+                                            mean_psth_BG-sem_psth_BG,
+                                            mean_psth_BG+sem_psth_BG,
+                                            color="red", alpha=0.25, label=None)
+            axs[rowi, colj].set_title(f"{lable_minor} (N={msk.sum()})")
+
+        for ax in axs.ravel():
+            # ax.set_xlim([0, 40])
+            ax.set_ylim([0, 2.0])
+
+        axs[0, 0].legend(loc="lower right", frameon=False)
+        plt.suptitle(f"Max Normalized PSTH blocks {block} [{titlestr} Sessions]")
+        plt.tight_layout()
+        saveallforms([figdir], f"maxnorm_psth_traj_{fnamestr}_area_both_block{block:02d}", figh=figh)
+        plt.show()
 #%%
 # export the animations into gif and mp4
 import imageio
