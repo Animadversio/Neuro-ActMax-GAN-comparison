@@ -212,7 +212,6 @@ for block in range(max_len):
     plt.tight_layout()
     saveallforms([figdir], f"maxnorm_psth_traj_val_area_anim_sep_block{block:02d}", figh=figh)
     plt.show()
-# %%
 #%%
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_dynam_psth_cmp"
 os.makedirs(figdir, exist_ok=True)
