@@ -29,8 +29,6 @@ Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 
 #%%
-_, BFEStats = load_neural_data()
-#%%
 act_S_col = []
 for Expi in tqdm(range(1, len(BFEStats)+1)):  # 66 is not good
     try:
@@ -78,6 +76,8 @@ for Expi in tqdm(range(1, len(BFEStats)+1)):  # 66 is not good
 #%%
 act_df = pd.DataFrame(act_S_col)
 
+#%%
+normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1,2), keepdims=True)
 
 #%%
 tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
@@ -87,13 +87,6 @@ meta_df.rename(columns={"Unnamed: 0": "Expi"}, inplace=True)
 meta_act_df = meta_df.merge(act_df, on=["Expi", "ephysFN"], how="left")  #.to_csv(join(tabdir, "meta_stats.csv"), index=False)
 meta_act_df.to_csv(join(tabdir, "meta_activation_stats.csv"), index=False)
 
-
-#%%
-tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
-meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats_w_optimizer.csv"), index_col=False)
-meta_df = pd.read_csv(join(tabdir, "meta_stats_w_optimizer.csv"), index_col=False)
-#%%
-normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1,2), keepdims=True)
 #%% masks
 Amsk  = meta_df.Animal == "Alfa"
 Bmsk  = meta_df.Animal == "Beto"
@@ -125,14 +118,32 @@ print("Exluded:")
 print("  - short: %d" % (~length_msk).sum())
 print("  - unstable baseline: %d" % bsl_unstable_msk.sum())
 print("  - not fc6-BigGAN: %d" % (~spc_msk).sum())
+
+
+
+#%% Reload from the disk
+tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
+""" Trajectory synopsis with all areas """
+_, BFEStats = load_neural_data()
+resp_col, _ = extract_all_evol_trajectory(BFEStats, )
+resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
+#%%
+meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats_w_optimizer.csv"), index_col=False)
+meta_df = pd.read_csv(join(tabdir, "meta_stats_w_optimizer.csv"), index_col=False)
+#%%
+Amsk, Bmsk, V1msk, V4msk, ITmsk, \
+    length_msk, spc_msk, sucsmsk, \
+    bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
 #%%
 # use pycharm backend
 import seaborn as sns
 import matplotlib
-
 matplotlib.use("module://backend_interagg")
 #%%
-# consider better testing method hierachical
+"""
+Mass output testing results for all the experiments into text file, for paper writing.
+"""
+# TODO:consider better testing method hierachical
 import sys
 from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
 # thresh = 0.05
@@ -280,8 +291,10 @@ def paired_strip_plot_simple(col1, col2, msk=None, col1_err=None, col2_err=None,
             ha='center', va='center')
     figh.show()
     return figh
-#%%
+
+
 outdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Evol_activation_cmp"
+#%%
 # msk_general, label_general = validmsk, "valid"
 msk_general, label_general = validmsk & sucsmsk, "valsucs"
 #%%
@@ -321,6 +334,55 @@ ax.set_ylabel("Max Normalized response")
 figh.suptitle("Last block response comparison between DeePSim and BG across areas")
 saveallforms(outdir, f"maxnorm_endresp_cmp_{label_general}_areasep", figh)
 figh.show()
+#%%
+"""Mass produce figures for difference success mask and p threshold"""
+p_thresh = 0.05
+FCsucsmsk = meta_df.p_maxinit_0 < p_thresh
+BGsucsmsk = meta_df.p_maxinit_1 < p_thresh
+bothsucsmsk = FCsucsmsk & BGsucsmsk
+anysucsmsk = FCsucsmsk | BGsucsmsk
+nonesucsmsk = (~FCsucsmsk) & (~BGsucsmsk)
+p_str = str(p_thresh).replace('.','')
+for succ_label, success_mask in zip(["bothsucc", "anysucc", "nonesucc", "all"],
+                                    [bothsucsmsk, anysucsmsk, nonesucsmsk, True]):
+    msk_general, label_general = validmsk & success_mask, f"val_{succ_label}"
+    #%%
+    """Paired strip plot of initial block activation, seperated into the three visual areas"""
+    figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+    ax.set_xticks([0, 1, 2, 3, 4, 5])
+    ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+    ax.set_ylabel("Max Normalized response")
+    figh.suptitle(f"Initial response comparison between DeePSim and BG across areas\n[Valid & {succ_label}, p < {p_thresh}]")
+    saveallforms(outdir, f"maxnorm_initresp_cmp_{label_general}_p{p_str}_areasep", figh)
+    figh.show()
+
+    """Paired strip plot of end block activation, seperated into the three visual areas"""
+    figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+    ax.set_xticks([0, 1, 2, 3, 4, 5])
+    ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+    ax.set_ylabel("Max Normalized response")
+    figh.suptitle(f"Last block response comparison between DeePSim and BG across areas\n[Valid & {succ_label}, p < {p_thresh}]")
+    saveallforms(outdir, f"maxnorm_endresp_cmp_{label_general}_p{p_str}_areasep", figh)
+    figh.show()
+
 
 #%%
 FC_maxresp = normresp_extrap_arr[:, :, 0].max(axis=1)
