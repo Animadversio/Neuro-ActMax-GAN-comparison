@@ -24,6 +24,10 @@ if platform == "linux":  # CHPC cluster
         netsdir = os.path.join(homedir, 'Generate_DB/nets')
     load_urls = True
     # ckpt_path = {"vgg16": "/scratch/binxu/torch/vgg16-397923af.pth"}
+elif platform == "darwin":  # local mac
+    load_urls = True
+    torchhome = join(torch.hub.get_dir(), "checkpoints")
+    # netsdir = os.path.join(homedir, 'Documents/nets')
 else:
     if os.environ['COMPUTERNAME'] == 'DESKTOP-9DDE2RH':  # PonceLab-Desktop 3
         homedir = "D:/Generator_DB_Windows"

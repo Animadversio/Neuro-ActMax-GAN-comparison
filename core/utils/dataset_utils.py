@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Subset, SubsetRandomSampler
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import ToTensor, ToPILImage, \
     Normalize, Compose, Resize, CenterCrop
@@ -8,7 +9,11 @@ from PIL import Image
 from imageio import imread, imsave
 from glob import glob
 from os.path import join
-from torch.utils.data import Subset, SubsetRandomSampler
+
+RGBmean = torch.tensor([0.485, 0.456, 0.406])
+RGBstd = torch.tensor([0.229, 0.224, 0.225])
+normalizer = Normalize(RGBmean, RGBstd)
+denormalizer = Normalize(-RGBmean / RGBstd, 1 / RGBstd)
 
 class ImagePathDataset(Dataset):
     """

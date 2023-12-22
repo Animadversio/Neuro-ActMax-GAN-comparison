@@ -17,9 +17,15 @@ import pandas as pd
 from tqdm import tqdm
 from neuro_data_analysis.neural_data_utils import parse_meta, area_mapping
 from scipy.stats import sem, ttest_ind, ttest_1samp, ttest_rel
+import sys
+if sys.platform == "darwin":
+    matroot = "/Users/binxuwang/Library/CloudStorage/OneDrive-HarvardUniversity/Mat_Statistics"
+elif sys.platform == "linux":
+    raise NotImplementedError
+else:  # win10
+    matroot = "E:\OneDrive - Washington University in St. Louis\Mat_Statistics"
 
-matroot = "E:\OneDrive - Washington University in St. Louis\Mat_Statistics"
-#%
+
 def load_neural_data_and_save_pkl():
     """
     Load neural data from a .mat file.
@@ -159,6 +165,8 @@ def load_img_resp_pairs_multiwindow(BFEStats, Expi, ExpType, thread=0, stimdrive
     # parse the full path of the images
     stimpath = S["meta"]["stimuli"]
     stimpath = stimpath.replace("N:", stimdrive)
+    if sys.platform == "darwin" or sys.platform == "linux":  # mac
+        stimpath = stimpath.replace("\\", "/")
     imglist = S['imageName']
     imgfps_all, refimgfp_dict = _map_evol_imglist_2_imgfps(imglist, stimpath, sfx="bmp")
     if S["evol"] is None:
