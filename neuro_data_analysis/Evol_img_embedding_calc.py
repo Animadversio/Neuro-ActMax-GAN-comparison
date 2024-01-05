@@ -109,6 +109,30 @@ for Expi in trange(63, 1 + 190):
     pkl.dump(embed_act_dict, open(join(embed_dir, f"Exp{Expi:03d}_embed_act_data.pkl"), "wb"))
     print(f"Exp {Expi} done. saved to {embed_dir}")
 
+#%%
+
+embed_model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+#%%
+from core.utils.dataset_utils import create_imagenet_valid_dataset
+rootdir = r"/n/holylabs/LABS/kempner_fellows/Users/binxuwang/Datasets/imagenet-valid"
+INdataset = create_imagenet_valid_dataset(imgpix=224,rootdir=rootdir)
+#%%
+# show the image
+img, score = INdataset[1]
+plt.imshow(denormalizer(img).permute(1, 2, 0))
+plt.title(score)
+#%%
+dataloaders = DataLoader(INdataset, batch_size=256, shuffle=False, num_workers=8)
+#%%
+embed_model.cuda().eval()
+embedding_col = []
+for batch, _ in tqdm(dataloaders):
+    with torch.no_grad():
+        embed_vec = embed_model(batch.cuda())
+    embedding_col.append(embed_vec.detach().cpu())
+
+embedding_mat = torch.cat(embedding_col, dim=0)
+
 
 #%% Playground 
 dataset = ImagePathDataset(imgfps0, transform=transforms.Compose([
@@ -131,35 +155,3 @@ for batch, _ in tqdm(dataloader):
     embeddings.append(embed_vec)
 embeddings = torch.cat(embeddings, dim=0)
 
-#%%
-import torch 
-import matplotlib.pyplot as plt
-from pathlib import Path
-import pickle as pkl
-import pandas as pd
-from tqdm import trange, tqdm
-
-#%% load dinov2 network and extract features
-# model = torch.hub.load('facebookresearch/dino:main', 'dino_vits16')
-dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
-
-
-#%%
-saveroot = Path(r"E:\Network_Data_Sync\BigGAN_Evol_feat_extract")
-sumdir = (saveroot / "vit_base_patch8_224_dino")
-sumdir.mkdir(exist_ok=True, parents=True)
-
-dino_feat = create_model("vit_base_patch8_224_dino", pretrained=True,).cuda()
-for Expi in trange(1, 190+1):
-    if BFEStats[Expi-1]["evol"] is None:
-        continue
-    expdir = saveroot / f"Both_Exp{Expi}"
-    expdir.mkdir(exist_ok=True)
-    imgfps_col0, resp_vec0, bsl_vec0, gen_vec0 = \
-        load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, output_fmt="vec")
-    imgfps_col1, resp_vec1, bsl_vec1, gen_vec1 = \
-        load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, output_fmt="vec")
-    feature_arr0, meta_data_df0 = cnn_feat_process(imgfps_col0, dino_feat, None,
-         batch_size=50, size=224, savename=f"Evol_Exp{Expi:03d}_thread0", sumdir=sumdir)
-    feature_arr1, meta_data_df1 = cnn_feat_process(imgfps_col1, dino_feat, None,
-         batch_size=50, size=224, savename=f"Evol_Exp{Expi:03d}_thread1", sumdir=sumdir)
