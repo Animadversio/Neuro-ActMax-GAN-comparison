@@ -21,7 +21,7 @@ import sys
 if sys.platform == "darwin":
     matroot = "/Users/binxuwang/Library/CloudStorage/OneDrive-HarvardUniversity/Mat_Statistics"
 elif sys.platform == "linux":
-    raise NotImplementedError
+    matroot = "/n/holylabs/LABS/kempner_fellows/Users/binxuwang/Datasets/Mat_Statistics"
 else:  # win10
     matroot = "E:\OneDrive - Washington University in St. Louis\Mat_Statistics"
 
