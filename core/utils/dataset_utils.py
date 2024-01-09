@@ -150,8 +150,9 @@ class ImageDataset_filter(Dataset):
         self.transform = transform
         for ext in exts:
             self.paths.extend(
-                list(glob(
-                    os.path.join(root, glob_pattern+'.%s' % ext), recursive=True)))
+                sorted(list(glob(
+                    os.path.join(root, glob_pattern+'.%s' % ext), recursive=True))))
+            # add sorted to ensure the order of images is consistent
         self.paths = self.paths[:num_images]
 
     def __len__(self):              # noqa
