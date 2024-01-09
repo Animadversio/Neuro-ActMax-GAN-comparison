@@ -95,11 +95,12 @@ def get_meta_df(BFEStats):
     return meta_df
 
 
-def get_all_masks(meta_df):
+def get_all_masks(meta_df, return_type=tuple):
     """
     Get all the masks for different conditions in the analysis
-    :param meta_df:
-    :return:
+    :param meta_df: DataFrame containing the meta data
+    :param return_type: Type of return value ('tuple' or 'dictionary')
+    :return: Dictionary or tuple of masks
     """
     # plot the FC and BG win block number as
     Amsk  = meta_df.Animal == "Alfa"
@@ -129,6 +130,24 @@ def get_all_masks(meta_df):
     print("  - short: %d" % (~length_msk).sum())
     print("  - unstable baseline: %d" % bsl_unstable_msk.sum())
     print("  - not fc6-BigGAN: %d" % (~spc_msk).sum())
-    return Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk
-
+    
+    if return_type is dict:
+        masks = {
+            'Amsk': Amsk,
+            'Bmsk': Bmsk,
+            'V1msk': V1msk,
+            'V4msk': V4msk,
+            'ITmsk': ITmsk,
+            'length_msk': length_msk,
+            'spc_msk': spc_msk,
+            'sucsmsk': sucsmsk,
+            'bsl_unstable_msk': bsl_unstable_msk,
+            'bsl_stable_msk': bsl_stable_msk,
+            'validmsk': validmsk
+        }
+        return masks
+    elif return_type is tuple:
+        return Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk
+    else:
+        raise ValueError("Invalid return_type. Must be 'dictionary' or 'tuple'.")
 
