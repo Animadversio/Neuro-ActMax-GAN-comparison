@@ -133,7 +133,7 @@ from torchvision.transforms.functional import to_tensor
 class ImageDataset_filter(Dataset):
     """An simple image dataset for calculating inception score and FID."""
 
-    def __init__(self, root, glob_pattern="*", exts=['png', 'jpg', 'JPEG'], transform=None,
+    def __init__(self, root, glob_pattern="*", exts=['png', 'jpg', 'JPG', 'JPEG', 'jpeg', 'bmp'], transform=None,
                  num_images=None):
         """Construct an image dataset.
 

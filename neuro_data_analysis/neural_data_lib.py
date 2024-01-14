@@ -210,6 +210,52 @@ def load_img_resp_pairs_multiwindow(BFEStats, Expi, ExpType, thread=0, stimdrive
         raise NotImplementedError
 
 
+def load_resp_multiwindow(BFEStats, Expi, ExpType, thread=0, output_fmt="vec",
+                        rsp_wdws=[range(0, 45), range(50, 200)]):
+    """ Extract the image and response pairs from the BFEStats. for one thread / one experiment.
+    output_fmt: str, "vec" or "arr",
+        "vec" returns a flattened vector of image paths and a vector of responses,
+        "arr" returns a nested list of image paths and responses, each element corresponds to one block.
+    """
+    S = BFEStats[Expi - 1].copy()  # Expi follows matlab convention, starts from 1
+    # parse the full path of the images
+    if S["evol"] is None:
+        return [], [], [], []
+    if ExpType == "Evol":
+        # % load the resp and stim
+        psth_thread = S["evol"]["psth"][thread]
+        imgidx_thread = S["evol"]["idx_seq"][thread]
+        psth_col = []
+        imgidx_arr = []
+        gen_arr = []
+        for blocki in range(len(psth_thread)):
+            psth_arr = _format_psth_arr(psth_thread[blocki])  # time x images
+            psth_col.append(psth_arr)
+            idx_arr = _format_idx_arr(imgidx_thread[blocki])
+            imgidx_arr.append(idx_arr)
+            gen_arr.append((blocki+1) * np.ones_like(idx_arr))
+
+        psth_col = np.concatenate(psth_col, axis=1)
+        resp_col = [psth_col[rsp_wdw, :].mean(axis=0) for rsp_wdw in rsp_wdws]
+        resp_mat = np.stack(resp_col, axis=0).T
+        imgidx_vec = np.concatenate(imgidx_arr, axis=0)
+        gen_vec = np.concatenate(gen_arr, axis=0)
+        assert resp_mat.shape[0] == psth_col.shape[1]
+        assert resp_mat.shape[0] == len(imgidx_vec)
+        assert resp_mat.shape[1] == len(rsp_wdws)
+        # % load the image full path
+        # note to change the index to python convention
+        if output_fmt == "vec":
+            return resp_mat, gen_vec
+        elif output_fmt == "arr":
+            raise NotImplementedError
+            # return imgfps_arr, resp_arr, bsl_arr, gen_arr
+        else:
+            raise ValueError("output_fmt should be vec or arr")
+    elif ExpType == "natref":
+        raise NotImplementedError
+
+
 def extract_evol_activation_array(S, thread, rsp_wdw=range(50, 200), bsl_wdw=range(0, 45)):
     psth_thread = S["evol"]["psth"][thread]
     imgidx_thread = S["evol"]["idx_seq"][thread]
