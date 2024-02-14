@@ -212,6 +212,15 @@ def recursive_print(module, prefix="", depth=0, deepest=3):
         recursive_print(child, prefix + "  ", depth + 1, deepest)
 
 
+#% Hooks based methods to get layer and module names
+def named_apply(model, name, func, prefix=None):
+    """ resemble the apply function but suits the functions here. """
+    cprefix = "" if prefix is None else prefix + "." + name
+    for cname, child in model.named_children():
+        named_apply(child, cname, func, cprefix)
+
+    func(model, name, "" if prefix is None else prefix)
+
 
 #@title Helper Function to inspect input output structure
 def recursive_named_apply_w_depth(model, name, func, prefix=None, depth=0, deepest=3):
@@ -426,7 +435,7 @@ def register_hook_by_module_names(target_name, target_hook, model, input_size=(3
     # remove these hooks
     for h in hooks:
         h.remove()
-    if not(len(target_hook_h) == 1):
+    if len(target_hook_h) == 0:
         print("Cannot hook the layer with the name %s\nAvailable names are listed here"%target_name)
         print("------------------------------------------------------------------------------")
         line_new = "{:>14}  {:>12}   {:>15} ".format("Layer Id", "Type", "ReadableStr", )
@@ -436,6 +445,8 @@ def register_hook_by_module_names(target_name, target_hook, model, input_size=(3
             print("{:7} {:8} {:>12} {:>15}".format("", layer,
                 module_types[layer], module_names[layer],))
         raise ValueError("Cannot hook the layer with the name %s\nAvailable names are listed here"%target_name)
+    elif len(target_hook_h) > 1:
+        print("Warning: multiple hooks are registered for the target layer %s"%target_name)
     return target_hook_h, module_names, module_types
 
 #  Utility code to fetch activation
@@ -457,12 +468,13 @@ class featureFetcher:
         self.device = device
         self.store_device= store_device
 
-    def record(self, target_name, return_input=False, ingraph=False, store_device=None):
+    def record(self, target_name, store_name=None, return_input=False, ingraph=False, store_device=None):
         if store_device is None:
             store_device = self.store_device
-        hook_fun = self.get_activation(target_name, ingraph=ingraph, return_input=return_input, store_device=store_device)
+        hook_fun = self.get_activation(target_name if store_name is None else store_name, 
+                                       ingraph=ingraph, return_input=return_input, store_device=store_device)
         hook_h, _, _ = register_hook_by_module_names(target_name, hook_fun, self.model, device=self.device)
-        self.hooks[target_name] = hook_h  # Note this is a list of hooks
+        self.hooks[target_name if store_name is None else store_name] = hook_h  # Note this is a list of hooks
         return hook_h
 
     def cleanup(self,):

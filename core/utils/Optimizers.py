@@ -118,7 +118,7 @@ class CholeskyCMAES:
                 self.Ainv = 1 / sqrt(1 - self.c1) * self.Ainv - 1 / sqrt(1 - self.c1) / normv * (
                             1 - 1 / sqrt(1 + normv * self.c1 / (1 - self.c1))) * self.Ainv @ v.T @ v
                 t2 = time.time()
-                print("A, Ainv update! Time cost: %.2f s" % (t2 - t1))
+                if verbosity: print("A, Ainv update! Time cost: %.2f s" % (t2 - t1))
         # Generate new sample by sampling from Gaussian distribution
         # new_samples = zeros((self.lambda_, N))
         self.randz = randn(self.lambda_, N)  # save the random number for generating the code.
@@ -449,4 +449,60 @@ class fix_param_wrapper:
             new_codes1 = self.optim.step_simple(scores, codes[:, :-self.sep])
             freezed_codes = np.repeat(self.fix_code, new_codes1.shape[0], axis=0)
             return np.concatenate((new_codes1, freezed_codes), axis=1)
+
+
+def label2optimizer(methodlabel, init_code, GAN="BigGAN", Hdata=None):  # TODO add default init_code
+    """ Input a label output an grad-free optimizer """
+    if GAN == "BigGAN":
+        if methodlabel == "CholCMA":
+            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2,)  # FIXME: sigma may be too large
+        elif methodlabel == "CholCMA_class":
+            optim = CholeskyCMAES(space_dimen=128, init_code=init_code[:, 128:], init_sigma=0.06,)
+            optim_cust = fix_param_wrapper(optim, init_code[:, :128], pre=True)
+        elif methodlabel == "CholCMA_noise":
+            optim = CholeskyCMAES(space_dimen=128, init_code=init_code[:, :128], init_sigma=0.3,)
+            optim_cust = fix_param_wrapper(optim, init_code[:, 128:], pre=False)
+        elif methodlabel == "CholCMA_prod":
+            optim1 = CholeskyCMAES(space_dimen=128, init_code=init_code[:, :128], init_sigma=0.1,)
+            optim2 = CholeskyCMAES(space_dimen=128, init_code=init_code[:, 128:], init_sigma=0.06,)
+            optim_cust = concat_wrapper(optim1, optim2)
+        elif methodlabel == "CholCMA_noA":
+            optim_cust = CholeskyCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2, Aupdate_freq=102)  # FIXME: sigma may be too large
+        elif methodlabel == "HessCMA":
+            eva = Hdata['eigvals_avg'][::-1]
+            evc = Hdata['eigvects_avg'][:, ::-1]
+            optim_cust = HessCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2, )
+            optim_cust.set_Hessian(eigvals=eva, eigvects=evc, expon=1 / 2.5)
+        elif methodlabel == "HessCMA_noA":
+            eva = Hdata['eigvals_avg'][::-1]
+            evc = Hdata['eigvects_avg'][:, ::-1]
+            optim_cust = HessCMAES(space_dimen=256, init_code=init_code, init_sigma=0.2, Aupdate_freq=102)
+            optim_cust.set_Hessian(eigvals=eva, eigvects=evc, expon=1 / 2.5)
+        elif methodlabel == "HessCMA_class":
+            eva = Hdata['eigvals_clas_avg'][::-1]
+            evc = Hdata['eigvects_clas_avg'][:, ::-1]
+            optim_hess = HessCMAES(space_dimen=128, init_code=init_code[:, 128:], init_sigma=0.2, )
+            optim_hess.set_Hessian(eigvals=eva, eigvects=evc, expon=1 / 2.5)
+            optim_cust = fix_param_wrapper(optim_hess, init_code[:, :128], pre=True)
+    elif GAN == "fc6":
+        if methodlabel == "CholCMA":
+            optim_cust = CholeskyCMAES(space_dimen=4096, init_code=init_code, init_sigma=3,)
+        elif methodlabel == "CholCMA_noA":
+            optim_cust = CholeskyCMAES(space_dimen=4096, init_code=init_code, init_sigma=3, Aupdate_freq=102)
+        elif methodlabel == "HessCMA800":
+            eva = Hdata['eigv_avg'][::-1]
+            evc = Hdata['eigvect_avg'][:, ::-1]
+            optim_cust = HessCMAES(space_dimen=4096, cutoff=800, init_code=init_code, init_sigma=0.8, )
+            optim_cust.set_Hessian(eigvals=eva, eigvects=evc, cutoff=800, expon=1 / 5)
+        elif methodlabel == "HessCMA500":
+            eva = Hdata['eigv_avg'][::-1]
+            evc = Hdata['eigvect_avg'][:, ::-1]
+            optim_cust = HessCMAES(space_dimen=4096, cutoff=500, init_code=init_code, init_sigma=0.8, )
+            optim_cust.set_Hessian(eigvals=eva, eigvects=evc, cutoff=500, expon=1 / 5)
+        elif methodlabel == "HessCMA500_1":
+            eva = Hdata['eigv_avg'][::-1]
+            evc = Hdata['eigvect_avg'][:, ::-1]
+            optim_cust = HessCMAES(space_dimen=4096, cutoff=500, init_code=init_code, init_sigma=0.4, )
+            optim_cust.set_Hessian(eigvals=eva, eigvects=evc, cutoff=500, expon=1 / 4)
+    return optim_cust
 

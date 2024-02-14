@@ -83,8 +83,9 @@ def load_Hessian(name):
 def get_center_pos_and_rf(model, layer, input_size=(3, 227, 227), device="cuda"):
     module_names, module_types, module_spec = get_module_names(model, input_size=input_size, device=device)
     layer_key = [k for k, v in module_names.items() if v == layer][0]
+    # FIXME note this may not work when multiple layers have the same name.
+    # This will only get the first one. Need to add a check for this.
     feat_outshape = module_spec[layer_key]['outshape']
-    # assert len(feat_outshape) == 3  # fc layer will fail
     if len(feat_outshape) == 3:
         cent_pos = (feat_outshape[1]//2, feat_outshape[2]//2)
     elif len(feat_outshape) == 1:
