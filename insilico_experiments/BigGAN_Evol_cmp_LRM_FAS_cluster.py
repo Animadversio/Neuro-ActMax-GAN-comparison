@@ -1,7 +1,7 @@
 """ Cluster version of BigGAN Evol """
 import os
 import sys
-sys.path.append(os.path.join(os.getcwd(), '..'))
+# sys.path.append(os.path.join(os.getcwd(), '..'))
 sys.path.append("/n/home12/binxuwang/Github/Neuro-ActMax-GAN-comparison")
 import tqdm
 import numpy as np
@@ -144,7 +144,7 @@ layername_inv_map = {v: k for k, v in layername_map.items()}
 import argparse
 parser = argparse.ArgumentParser(description='Evolvability Comparison')
 parser.add_argument('--model', type=str, default='alexnet_lrm3', help='Model name')
-parser.add_argument('--layershort', type=str, default='fc6_relu', help='Layer name')
+parser.add_argument('--layershort', type=str, default=' ', help='Layer name')
 parser.add_argument('--channel_rng', type=int, default=(0, 25), nargs=2, help='Channel range')
 parser.add_argument('--reps', type=int, default=5, help='Number of repetitions')
 parser.add_argument('--steps', type=int, default=100, help='Number of steps')
@@ -156,10 +156,11 @@ if args.drytmp:
     print ("Dry run to temporary folder")
     saveroot = r"/n/holylabs/LABS/kempner_fellows/Users/binxuwang/Projects/Evol_lrm_GAN_cmp/trashc"
 else:
-    saveroot = r"/n/holylabs/LABS/kempner_fellows/Users/binxuwang/Projects/Evol_lrm_GAN_cmp"
+    # saveroot = r"/n/holylabs/LABS/kempner_fellows/Users/binxuwang/Projects/Evol_lrm_GAN_cmp"
+    saveroot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/Evol_lrm_GAN_cmp"
     
 
-model, transforms = torch.hub.load('harvard-visionlab/lrm-steering', 'alexnet_lrm3', pretrained=True, steering=True, force_reload=True)
+model, transforms = torch.hub.load('harvard-visionlab/lrm-steering', args.model, pretrained=True, steering=True, force_reload=True)
 input_size = (3, 224, 224)
 layerkey = args.layershort
 layername = layername_inv_map[layerkey]
@@ -176,6 +177,8 @@ fetcher.record(layername, store_name=layerkey)
 max_forward = 4 
 for iChannel in range(args.channel_rng[0], args.channel_rng[1]):
     savedir = join(saveroot, f"{args.model}-{layerkey}-Ch{iChannel:04d}")
+    if args.RFresize:
+        savedir += "_RFrsz"
     os.makedirs(savedir, exist_ok=True)
     for GANname in ["fc6", "BigGAN"]:
         G = load_GAN(GANname)
