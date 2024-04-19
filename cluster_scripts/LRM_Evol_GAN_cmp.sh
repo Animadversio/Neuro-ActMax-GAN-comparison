@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -t 8:00:00          # Runtime in D-HH:MM, minimum of 10 minutes
+#SBATCH -t 5:00:00          # Runtime in D-HH:MM, minimum of 10 minutes
 #SBATCH -p kempner          # Partition to submit to
 #SBATCH -c 16               # Number of cores (-c)
 #SBATCH --mem=40G           # Memory pool for all cores (see also --mem-per-cpu)
 #SBATCH --gres=gpu:1
-#SBATCH --array 1-3
+#SBATCH --array 4-19%9
 #SBATCH -o Evol_BG_LRM_%A_%a.out  # File to which STDOUT will be written, %j inserts jobid
 #SBATCH -e Evol_BG_LRM_%A_%a.err  # File to which STDERR will be written, %j inserts jobid
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
@@ -14,6 +14,22 @@ param_list=\
 '--layershort conv1_relu --rep 5 --channel_rng 0 25 --RFresize
 --layershort conv2_relu --rep 5 --channel_rng 0 25 --RFresize
 --layershort conv3_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm2 --layershort conv1_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm2 --layershort conv2_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm2 --layershort conv3_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm2 --layershort conv4_relu --rep 5 --channel_rng 0 25
+--model alexnet_lrm2 --layershort conv5_relu --rep 5 --channel_rng 0 25
+--model alexnet_lrm2 --layershort fc6_relu --rep 5 --channel_rng 0 25 
+--model alexnet_lrm2 --layershort fc7_relu --rep 5 --channel_rng 0 25 
+--model alexnet_lrm2 --layershort fc8 --rep 5 --channel_rng 0 25
+--model alexnet_lrm1 --layershort conv1_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm1 --layershort conv2_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm1 --layershort conv3_relu --rep 5 --channel_rng 0 25 --RFresize
+--model alexnet_lrm1 --layershort conv4_relu --rep 5 --channel_rng 0 25
+--model alexnet_lrm1 --layershort conv5_relu --rep 5 --channel_rng 0 25
+--model alexnet_lrm1 --layershort fc6_relu --rep 5 --channel_rng 0 25 
+--model alexnet_lrm1 --layershort fc7_relu --rep 5 --channel_rng 0 25 
+--model alexnet_lrm1 --layershort fc8 --rep 5 --channel_rng 0 25
 '
 # --layershort conv1_relu --rep 5 --channel_rng 0 25 
 # --layershort conv2_relu --rep 5 --channel_rng 0 25 

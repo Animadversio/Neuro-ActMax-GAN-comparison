@@ -20,6 +20,7 @@ from core.utils.layer_hook_utils import get_module_names, layername_dict, regist
 from core.utils.layer_hook_utils import featureFetcher, featureFetcher_module, featureFetcher_recurrent
 from core.utils.Optimizers import CholeskyCMAES, HessCMAES, ZOHA_Sphere_lr_euclid
 from core.utils.Optimizers import label2optimizer
+from core.utils.LRM_loading_lib import load_LRM_models
 
 def load_GAN(name):
     if name == "BigGAN":
@@ -161,12 +162,13 @@ else:
     saveroot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Projects/Evol_lrm_GAN_cmp"
     
 
-model, transforms = torch.hub.load('harvard-visionlab/lrm-steering', args.model, pretrained=True, steering=True, force_reload=True)
+# model, transforms = torch.hub.load('harvard-visionlab/lrm-steering', args.model, pretrained=True, steering=True, force_reload=True)
+model, transforms = load_LRM_models(args.model, source="local")
 input_size = (3, 224, 224)
 layerkey = args.layershort
 layername = layername_inv_map[layerkey]
 Trng = args.Trng
-model.to("cuda")
+model.to("cuda").eval()
 model.forward_passes = 1
 cent_pos, corner, imgsize, Xlim, Ylim = get_center_pos_and_rf(model, layername,
                                           input_size=input_size, device="cuda")
@@ -246,7 +248,7 @@ for iChannel in range(args.channel_rng[0], args.channel_rng[1]):
                 scores_dyn_all.extend(list(scores_dyn))
                 generations.extend([i] * len(scores))
                 best_imgs.append(imgs[scores.argmax(),:,:,:])
-            
+            # print only the last step
             if GANname == "BigGAN":
                 print("step %d score %.3f (%.3f) (norm %.2f noise norm %.2f)" % (
                     i, scores.mean(), scores.std(), latent_code[:, 128:].norm(dim=1).mean(),
