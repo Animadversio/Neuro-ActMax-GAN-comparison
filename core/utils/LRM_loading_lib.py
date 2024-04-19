@@ -1,3 +1,11 @@
+"""
+little library to load LRM models from local repo and weights, or from Torch hub repo and weights.
+Handling the issue of multiple compute node trying to download from hub at the same time, 
+and has collision error at the TORCH HOME.
+
+Partially source from: 
+    https://github.com/harvard-visionlab/lrm-steering/blob/main/lrm_models/lrms_neurips2023.py
+"""
 import re
 import os
 import torch
