@@ -37,9 +37,9 @@ def parse_stim_info(image_names):
             space_name = match.groups()[0]
             eig_value = int(match.groups()[1])
             lin_value = float(match.groups()[2])
-            stim_info.append({"img_name": name, "space_name": space_name, "eig_id": eig_value, "lin_dist": lin_value, "hessian_img": True, "trial_ids": indices_per_name[name]})
+            stim_info.append({"img_name": name, "space_name": space_name, "eig_id": eig_value, "lin_dist": lin_value, "hessian_img": True, })
         else:
-            stim_info.append({"img_name": name, "space_name": None, "eig_id": None, "lin_dist": None, "hessian_img": False, "trial_ids": indices_per_name[name]})
+            stim_info.append({"img_name": name, "space_name": None, "eig_id": None, "lin_dist": None, "hessian_img": False, })
 
     stim_info_df = pd.DataFrame(stim_info)
     return stim_info_df
@@ -56,16 +56,15 @@ def organize_unit_info(meta, exprow):
     prefunit = exprow.pref_unit
     prefchan_id_allunits = np.where((channel_id == prefchan))[0]
     prefchan_id = np.where((channel_id == prefchan) & (unit_id == prefunit))[0]
+    assert len(prefchan_id) == 1, f"Multiple preferred units found for {exprow.ephysFN} | {prefchan} | {prefunit}"
     prefchan_str = unit_str[prefchan_id.item()]
     return edict({"prefchan_id": prefchan_id, "prefchan_str": prefchan_str})
 
 
-def calculate_neural_responses(rasters, prefchan_id):
+def calculate_neural_responses(rasters, prefchan_id, resp_wdw=slice(50, 200), bsl_wdw=slice(0, 45)):
     """Calculate neural responses for preferred channel"""
-    wdw = slice(50, 200)
-    bslwdw = slice(0, 45)
-    respmat = rasters[:, wdw, :].mean(axis=1)
-    bslmat = rasters[:, bslwdw, :].mean(axis=1)
+    respmat = rasters[:, resp_wdw, :].mean(axis=1)
+    bslmat = rasters[:, bsl_wdw, :].mean(axis=1)
     prefchan_resp_sgtr = respmat[:, prefchan_id] 
     prefchan_bsl_sgtr = bslmat[:, prefchan_id]
     prefchan_bsl_mean = prefchan_bsl_sgtr.mean()

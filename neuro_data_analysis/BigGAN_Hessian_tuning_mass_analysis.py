@@ -1,4 +1,7 @@
 # %%
+%load_ext autoreload
+%autoreload 2
+#%%
 import os
 from os.path import join
 import re
@@ -131,10 +134,11 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     unique_imgnames = np.unique(imageName)
     indices_per_name = {name: np.where(imageName == name)[0] for name in unique_imgnames}
     stim_info_df = parse_stim_info(unique_imgnames)
+    stim_info_df["trial_ids"] = stim_info_df.apply(lambda row: indices_per_name[row["img_name"]], axis=1)
     uniq_img_fps = find_full_image_paths(stimuli_dir, unique_imgnames)
     
     # make the image dataset
-    stimuli_dataset = ImagePathDataset(imgfps=list(uniq_img_fps.values()), scores=None, img_dim=(256, 256))
+    stimuli_dataset = ImagePathDataset(list(uniq_img_fps.values()), scores=None, img_dim=(256, 256))
     
     # Calculate responses
     resp_info = calculate_neural_responses(rasters, prefchan_id)
@@ -144,14 +148,20 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     
     # Create response dataframe
     sgtr_resp_df = pd.DataFrame({"img_name": imageName, "pref_unit_resp": prefchan_resp_sgtr[:, 0]})
+    # annotate the response dataframe with the stimulus information by merging on the image name
     sgtr_resp_df = sgtr_resp_df.merge(stim_info_df.drop(columns=['trial_ids']), on="img_name")
+    # compute the average response per space and eigenvector
+    pref_avgresp_df = sgtr_resp_df.groupby(['space_name', 'eig_id', 'lin_dist']).agg({'pref_unit_resp': 'mean'}).reset_index()
+    pref_avg_resp_class = pref_avgresp_df.query(f"space_name == 'class'")
+    pref_avg_resp_noise = pref_avgresp_df.query(f"space_name == 'noise'")
+    pref_avg_resp_noise_mat = pref_avg_resp_noise.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
+    pref_avg_resp_class_mat = pref_avg_resp_class.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
     
     # Group and plot heatmaps
-    pref_avgresp_per_img = sgtr_resp_df.groupby(['space_name', 'eig_id', 'lin_dist']).agg({'pref_unit_resp': 'mean'}).reset_index()
-    CLIM = np.quantile(pref_avgresp_per_img['pref_unit_resp'], [0.01, 0.99])
+    CLIM = np.quantile(pref_avgresp_df['pref_unit_resp'], [0.01, 0.99])
     figh, axs = plt.subplots(1, 2, figsize=(13, 6))
     for ax, space in zip(axs, ['class', 'noise']):
-        plot_heatmap(pref_avgresp_per_img, space, ax, CLIM)
+        plot_heatmap(pref_avgresp_df, space, ax, CLIM)
     plt.suptitle(f'Preferred Unit Response for Different Spaces and Eigenvectors \n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
     plt.tight_layout()
     saveallforms(figdir, f"preferred_unit_response_heatmap_py")
@@ -162,47 +172,66 @@ for _, exprow in ExpRecord_Hessian.iterrows():
         sgtr_resp_per_space = sgtr_resp_df.query(f"space_name == '{space}'")
         fig = plot_tuning_curves(sgtr_resp_per_space, space, prefchan_bsl_mean, prefchan_bsl_sem, exprow, prefchan_str, compute_stats=True)
         saveallforms(figdir, f"preferred_unit_{space}_tuning_curve_ANOVA_py", fig)
+    break
 
 # %%
-space = "noise"
-space_stim_df = stim_info_df.query(f"space_name == '{space}'")
-if space_stim_df.empty:
-    print(f"No {space} space data found")
-else:
+def load_space_images(space, stim_info_df, uniq_img_fps):
+    """
+    Loads images for a given space and organizes them into an array.
+
+    Parameters:
+        space (str): The space name to filter the stimuli (e.g., "noise").
+        stim_info_df (pd.DataFrame): DataFrame containing stimulus information.
+        uniq_img_fps (dict): Dictionary mapping image names to their full file paths.
+
+    Returns:
+        tuple:
+            imgname_table (pd.DataFrame or None): Pivot table of image names if available, else None.
+            image_array (np.ndarray or None): Array of loaded images if available, else None.
+    """
+    space_stim_df = stim_info_df.query(f"space_name == '{space}'")
+    if space_stim_df.empty:
+        print(f"Warning: No {space} space data found")
+
     pivot_table = space_stim_df.pivot(index='eig_id', columns='lin_dist', values='img_name')
     print(pivot_table)
-    image_array = np.empty(pivot_table.shape, dtype=Image.Image)
-    # for each entry in the pivot table, get the image path and load the image put in in a new array
+    image_array = np.empty(pivot_table.shape, dtype=object)
+    # For each entry in the pivot table, get the image path and load the image into a new array
     for ri, eig_id in enumerate(pivot_table.index):
         for ci, lin_dist in enumerate(pivot_table.columns):
             img_name = pivot_table.loc[eig_id, lin_dist]
-            img_path = uniq_img_fps[img_name]
-            img = Image.open(img_path)
-            image_array[ri, ci] = img
+            img_path = uniq_img_fps.get(img_name)
+            if img_path:
+                img = Image.open(img_path)
+                image_array[ri, ci] = img
+            else:
+                print(f"Image path for {img_name} not found.")
+                image_array[ri, ci] = None
     print(image_array.shape)
+    return pivot_table, image_array
 
-#%%
-resp_df = sgtr_resp_df.query(f"space_name == '{space}'")
-if resp_df.empty:
-    print(f"No {space} space data found")
-else:
-    avgresp_df = resp_df.groupby(['eig_id', 'lin_dist']).agg({'pref_unit_resp': 'mean'}).reset_index()
-    resp_pivot_table = avgresp_df.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
+# Usage
+noise_imgname_table, noise_image_array = load_space_images("noise", stim_info_df, uniq_img_fps)
+class_imgname_table, class_image_array = load_space_images("class", stim_info_df, uniq_img_fps)
 #%%
 from core.utils.montage_utils import PIL_array_to_montage, PIL_array_to_montage_score_frame
-grid_img = PIL_array_to_montage(image_array)
-grid_img_score = PIL_array_to_montage_score_frame(image_array, resp_pivot_table.values, colormap=parula, border_size=24)
+noise_grid_img = PIL_array_to_montage(noise_image_array)
+noise_grid_img_score = PIL_array_to_montage_score_frame(noise_image_array, pref_avg_resp_noise_mat.values, colormap=parula, border_size=24, clim=CLIM)
+class_grid_img = PIL_array_to_montage(class_image_array)
+class_grid_img_score = PIL_array_to_montage_score_frame(class_image_array, pref_avg_resp_class_mat.values, colormap=parula, border_size=24, clim=CLIM)
+
+#%%
 # Display the grid
 plt.figure(figsize=(20,10))
-plt.imshow(grid_img)
+plt.imshow(noise_grid_img)
 plt.axis('off')
-plt.title(f'Image Grid for {space} space')
+plt.title(f'Image Grid for noise space')
 plt.show()
 #%%
 plt.figure(figsize=(20,10))
-plt.imshow(grid_img_score)
+plt.imshow(noise_grid_img_score)
 plt.axis('off')
-plt.title(f'Image Grid for {space} space')
+plt.title(f'Image Grid for noise space')
 plt.show()
 # %%
 

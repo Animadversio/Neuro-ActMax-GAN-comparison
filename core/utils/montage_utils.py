@@ -345,6 +345,8 @@ def PIL_array_to_montage(image_array):
     """
     # Calculate dimensions for the grid
     n_rows, n_cols = image_array.shape
+    if n_rows == 0 or n_cols == 0:
+        return None
     img_width = image_array[0,0].size[0]
     img_height = image_array[0,0].size[1]
     # Create a new blank image with space for all images
@@ -373,6 +375,9 @@ def PIL_array_to_montage_score_frame(image_array, score_array, colormap='viridis
     # Ensure score_array is a numpy array
     if not isinstance(score_array, np.ndarray):
         score_array = np.array(score_array)
+    n_rows, n_cols = image_array.shape
+    if n_rows == 0 or n_cols == 0:
+        return None
     # Normalize scores to [0, 1] for colormap mapping
     if clim is None:
         clim = (np.min(score_array), np.max(score_array))
@@ -385,7 +390,6 @@ def PIL_array_to_montage_score_frame(image_array, score_array, colormap='viridis
     colors = [tuple(int(255 * c) for c in cmap(score)[:3]) for score in mapped_scores.flatten()]
     colors = np.array(colors).reshape(score_array.shape + (3,))
     # Calculate dimensions for the grid with borders
-    n_rows, n_cols = image_array.shape
     img_width, img_height = image_array[0,0].size
     bordered_width = img_width + 2 * border_size
     bordered_height = img_height + 2 * border_size
