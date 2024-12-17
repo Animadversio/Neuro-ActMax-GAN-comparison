@@ -260,8 +260,9 @@ from os.path import join
 from easydict import EasyDict as edict
 import h5py
 import numpy as np
-
-def load_process_formatted_mat2dict(ephys_name, mat_root, verbose=True):
+mat_root = r"S:\Data-Ephys-MAT"
+pkl_root = r"S:\Data-Ephys-PKL"
+def load_process_formatted_mat2dict(ephys_name, mat_root=mat_root, verbose=True):
     """
     Load a single MATLAB file and return its contents as a dictionary.
 
@@ -298,7 +299,7 @@ def load_process_formatted_mat2dict(ephys_name, mat_root, verbose=True):
         "rasters": rasters,
     }
 
-def batch_process_ephys(ephys_names, mat_root, pkl_root, recompute=False):
+def batch_process_ephys(ephys_names, mat_root=mat_root, pkl_root=pkl_root, recompute=False):
     """
     Batch process a list of electrophysiological .mat files and save them as pickle files.
 
