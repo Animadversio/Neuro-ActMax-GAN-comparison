@@ -252,3 +252,71 @@ def print_hdf5_info(obj, indent=''):
     elif isinstance(obj, h5py.Dataset):
         print(f"{indent}Dataset: {obj.name}, shape {obj.shape}, type {obj.dtype}")
 
+
+
+import time
+import pickle as pkl
+from os.path import join
+from easydict import EasyDict as edict
+import h5py
+import numpy as np
+
+def load_process_formatted_mat2dict(ephys_name, mat_root, verbose=True):
+    """
+    Load a single MATLAB file and return its contents as a dictionary.
+
+    Parameters:
+        ephys_name (str): The name identifier for the electrophysiological data.
+        mat_root (str): The root directory where the .mat files are located.
+
+    Returns:
+        dict: A dictionary containing Trials, meta, and rasters data.
+    """
+    t0 = time.time()
+    print(f"Loading {ephys_name} mat file")
+    mat_file = join(mat_root, f"{ephys_name}_formatted.mat")
+    with h5py.File(mat_file, "r") as data:
+        t1 = time.time()
+        print(f"Time taken: {t1 - t0:.2f} seconds for loading mat file")
+        # Fast selective loading
+        meta_dict = h5_to_dict_simplify(data['meta'], data)
+        # Turn rasters into a numpy array, reduce precision to 32-bit float
+        rasters = np.array(data['rasters']).astype(np.float32)
+        Trial_dict = edict()
+        for key in data['Trials'].keys():
+            if key in ["B", "MLConfig"]:
+                continue
+            print(f"Loading {key}", end="\t")
+            Trial_dict[key] = h5_to_dict_simplify(data['Trials'][key], data)
+            print("done")
+        t2 = time.time()
+        print(f"Time taken: {t2 - t1:.2f} seconds for loading trials")
+
+    return {
+        "Trials": Trial_dict,
+        "meta": meta_dict,
+        "rasters": rasters,
+    }
+
+def batch_process_ephys(ephys_names, mat_root, pkl_root, recompute=False):
+    """
+    Batch process a list of electrophysiological .mat files and save them as pickle files.
+
+    Parameters:
+        ephys_names (list of str): List of electrophysiological data identifiers.
+        mat_root (str): The root directory where the .mat files are located.
+        pkl_root (str): The directory where the pickle files will be saved.
+    """
+    for ephys_name in ephys_names:
+        if os.path.exists(join(pkl_root, f"{ephys_name}.pkl")) and not recompute:
+            print(f"PKL file already exists for {ephys_name}")
+            continue
+        print(f"Processing {ephys_name}...")
+        data_dict = load_process_formatted_mat2dict(ephys_name, mat_root)
+        pkl_path = join(pkl_root, f"{ephys_name}.pkl")
+        with open(pkl_path, "wb") as f:
+            pkl.dump(data_dict, f)
+        print(f"Saved {ephys_name} to {pkl_path}\n")
+    
+    
+    
