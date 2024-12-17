@@ -46,15 +46,27 @@ else:
         homedir = os.path.expanduser('~')
         netsdir = os.path.join(homedir, 'Documents/nets')
 
-model_urls = {"pool5" : "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145337&authkey=AFaUAgeoIg0WtmA",
-    "fc6": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145339&authkey=AC2rQMt7Obr0Ba4",
-    "fc7": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145338&authkey=AJ0R-daUAVYjQIw",
-    "fc8": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145340&authkey=AKIfNk7s5MGrRkU"}
+# model_urls = {"pool5" : "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145337&authkey=AFaUAgeoIg0WtmA",
+#     "fc6": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145339&authkey=AC2rQMt7Obr0Ba4",
+#     "fc7": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145338&authkey=AJ0R-daUAVYjQIw",
+#     "fc8": "https://onedrive.live.com/download?cid=9CFFF6BCB39F6829&resid=9CFFF6BCB39F6829%2145340&authkey=AKIfNk7s5MGrRkU"}
 
+model_urls = {
+    "caffenet": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/caffenet.pt",
+    "norm1": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_norm1.pt",
+    "norm2": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_norm2.pt",
+    "conv3": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_conv3.pt",
+    "conv4": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_conv4.pt",
+    "pool5": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_pool5.pt",
+    "fc6": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_fc6.pt",
+    "fc6_eucl": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_fc6_eucl.pt",
+    "fc7": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_fc7.pt",
+    "fc8": "https://huggingface.co/binxu/DeePSim_DosovitskiyBrox2016/resolve/main/upconvGAN_fc8.pt",
+}
 
 def download_file(url, local_path):
     import requests
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
     response = requests.get(url, stream=True)
     file_size = int(response.headers.get('content-length', 0))
     chunk_size = 1024
@@ -94,13 +106,22 @@ class View(nn.Module):
         return x.view(*self.shape)
 
 
+class ScalarMultiply(nn.Module):
+    def __init__(self, scalar):
+        super(ScalarMultiply, self).__init__()
+        self.scalar = scalar
+
+    def forward(self, x):
+        return self.scalar * x
+
+
 RGB_mean = torch.tensor([123.0, 117.0, 104.0])
 RGB_mean = torch.reshape(RGB_mean, (1, 3, 1, 1))
 class upconvGAN(nn.Module):
     def __init__(self, name="fc6", pretrained=True):
         super(upconvGAN, self).__init__()
         self.name = name
-        if name == "fc6" or name == "fc7":
+        if name == "fc6" or name == "fc7" or name == "fc6_eucl":
             self.G = nn.Sequential(OrderedDict([
         ('defc7', nn.Linear(in_features=4096, out_features=4096, bias=True)),
         ('relu_defc7', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
@@ -128,34 +149,36 @@ class upconvGAN(nn.Module):
         ('deconv0', nn.ConvTranspose2d(32, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
             ]))
             self.codelen = self.G[0].in_features
+            self.latent_shape = (4096,)
         elif name == "fc8":
             self.G = nn.Sequential(OrderedDict([
-  ("defc7", nn.Linear(in_features=1000, out_features=4096, bias=True)),
-  ("relu_defc7", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("defc6", nn.Linear(in_features=4096, out_features=4096, bias=True)),
-  ("relu_defc6", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("defc5", nn.Linear(in_features=4096, out_features=4096, bias=True)),
-  ("relu_defc5", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("reshape", View((-1, 256, 4, 4))),
-  ("deconv5", nn.ConvTranspose2d(256, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ("relu_deconv5", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("conv5_1", nn.ConvTranspose2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
-  ("relu_conv5_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("deconv4", nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ("relu_deconv4", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("conv4_1", nn.ConvTranspose2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
-  ("relu_conv4_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("deconv3", nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ("relu_deconv3", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("conv3_1", nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
-  ("relu_conv3_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("deconv2", nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ("relu_deconv2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("deconv1", nn.ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ("relu_deconv1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
-  ("deconv0", nn.ConvTranspose2d(32, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
-  ]))
+        ("defc7", nn.Linear(in_features=1000, out_features=4096, bias=True)),
+        ("relu_defc7", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("defc6", nn.Linear(in_features=4096, out_features=4096, bias=True)),
+        ("relu_defc6", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("defc5", nn.Linear(in_features=4096, out_features=4096, bias=True)),
+        ("relu_defc5", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("reshape", View((-1, 256, 4, 4))),
+        ("deconv5", nn.ConvTranspose2d(256, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ("relu_deconv5", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("conv5_1", nn.ConvTranspose2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+        ("relu_conv5_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("deconv4", nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ("relu_deconv4", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("conv4_1", nn.ConvTranspose2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+        ("relu_conv4_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("deconv3", nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ("relu_deconv3", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("conv3_1", nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+        ("relu_conv3_1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("deconv2", nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ("relu_deconv2", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("deconv1", nn.ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ("relu_deconv1", nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+        ("deconv0", nn.ConvTranspose2d(32, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+        ]))
             self.codelen = self.G[0].in_features
+            self.latent_shape = (1000,)
         elif name == "pool5":
             self.G = nn.Sequential(OrderedDict([
         ('Rconv6', nn.Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
@@ -182,20 +205,143 @@ class upconvGAN(nn.Module):
         ('relu_deconv1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
         ('deconv0', nn.ConvTranspose2d(32, 3, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))), ]))
             self.codelen = self.G[0].in_channels
+            self.latent_shape = (256, 6, 6)
+        elif name == "conv4":
+            self.G = nn.Sequential(OrderedDict([
+                ('Rconv6', nn.Conv2d(384, 384, kernel_size=(3, 3), stride=(1, 1))),
+                ('Rrelu6', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv7', nn.Conv2d(384, 512, kernel_size=(3, 3), stride=(1, 1))),
+                ('Rrelu7', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv8', nn.Conv2d(512, 512, kernel_size=(2, 2), stride=(1, 1))),
+                ('Rrelu8', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv5', nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv5', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv5_1', nn.ConvTranspose2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv5_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv4', nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv4', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv4_1', nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv4_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv3', nn.ConvTranspose2d(128, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv3', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv3_1', nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv3_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv2', nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv2', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv2_1', nn.Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv2_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv1', nn.ConvTranspose2d(32, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv1_1', nn.Conv2d(16, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('tanh', nn.Tanh()),
+                ("scaling", ScalarMultiply(255.0)),
+            ]))
+            self.codelen = self.G[0].in_channels
+            self.latent_shape = (384, 13, 13)
+        elif name == "conv3":
+            self.G = nn.Sequential(OrderedDict([
+                ('Rconv6', nn.Conv2d(384, 384, kernel_size=(3, 3), stride=(1, 1))),
+                ('Rrelu6', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv7', nn.Conv2d(384, 512, kernel_size=(3, 3), stride=(1, 1))),
+                ('Rrelu7', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv8', nn.Conv2d(512, 512, kernel_size=(2, 2), stride=(1, 1))),
+                ('Rrelu8', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv5', nn.ConvTranspose2d(512, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv5', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv5_1', nn.ConvTranspose2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv5_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv4', nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv4', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv4_1', nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv4_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv3', nn.ConvTranspose2d(128, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv3', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv3_1', nn.ConvTranspose2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv3_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv2', nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv2', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv2_1', nn.Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv2_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv1', nn.ConvTranspose2d(32, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv1_1', nn.Conv2d(16, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('tanh', nn.Tanh()),
+                ("scaling", ScalarMultiply(255.0)),
+            ]))
+            self.codelen = self.G[0].in_channels
+            self.latent_shape = (384, 13, 13)
+        elif name == "norm2":
+            self.G = nn.Sequential(OrderedDict([
+                ('Rconv6', nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(2, 2))),
+                ('Rrelu6', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv7', nn.Conv2d(256, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('Rrelu7', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('Rconv8', nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('Rrelu8', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv4', nn.ConvTranspose2d(128, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv4', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv4_1', nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv4_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv3', nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv3', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv3_1', nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv3_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv2', nn.ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('relu_deconv2', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('conv2_1', nn.Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu_conv2_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                ('deconv1', nn.ConvTranspose2d(32, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                ('conv1_1', nn.Conv2d(16, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('tanh', nn.Tanh()),
+                ("scaling", ScalarMultiply(255.0)),
+            ]))
+            self.codelen = self.G[0].in_channels
+            self.latent_shape = (256, 13, 13)
+        elif name == "norm1":
+            self.G = nn.Sequential(OrderedDict([
+                    ('Rconv6', nn.Conv2d(96, 128, kernel_size=(3, 3), stride=(2, 2), padding=(2, 2))),
+                    ('Rrelu6', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('Rconv7', nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('Rrelu7', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('Rconv8', nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('Rrelu8', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('deconv4', nn.ConvTranspose2d(128, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                    ('relu_deconv4', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('conv4_1', nn.Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('relu_conv4_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('deconv3', nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                    ('relu_deconv3', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('conv3_1', nn.Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('relu_conv3_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('deconv2', nn.ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                    ('relu_deconv2', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('conv2_1', nn.Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('relu_conv2_1', nn.LeakyReLU(negative_slope=0.3, inplace=True)),
+                    ('deconv1', nn.ConvTranspose2d(32, 16, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))),
+                    ('conv1_1', nn.Conv2d(16, 3, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                    ('tanh', nn.Tanh()),
+                    ("scaling", ScalarMultiply(255.0)),
+                ]))
+            self.codelen = self.G[0].in_channels
+            self.latent_shape = (96, 27, 27)
         # load pre-trained weight from online or local folders
         if pretrained:
             if load_urls:
-                SDnew = load_statedict_from_online(name)
+                SD = load_statedict_from_online(name)
             else:
                 savepath = {"fc6": join(netsdir, r"upconv/fc6/generator_state_dict.pt"),
                             "fc7": join(netsdir, r"upconv/fc7/generator_state_dict.pt"),
                             "fc8": join(netsdir, r"upconv/fc8/generator_state_dict.pt"),
-                            "pool5": join(netsdir, r"upconv/pool5/generator_state_dict.pt")}
+                            "pool5": join(netsdir, r"upconv/pool5/generator_state_dict.pt"),
+                            "conv4": join(netsdir, r"upconv/conv4/generator_state_dict.pt"),
+                            "conv3": join(netsdir, r"upconv/conv3/generator_state_dict.pt"),
+                            "norm2": join(netsdir, r"upconv/norm2/generator_state_dict.pt"),
+                            "norm1": join(netsdir, r"upconv/norm1/generator_state_dict.pt")}
                 SD = torch.load(savepath[name])
-                SDnew = OrderedDict()
-                for name, W in SD.items():  # discard this inconsistency
-                    name = name.replace(".1.", ".")
-                    SDnew[name] = W
+            SDnew = OrderedDict()
+            for name, W in SD.items():  # discard this inconsistency
+                name = name.replace(".1.", ".")
+                SDnew[name] = W
             self.G.load_state_dict(SDnew)
 
     def sample_vector(self, sampn=1, device="cuda", noise_std=1.0):
@@ -244,6 +390,57 @@ class upconvGAN(nn.Module):
                 img_all = imgs if img_all is None else torch.cat((img_all, imgs), dim=0)
                 csr = csr_end
         return img_all
+
+
+class Caffenet(nn.Module):
+    def __init__(self, pretrained=True, ):
+        super(Caffenet, self).__init__()
+        self.net = nn.Sequential(OrderedDict([
+                # Layer 1
+                ('conv1', nn.Conv2d(3, 96, kernel_size=(11, 11), stride=(4, 4))),
+                ('relu1', nn.ReLU(inplace=True)),
+                ('pool1', nn.MaxPool2d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=True)),
+                ('norm1', nn.LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=1.0)),
+                # Layer 2
+                ('conv2', nn.Conv2d(96, 256, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2), groups=2)),
+                ('relu2', nn.ReLU(inplace=True)),
+                ('pool2', nn.MaxPool2d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=True)),
+                ('norm2', nn.LocalResponseNorm(size=5, alpha=0.0001, beta=0.75, k=1.0)),
+                # Layer 3
+                ('conv3', nn.Conv2d(256, 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))),
+                ('relu3', nn.ReLU(inplace=True)),
+                # Layer 4
+                ('conv4', nn.Conv2d(384, 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=2)),
+                ('relu4', nn.ReLU(inplace=True)),
+                # Layer 5
+                ('conv5', nn.Conv2d(384, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=2)),
+                ('relu5', nn.ReLU(inplace=True)),
+                ('pool5', nn.MaxPool2d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=True)),
+                # Fully connected layers
+                ('flatten', nn.Flatten()),
+                ('fc6', nn.Linear(9216, 4096)),
+                ('relu6', nn.ReLU(inplace=True)),
+                ('fc7', nn.Linear(4096, 4096)),
+                ('relu7', nn.ReLU(inplace=True)),
+                ('fc8', nn.Linear(4096, 1000))
+            ]))
+        if pretrained:
+            if load_urls:
+                SD = load_statedict_from_online("caffenet")
+            else:
+                SD = torch.load(join(netsdir, r"upconv/caffenet/caffenet_state_dict.pt"))
+            SDnew = OrderedDict()
+            for name, W in SD.items():  # discard this inconsistency
+                name = name.replace(".1.", ".")
+                SDnew[name] = W
+            self.net.load_state_dict(SDnew)
+    
+    def forward(self, x, preproc=False, scale=1.0):
+        if preproc:
+            x = x.float() / scale * 255.0
+            x = x - RGB_mean.to(x.device)
+            x = x[:, [2, 1, 0], :, :]
+        return self.net(x)
 
 
 class multiZupconvGAN(nn.Module):
@@ -327,3 +524,4 @@ class BigGAN_wrapper(): #nn.Module
     def render(self, codes_all_arr, truncation=0.7, B=15):
         img_tsr = self.visualize_batch_np(codes_all_arr, truncation=truncation, B=B)
         return [img.permute([1,2,0]).numpy() for img in img_tsr]
+    
