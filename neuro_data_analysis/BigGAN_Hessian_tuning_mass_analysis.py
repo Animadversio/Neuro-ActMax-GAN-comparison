@@ -78,40 +78,22 @@ def parse_stim_info(image_names):
 
 #%%
 
-# %%
-figroot = f"E:\OneDrive - Harvard University\BigGAN_Hessian"
-for _, exprow in ExpRecord_Hessian.iterrows():
-    print(exprow.ephysFN,exprow.Expi)
-    figdir = join(figroot, exprow.ephysFN)
-    os.makedirs(figdir, exist_ok=True)
-    data = pkl.load(open(join(pkl_root, f"{exprow.ephysFN}.pkl"), "rb"))
-    rasters = data["rasters"]   # trials x time x units
-    meta = data["meta"]
-    Trials = data["Trials"]
-    imageName = np.squeeze(Trials.imageName)
-    stimuli_dir = exprow.stimuli
-    # %
-    # Organize the unit information
+def organize_unit_info(meta, exprow):
+    """Extract and organize unit information from metadata"""
     spikeID = meta.spikeID[0].astype(int)
     channel_id = spikeID # set alias
     unit_id = meta.unitID[0].astype(int)
     char_map = {0:"U", 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H'}
     unit_str = [f"{channel_id}{char_map[unit_id]}" for channel_id, unit_id in zip(channel_id, unit_id)]
     prefchan = exprow.pref_chan
-    prefunit = exprow.pref_unit   # the prefchan is the first unit???
+    prefunit = exprow.pref_unit
     prefchan_id_allunits = np.where((channel_id == prefchan))[0]
     prefchan_id = np.where((channel_id == prefchan) & (unit_id == prefunit))[0]
     prefchan_str = unit_str[prefchan_id.item()]
-    prefchan_id_allunits
-    # %
-    # parse the image name
-    unique_imgnames = np.unique(imageName)
-    indices_per_name = {name: np.where(imageName == name)[0] for name in unique_imgnames} # indices of the trials with the same image name
-    # % parse the image name into stim info
-    stim_info_df = parse_stim_info(unique_imgnames)
-    uniq_img_fps = find_full_image_paths(figdir, unique_imgnames)
-    
-    # % neural responses for preferred channel
+    return {"prefchan_id": prefchan_id, "prefchan_str": prefchan_str}
+
+def calculate_neural_responses(rasters, prefchan_id):
+    """Calculate neural responses for preferred channel"""
     wdw = slice(50, 200)
     bslwdw = slice(0, 45)
     respmat = rasters[:, wdw, :].mean(axis=1)
@@ -120,85 +102,123 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     prefchan_bsl_sgtr = bslmat[:, prefchan_id]
     prefchan_bsl_mean = prefchan_bsl_sgtr.mean()
     prefchan_bsl_sem = stats.sem(prefchan_bsl_sgtr)
-    # %
-    sgtr_resp_df = pd.DataFrame({"img_name": imageName, "pref_unit_resp": prefchan_resp_sgtr[:, 0]})
-    sgtr_resp_df = sgtr_resp_df.merge(stim_info_df.drop(columns=['trial_ids']), on="img_name");
-    # sgtr_resp_df.columns # ['img_name', 'pref_unit_resp', 'space_name', 'eig_id', 'lin_dist', 'hessian_img']
-    # %
-    # Group by and compute the mean of preferred unit responses
-    grouped = sgtr_resp_df.groupby(['space_name', 'eig_id', 'lin_dist']).agg({'pref_unit_resp': 'mean'}).reset_index()
-    # Pivot the data to create a matrix for each space_name
-    space_names = grouped['space_name'].unique()
-    CLIM = np.quantile(grouped['pref_unit_resp'],[0.01, 0.99]) #grouped['pref_unit_resp'].quantile([0.01, 0.99])
-    figh, axs = plt.subplots(1, 2, figsize=(13, 6))
-    for ax, space in zip(axs, ['class', 'noise',]):
-        plt.sca(ax)
-        space_data = grouped[grouped['space_name'] == space]
-        pivot_table = space_data.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp') # set values as float
-        pivot_table = pivot_table.astype(float)
-        if pivot_table.empty:
-            continue
-        sns.heatmap(pivot_table, annot=True, fmt=".1f", cmap=parula, 
-                    cbar_kws={'label': 'Preferred Unit Response'}, ax=ax, vmin=CLIM[0], vmax=CLIM[1])
-        plt.title(f'Heatmap of Preferred Unit Response for Space: {space}')
-        plt.xlabel('Linear Distance')
-        plt.ylabel('Eigenvalue ID')
-        plt.xticks(rotation=45, ha='right')
-        plt.yticks(rotation=0)
-        plt.axis('image')
-    plt.suptitle(f'Preferred Unit Response for Different Spaces and Eigenvectors \n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
+    return {"prefchan_resp_sgtr": prefchan_resp_sgtr, 
+            "prefchan_bsl_mean": prefchan_bsl_mean, 
+            "prefchan_bsl_sem": prefchan_bsl_sem}
+
+def plot_heatmap(grouped, space, ax, CLIM):
+    """Plot heatmap for a given space"""
+    space_data = grouped[grouped['space_name'] == space]
+    pivot_table = space_data.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
+    pivot_table = pivot_table.astype(float)
+    if pivot_table.empty:
+        return
+    plt.sca(ax)
+    sns.heatmap(pivot_table, annot=True, fmt=".1f", cmap=parula, 
+                cbar_kws={'label': 'Preferred Unit Response'}, ax=ax, vmin=CLIM[0], vmax=CLIM[1])
+    plt.title(f'Heatmap of Preferred Unit Response for Space: {space}')
+    plt.xlabel('Linear Distance')
+    plt.ylabel('Eigenvalue ID')
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.axis('image')
+
+def plot_tuning_curves(filtered_df, space, prefchan_bsl_mean, prefchan_bsl_sem, exprow, prefchan_str, figdir):
+    """Plot tuning curves for each eigenvector"""
+    if filtered_df.empty:
+        return
+        
+    unique_eig_ids = sorted(filtered_df['eig_id'].unique())
+    num_eig_ids = len(unique_eig_ids)
+    max_cols = 3
+    cols = min(max_cols, num_eig_ids)
+    rows = math.ceil(num_eig_ids / cols)
+    
+    fig_width = cols * 4.5
+    fig_height = rows * 3.5 + 0.5
+    fig, axs = plt.subplots(rows, cols, figsize=(fig_width, fig_height), 
+                           sharex=True, sharey=True,
+                           squeeze=False)
+    axs = axs.flatten()
+    
+    for i, eig_id in enumerate(unique_eig_ids):
+        ax = axs[i]
+        subset = filtered_df[filtered_df['eig_id'] == eig_id]
+        
+        # Perform ANOVA
+        model = ols('pref_unit_resp ~ C(lin_dist)', data=subset).fit()
+        anova_table = sm.stats.anova_lm(model, typ=2)
+        F_value = anova_table.loc['C(lin_dist)', 'F']
+        p_value = anova_table.loc['C(lin_dist)', 'PR(>F)']
+        
+        print(f" Eig ID: {eig_id} | F-value: {F_value:.4f} | p-value: {p_value:.4e}")
+        sns.lineplot(data=subset, x='lin_dist', y='pref_unit_resp', ax=ax, marker='o')
+        ax.axhline(prefchan_bsl_mean, color='black', linestyle='--', label='Baseline Mean')
+        ax.axhline(prefchan_bsl_mean + prefchan_bsl_sem, color='black', linestyle=':', label='Baseline SEM')
+        ax.axhline(prefchan_bsl_mean - prefchan_bsl_sem, color='black', linestyle=':')
+        ax.set_title(f'Eig ID: {eig_id} | F-val: {F_value:.2f} | p-val: {p_value:.1e}')
+        ax.set_xlabel('Linear Distance')
+        ax.set_ylabel('Preferred Unit Response')
+
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+
+    plt.suptitle(f'Preferred Unit Response for Different Eigenvectors {space}\n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
+    plt.legend(title='Space Name', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    saveallforms(figdir, f"preferred_unit_response_heatmap_py", )
+    saveallforms(figdir, f"preferred_unit_{space}_tuning_curve_ANOVA_py")
     plt.show()
 
-    # %
-    space = "class"
+#%% Main analysis loop
+figroot = f"E:\OneDrive - Harvard University\BigGAN_Hessian"
+for _, exprow in ExpRecord_Hessian.iterrows():
+    print(exprow.ephysFN,exprow.Expi)
+    figdir = join(figroot, exprow.ephysFN)
+    os.makedirs(figdir, exist_ok=True)
+    
+    # Load data
+    data = pkl.load(open(join(pkl_root, f"{exprow.ephysFN}.pkl"), "rb"))
+    rasters = data["rasters"]
+    meta = data["meta"]
+    Trials = data["Trials"]
+    imageName = np.squeeze(Trials.imageName)
+    
+    # Process unit information
+    unit_info = organize_unit_info(meta, exprow)
+    prefchan_id = unit_info["prefchan_id"]
+    prefchan_str = unit_info["prefchan_str"]
+    
+    # Process image names
+    unique_imgnames = np.unique(imageName)
+    indices_per_name = {name: np.where(imageName == name)[0] for name in unique_imgnames}
+    stim_info_df = parse_stim_info(unique_imgnames)
+    uniq_img_fps = find_full_image_paths(figdir, unique_imgnames)
+    
+    # Calculate responses
+    resp_info = calculate_neural_responses(rasters, prefchan_id)
+    prefchan_resp_sgtr = resp_info["prefchan_resp_sgtr"]
+    prefchan_bsl_mean = resp_info["prefchan_bsl_mean"]
+    prefchan_bsl_sem = resp_info["prefchan_bsl_sem"]
+    
+    # Create response dataframe
+    sgtr_resp_df = pd.DataFrame({"img_name": imageName, "pref_unit_resp": prefchan_resp_sgtr[:, 0]})
+    sgtr_resp_df = sgtr_resp_df.merge(stim_info_df.drop(columns=['trial_ids']), on="img_name")
+    
+    # Group and plot heatmaps
+    grouped = sgtr_resp_df.groupby(['space_name', 'eig_id', 'lin_dist']).agg({'pref_unit_resp': 'mean'}).reset_index()
+    CLIM = np.quantile(grouped['pref_unit_resp'],[0.01, 0.99])
+    figh, axs = plt.subplots(1, 2, figsize=(13, 6))
+    for ax, space in zip(axs, ['class', 'noise']):
+        plot_heatmap(grouped, space, ax, CLIM)
+    plt.suptitle(f'Preferred Unit Response for Different Spaces and Eigenvectors \n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
+    plt.tight_layout()
+    saveallforms(figdir, f"preferred_unit_response_heatmap_py")
+    plt.show()
+
+    # Plot tuning curves
     for space in ["class", "noise"]:
         filtered_df = sgtr_resp_df.query(f"space_name == '{space}'")
-        if filtered_df.empty:
-            continue
-        unique_eig_ids = sorted(filtered_df['eig_id'].unique())
-        num_eig_ids = len(unique_eig_ids)
-        # Determine grid size
-        # Calculate grid dimensions for subplots
-        max_cols = 3  # Maximum number of columns
-        cols = min(max_cols, num_eig_ids)  # Use fewer columns if fewer eigenvectors
-        rows = math.ceil(num_eig_ids / cols)
-        # Create figure with appropriate size scaling
-        fig_width = cols * 4.5  # Slightly wider to accommodate labels
-        fig_height = rows * 3.5 + 0.5  # Extra space for suptitle
-        fig, axs = plt.subplots(rows, cols, figsize=(fig_width, fig_height), 
-                               sharex=True, sharey=True,
-                               squeeze=False)  # Always return 2D array of axes
-        axs = axs.flatten()
-        for i, eig_id in enumerate(unique_eig_ids):
-            ax = axs[i]
-            subset = filtered_df[filtered_df['eig_id'] == eig_id]
-            # Perform ANOVA
-            model = ols('pref_unit_resp ~ C(lin_dist)', data=subset).fit()
-            anova_table = sm.stats.anova_lm(model, typ=2)
-            # Extract F and p values
-            F_value = anova_table.loc['C(lin_dist)', 'F']  # Get F-value
-            p_value = anova_table.loc['C(lin_dist)', 'PR(>F)']  # Get p-value
-            # Optional: Print results
-            print(f" Eig ID: {eig_id} | F-value: {F_value:.4f} | p-value: {p_value:.4e}")
-            sns.lineplot(data=subset, x='lin_dist', y='pref_unit_resp', ax=ax, marker='o') # default to plot 95% confidence interval around the mean
-            ax.axhline(prefchan_bsl_mean, color='black', linestyle='--', label='Baseline Mean')
-            ax.axhline(prefchan_bsl_mean + prefchan_bsl_sem, color='black', linestyle=':', label='Baseline SEM')
-            ax.axhline(prefchan_bsl_mean - prefchan_bsl_sem, color='black', linestyle=':')
-            ax.set_title(f'Eig ID: {eig_id} | F-val: {F_value:.2f} | p-val: {p_value:.1e}')
-            ax.set_xlabel('Linear Distance')
-            ax.set_ylabel('Preferred Unit Response')
-
-        # Remove any unused subplots
-        for j in range(i + 1, len(axs)):
-            fig.delaxes(axs[j])
-
-        plt.suptitle(f'Preferred Unit Response for Different Eigenvectors {space}\n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
-        plt.legend(title='Space Name', bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.tight_layout()
-        saveallforms(figdir, f"preferred_unit_{space}_tuning_curve_ANOVA_py", )
-        plt.show()
+        plot_tuning_curves(filtered_df, space, prefchan_bsl_mean, prefchan_bsl_sem, exprow, prefchan_str, figdir)
 
 # %%
 
