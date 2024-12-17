@@ -76,6 +76,8 @@ def parse_stim_info(image_names):
     stim_info_df = pd.DataFrame(stim_info)
     return stim_info_df
 
+#%%
+
 # %%
 figroot = f"E:\OneDrive - Harvard University\BigGAN_Hessian"
 for _, exprow in ExpRecord_Hessian.iterrows():
@@ -96,8 +98,8 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     char_map = {0:"U", 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F', 7: 'G', 8: 'H'}
     unit_str = [f"{channel_id}{char_map[unit_id]}" for channel_id, unit_id in zip(channel_id, unit_id)]
     prefchan = exprow.pref_chan
+    prefunit = exprow.pref_unit   # the prefchan is the first unit???
     prefchan_id_allunits = np.where((channel_id == prefchan))[0]
-    prefunit = 1 # the prefchan is the first unit???
     prefchan_id = np.where((channel_id == prefchan) & (unit_id == prefunit))[0]
     prefchan_str = unit_str[prefchan_id.item()]
     prefchan_id_allunits
