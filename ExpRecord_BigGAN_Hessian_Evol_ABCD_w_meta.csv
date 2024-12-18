@@ -118,6 +118,9 @@ Entered into project biggan ",Alfa-25082020-006,200825_Alfa_generate_BigGAN(1)
 ,BigGAN_FC6;BigGAN_Hessian,6.0,,"CH 7 (-1.5, -1.5) 3 1 CMAES hash 1/5. Fc6 vs bigGAN.  
 Start at 941. Sounds good so far. Psth look nice. Biggan started off high. Fc6 psth is spiking highest, its going to climb. Both jumped up at block 13. Fc6 is white background with red/pink grape/eye looking ball in center. 30 blocks at 1009. Completed 
 Entered into project biggan ",Alfa-27082020-002,200827_Alfa_generate_BigGAN(1),7.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-27-Alfa-01\2020-08-27-09-41-28,Alfa
+,BigGAN_FC6;BigGAN_Hessian,7.0,,"BigGAN start at 1042. CH 52 (0, 0) 3 1 CMAES . Hash. This one sounds great. Very VR. Psth looks nice as well. Fc6 started higher and higher peak psth than biggan. Both are climbing at block 6. block 11: fc6 is really climbing. Big gan is too, just not as much, making a colorful bird. Hard to say but fc6 image is colorful with white border. 25 blocks complete. Both climbed. Stop at 1104.  
+Completed 
+entered into project_biggan ",Alfa-01092020-003,200901_Alfa_generate_BigGAN(2),52.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-09-01-Alfa-02\2020-09-01-10-42-42,Alfa
 ,BigGAN_FC6;BigGAN_Hessian,8.0,,"BigGAN CH 64 (0, -1) 3 1 CMAES fc6 vs biggan. Start at 1017. Hash 2/5. Great, very VR. Both biggan and fc6 started out high, they have higher psth than natural images as well. Block 9, both still climbing. Biggan image is bark brown background with white line in center. Fc6 also has white line in center, with pinkish in lower left corner. Biggan really isnt climbing much, it just started out so high and staying high. Almost done, we can do hess sel with this one. 26 blocks at 1034. Completed 
 Entered into biggan ",Alfa-02092020-003,200902_Alfa_generate_BigGAN(2),64.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-09-02-Alfa-02\2020-09-02-10-17-21,Alfa
 ,BigGAN_FC6;BigGAN_Hessian,9.0,,"Gen bigGAN CH 49 (0, 0) 3 1 CMAES fc6 vs biggan stat at 11:00. Hash. 

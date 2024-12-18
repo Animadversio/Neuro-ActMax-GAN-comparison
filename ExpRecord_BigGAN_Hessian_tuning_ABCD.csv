@@ -1,10 +1,10 @@
 ChanQual,Exp_collection,Expi,WebCam,comments,ephysFN,expControlFN,pref_chan,pref_unit,stim_size,stimuli,Animal
 ,BigGAN_Hessian,1.0,,"Manifold with biggan
- 003 at 309 PM, manifold. Had 100cc water and filled up to 200cc at 3.10PM.",Caos-12022024-003,241202_150857_Caos_selectivity_basic,91.0,2.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44\Hess_imgs,Caos
+ 003 at 309 PM, manifold. Had 100cc water and filled up to 200cc at 3.10PM.",Caos-12022024-003,241202_150857_Caos_selectivity_basic,91.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44\Hess_imgs,Caos
 ,BigGAN_Hessian,2.0,," 006 manifold
  alas, it's all dogs
  006 at 356 PM
- 350cc total fluid consumed 4.03PM, stop 410PM consumed 325cc total.",Caos-12022024-006,241202_155547_Caos_selectivity_basic,94.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42\Hess_imgs,Caos
+ 350cc total fluid consumed 4.03PM, stop 410PM consumed 325cc total.",Caos-12022024-006,241202_155547_Caos_selectivity_basic,94.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42\Hess_imgs,Caos
 ,BigGAN_Hessian,3.0,,"003 at 239 PM
 manifold
 (0,0) 2
@@ -13,7 +13,7 @@ will fill up with AJ to 200cc",Caos-12042024-003,241204_143902_Caos_selectivity_
 ,BigGAN_Hessian,4.0,,"Running manifold
 007 at 3:30 PM
 ch 72 ( 0 0) 2 1 CMAES
-almost had 75, 350, back to 50 cc",Caos-12042024-007,241204_152944_Caos_selectivity_basic,72.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33\Hess_imgs,Caos
+almost had 75, 350, back to 50 cc",Caos-12042024-007,241204_152944_Caos_selectivity_basic,72.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33\Hess_imgs,Caos
 ,BigGAN_Hessian,5.0,,"Manifold selectivity basic started at 2.48PM -004
 92 (0 0) 2 2 CMAS 1/5
 Started 200cc, 180cc, drank 380cc total
@@ -67,54 +67,54 @@ manifold for
 perf at 64%…
 upping reward to 75 ms
 12 minutes in, 6 blocks, only ~20 cc left",Diablito-12122024-006,241212_123905_Diablito_selectivity_basic,50.0,1.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-12-Ev-Diablito-02\2024-12-12-12-18-47\Hess_imgs,Diablito
-,BigGAN_Hessian,1.0,,Selectivity of Hess images from CH 22 evolution. 4 blocks at 1049 ,Alfa-04082020-003,200804_Alfa_selectivity_basic(1),22.0,,3.0,N:\Stimuli\2020-BigGAN\2020-08-04-Alfa-01\selectivity,Alfa
+,BigGAN_Hessian,1.0,,Selectivity of Hess images from CH 22 evolution. 4 blocks at 1049 ,Alfa-04082020-003,200804_Alfa_selectivity_basic(1),22.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-04-Alfa-01\selectivity,Alfa
 ,BigGAN_Hessian,2.0,,"Selectivity of Hessian images from previous evolution. start at 1124. 
-CH 6 (-0.3, -3) 3 1. Big Gan evolution was making a grape/apple looking object, which is similar to what this channel has evolved before with fc6. 4 blocks at 1138 ",Alfa-06082020-004,200806_Alfa_selectivity_basic(1),6.0,,3.0,N:\Stimuli\2020-BigGAN\2020-08-06-Alfa-01\selectivity,Alfa
+CH 6 (-0.3, -3) 3 1. Big Gan evolution was making a grape/apple looking object, which is similar to what this channel has evolved before with fc6. 4 blocks at 1138 ",Alfa-06082020-004,200806_Alfa_selectivity_basic(1),6.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-06-Alfa-01\selectivity,Alfa
 ,BigGAN_Hessian,2.0,,"Post hoc sel of hes images for CH 6 start at 1033.  
 CH 6 (-0.3, -3) 3 degrees. 4 blocks stop at 1048. 6 was SU, 1 is SU, 2 is hash 
-Binxu: use hash for this instead of SU since we are doing the  ",Alfa-10082020-004,200810_Alfa_selectivity_basic(1),6.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200810-selectivity,Alfa
+Binxu: use hash for this instead of SU since we are doing the  ",Alfa-10082020-004,200810_Alfa_selectivity_basic(1),6.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200810-selectivity,Alfa
 ,BigGAN_Hessian,3.0,,"Selectivity with Hess images. Start at 1032.  
-CH 29 (0, -2)  4 degrees. Biggan made a dark buffalo, monkey, dog animal standing. 3 blocks com stop at 11.  ",Alfa-12082020-004,200812_Alfa_selectivity_basic,29.0,,4.0,N:\Stimuli\2020-Hessian\alfa-200812-selectivity,Alfa
-,BigGAN_Hessian,4.0,,"Selectivity with Hess images. CH 51 (-1.8, -1.8) 4 degrees. Start at 1033. Reward at 130. 4 blocks at 1102. Added juice. completed ",Alfa-14082020-003,200814_Alfa_selectivity_basic,51.0,,4.0,N:\Stimuli\2020-Hessian\alfa-200814-selectivity,Alfa
+CH 29 (0, -2)  4 degrees. Biggan made a dark buffalo, monkey, dog animal standing. 3 blocks com stop at 11.  ",Alfa-12082020-004,200812_Alfa_selectivity_basic,29.0,1.0,4.0,N:\Stimuli\2020-Hessian\alfa-200812-selectivity,Alfa
+,BigGAN_Hessian,4.0,,"Selectivity with Hess images. CH 51 (-1.8, -1.8) 4 degrees. Start at 1033. Reward at 130. 4 blocks at 1102. Added juice. completed ",Alfa-14082020-003,200814_Alfa_selectivity_basic,51.0,1.0,4.0,N:\Stimuli\2020-Hessian\alfa-200814-selectivity,Alfa
 ,BigGAN_Hessian,5.0,,"Selectivity with Hess images from CH 59. Start at 1117. Stop at 1129. He is done :(. Only got through 3 blocks..... 
-More v4, more retry v1 hessian. 3, 5, 7, 15, 32.  ",Alfa-25082020-007,200825_Alfa_selectivity_basic,59.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200825-selectivity,Alfa
-,BigGAN_Hessian,6.0,,"Selectivity start at 1018. Hess iamges from CH 7 (-1.5, -1.5) 3 degrees. Biggan made a furry gray ball right in the center. Replaced water with juice. Hes a happy monkey. 7 blocks at 1046. Completed ",Alfa-27082020-003,200827_Alfa_selectivity_basic,7.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200827-selectivity,Alfa
+More v4, more retry v1 hessian. 3, 5, 7, 15, 32.  ",Alfa-25082020-007,200825_Alfa_selectivity_basic,59.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200825-selectivity,Alfa
+,BigGAN_Hessian,6.0,,"Selectivity start at 1018. Hess iamges from CH 7 (-1.5, -1.5) 3 degrees. Biggan made a furry gray ball right in the center. Replaced water with juice. Hes a happy monkey. 7 blocks at 1046. Completed ",Alfa-27082020-003,200827_Alfa_selectivity_basic,7.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200827-selectivity,Alfa
 ,BigGAN_Hessian,7.0,,Selectivity with CH 52 Hess images. Start at 11:11. 6 blocks at 1133. Completed ,Alfa-01092020-004,200901_Alfa_selectivity_basic,52.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200901-selectivity,Alfa
-,BigGAN_Hessian,8.0,,Hess selectivity with CH 64 images. Start at 1042. 5 blocks at 1055. Completed ,Alfa-02092020-004,200902_Alfa_selectivity_basic,64.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200902-selectivity-01,Alfa
+,BigGAN_Hessian,8.0,,Hess selectivity with CH 64 images. Start at 1042. 5 blocks at 1055. Completed ,Alfa-02092020-004,200902_Alfa_selectivity_basic,64.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200902-selectivity-01,Alfa
 ,BigGAN_Hessian,9.0,,"Sel with CH 49 Hess images. CH 49 (0,0) 3. Start at 1127. Hes working so well, lets see if we can get through this. Still doing great. Got through 1 block in 2 minutes. Blasting him. 5 at 1147. Completed ",Alfa-02092020-006,200902_Alfa_selectivity_basic(1),49.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200902-selectivity-02,Alfa
-,BigGAN_Hessian,10.0,,"Hess selectivity with CH 57 BG evolution. CH 57 (0, 0) 3 degrees. Start at 1052. 6 blocks complete, stop at 1106. complete.  ",Alfa-08092020-004,200908_Alfa_selectivity_basic,57.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200908-selectivity,Alfa
+,BigGAN_Hessian,10.0,,"Hess selectivity with CH 57 BG evolution. CH 57 (0, 0) 3 degrees. Start at 1052. 6 blocks complete, stop at 1106. complete.  ",Alfa-08092020-004,200908_Alfa_selectivity_basic,57.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200908-selectivity,Alfa
 ,BigGAN_Hessian,11.0,,"CH 32 (-3.5, -3.5) 4 degrees, MU. Hessian images from previous evolution. Start at 1015. 6 blocks complete stop at 1030. complete.  ",Alfa-11092020-003,200911_Alfa_selectivity_basic,32.0,1.0,4.0,N:\Stimuli\2020-Hessian\alfa-200911-selectivity-01,Alfa
 ,BigGAN_Hessian,12.0,,"CH 30 hess images. Start at 1115. Selectivity CH 30 (-2,-2) 3 degrees. Just get through 5 blocks, 255 trials. 250 trials, almost 5 blocks, he would not budge..... stop 1140. complete.  
 9/16/20. In rig at 945. chlorhexidine ",Alfa-11092020-006,200911_Alfa_selectivity_basic(1),30.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200911-selectivity-02,Alfa
 5.0,BigGAN_Hessian,13.0,,"Selectivity with Hess images of BG evolution. CH 10 (-0.2, -2.2) 3 1 CMAES. Start at 1033. 6blocks, 1049 ",Alfa-16092020-003,200916_Alfa_selectivity_basic,10.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200916-selectivity-01,Alfa
-2.0,BigGAN_Hessian,14.0,,"Replaced water with juice. 350 total starting now. Selectivity with CH 15 evolution. Start at 1124. CH 15 SU(0, 0) 3 degrees. BG made white dog face. 5 blocks complete at 1135.  ",Alfa-16092020-005,200916_Alfa_selectivity_basic(1),15.0,,3.0,N:\Stimuli\2020-Hessian\alfa-200916-selectivity-02,Alfa
+2.0,BigGAN_Hessian,14.0,,"Replaced water with juice. 350 total starting now. Selectivity with CH 15 evolution. Start at 1124. CH 15 SU(0, 0) 3 degrees. BG made white dog face. 5 blocks complete at 1135.  ",Alfa-16092020-005,200916_Alfa_selectivity_basic(1),15.0,1.0,3.0,N:\Stimuli\2020-Hessian\alfa-200916-selectivity-02,Alfa
 ,BigGAN_Hessian,15.0,,"007 Sel Basic  
 Selectivity for a small sets of images rows. We need more blocks to suppress noise.  
 6blocks for 3 rows! Great.  
-completed ",Alfa-27102020-007,201027_Alfa_selectivity_basic,9.0,,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
+completed ",Alfa-27102020-007,201027_Alfa_selectivity_basic,9.0,1.0,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
 ,BigGAN_Hessian,15.0,,"008 Sel Basic (1 )  
 Selectivity for another small subsets 
 4 rows in class space, finish the class space.  
 6 blocks for 2 mins! Fast  
-completed ",Alfa-27102020-008,201027_Alfa_selectivity_basic(1),9.0,,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
+completed ",Alfa-27102020-008,201027_Alfa_selectivity_basic(1),9.0,1.0,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
 ,BigGAN_Hessian,15.0,,"009  Sel Basic (2) 
 Final block of images!  
 Everythng else in noise space 40~ images  
 Hope we can get 6 blocks too  
 2 blocks in 1 mins! fantastic 
-completed ",Alfa-27102020-009,201027_Alfa_selectivity_basic(2),9.0,,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
+completed ",Alfa-27102020-009,201027_Alfa_selectivity_basic(2),9.0,1.0,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-10-27-Alfa-Frames,Alfa
 ,BigGAN_Hessian,16.0,,"005 Selectivity Images 12:41 
 28 [-2 –3.5] 5 1  
 98 images of all Hessian directions corresponding to the last movie and the Hessian evolution.  
 Hope to finish soon  
 Pretty fast 5 reps 5 blocks!  
 Super high performance !  
-Complete  ",Alfa-04112020-005,201104_Alfa_selectivity_basic,28.0,,5.0,N:\Stimuli\2020-MovieStaticCmp\2020-11-04-Alfa-01-Frames,Alfa
+Complete  ",Alfa-04112020-005,201104_Alfa_selectivity_basic,28.0,1.0,5.0,N:\Stimuli\2020-MovieStaticCmp\2020-11-04-Alfa-01-Frames,Alfa
 4.0,BigGAN_Hessian,17.0,,"006 Selectivity Basic  starts 12:45 
 All Hessian Movie frame images.  
 Monkey is definitely slower than before....Need to move fast.  
 8 mins 5 blocks  
-7 blocks 11min 30s ",Alfa-06112020-006,201106_Alfa_selectivity_basic,19.0,,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-11-06-Alfa-02-Frames,Alfa
+7 blocks 11min 30s ",Alfa-06112020-006,201106_Alfa_selectivity_basic,19.0,1.0,4.0,N:\Stimuli\2020-MovieStaticCmp\2020-11-06-Alfa-02-Frames,Alfa
 ,BigGAN_Hessian,18.0,,"Hessian Manifold  
 Debug the python code takes some time.  
 Class Space, Noise space explore 
@@ -122,40 +122,40 @@ Deleted some center column to reduce number  
 6 rep and sth the tuning pattern seems right!  
 Completed 
 Just a relax let him move his eyes  
-But he made it in quite some trials!  ",Alfa-12012021-003,210112_Alfa_selectivity_basic,,,,N:\Stimuli\2020-Hessian\alfa-210112-selectivity,Alfa
+But he made it in quite some trials!  ",Alfa-12012021-003,210112_Alfa_selectivity_basic,27.0,1.0,4.0,N:\Stimuli\2020-Hessian\alfa-210112-selectivity,Alfa
 ,BigGAN_Hessian,19.0,,"Selectivity basic 
 Monkey is not in the mode  
 Try to do the Hessian images for chan 28 but cannot finish one block. Lets see.   
-Incompleted ",Alfa-13012021-003,210113_Alfa_selectivity_basic,28.0,,5.0,N:\Stimuli\2020-Hessian\alfa-210113-selectivity,Alfa
+Incompleted ",Alfa-13012021-003,210113_Alfa_selectivity_basic,28.0,1.0,5.0,N:\Stimuli\2020-Hessian\alfa-210113-selectivity,Alfa
 ,BigGAN_Hessian,20.0,,"Hessian of BigGAN evolution!
 -1
 The Hessian signature is there....
 Maybe I'm overly ambitious today 200+ images
 48 mins 6 blocks
-2021-02-25 00:00:00",Alfa-19022021-004,210219_Alfa_selectivity_basic(1),,,,N:\Stimuli\2020-Hessian\alfa-210219-selectivity,Alfa
+2021-02-25 00:00:00",Alfa-19022021-004,210219_Alfa_selectivity_basic(1),32.0,1.0,7.0,N:\Stimuli\2020-Hessian\alfa-210219-selectivity,Alfa
 ,BigGAN_Hessian,21.0,,"004 Hessian Image Selectivity
 10 mins 6 blocks so efficient.
 SOOOOOO efficient 11:30 min 7 blocks.
-completed",Alfa-25022021-004,210225_Alfa_selectivity_basic(1),3.0,,6.0,N:\Stimuli\2020-Hessian\alfa-210215-selectivity,Alfa
+completed",Alfa-25022021-004,210225_Alfa_selectivity_basic(1),3.0,1.0,6.0,N:\Stimuli\2020-Hessian\alfa-210215-selectivity,Alfa
 ,BigGAN_Hessian,22.0,,"005 Selectivity Hessian
 OK I have to do a Hessian Selectivity for this cell.
 Let monkey sleep for some time.... this is a struggle.
 Get some juice and he does pretty well now
-Very inefficient",Alfa-26022021-005,210226_Alfa_selectivity_basic,18.0,,7.0,N:\Stimuli\2020-Hessian\alfa-210226-selectivity,Alfa
-1.0,BigGAN_Hessian,23.0,,004 Hesian selectiivty this may be a weak one.  ,Alfa-12032021-005,210312_Alfa_selectivity_basic,5.0,,5.0,N:\Stimuli\2020-Hessian\alfa-210312-selectivity,Alfa
+Very inefficient",Alfa-26022021-005,210226_Alfa_selectivity_basic,18.0,1.0,7.0,N:\Stimuli\2020-Hessian\alfa-210226-selectivity,Alfa
+1.0,BigGAN_Hessian,23.0,,004 Hesian selectiivty this may be a weak one.  ,Alfa-12032021-005,210312_Alfa_selectivity_basic,5.0,1.0,5.0,N:\Stimuli\2020-Hessian\alfa-210312-selectivity,Alfa
 2.0,BigGAN_Hessian,24.0,,"004 Hessian Selectivity 
 It's interesting / weird that the Hessian images created today are not so different.  
 May be LPIPS fail to work? Or we are too out in the space of BigGAN? 
 Rrr 
 [-1.5 -1.5] 5 deg chan9 unit 1 
 This guy seems to have peak right in the center.  
-Performance is still dam high!  ",Alfa-01042021-004,210401_Alfa_selectivity_basic(1),9.0,,5.0,N:\Stimuli\2020-Hessian\alfa-210401-selectivity,Alfa
+Performance is still dam high!  ",Alfa-01042021-004,210401_Alfa_selectivity_basic(1),9.0,1.0,5.0,N:\Stimuli\2020-Hessian\alfa-210401-selectivity,Alfa
 ,BigGAN_Hessian,25.0,,"003 Hessian selectivity 
 Starts 12:22 
 Chan 7 [-1.3 -1.4] 4deg unit 1
 Quite remarkable tuning curves. Dog vs human faces?
 Monkey is so efficient today! 7mins 4 blocks with 90% performance. 
-12 mins 7blocks 200+ images great jobb",Alfa-08042021-003,210408_Alfa_selectivity_basic,7.0,,4.0,N:\Stimuli\2020-Hessian\alfa-210408-selectivity,Alfa
+12 mins 7blocks 200+ images great jobb",Alfa-08042021-003,210408_Alfa_selectivity_basic,7.0,1.0,4.0,N:\Stimuli\2020-Hessian\alfa-210408-selectivity,Alfa
 5.0,BigGAN_Hessian,26.0,,"004 BigGAN Hessian
 Completed",Alfa-14052021-004,210514_Alfa_selectivity_basic,29.0,1.0,5.0,N:\Stimuli\2020-Hessian\alfa-210514-selectivity,Alfa
 ,BigGAN_Hessian,1.0,,"004 exp at 15:27 
@@ -164,25 +164,25 @@ Start Hess computation at 3:18, Major axis are dog head direction, orientation a
 A lot of images but hopefully it will be meaningful
 Hope we can reach block 3. He is working with great performance today!
 20 mins kind of finished 3 reps. Finished 300 mL now.
-31 mins 81% performance.",Beto-27072020-004,200727_Beto_selectivity_basic(1),26.0,,3.0,N:\Stimuli\2020-Hessian\beto-200727-selectivity,Beto
+31 mins 81% performance.",Beto-27072020-004,200727_Beto_selectivity_basic(1),26.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200727-selectivity,Beto
 ,BigGAN_Hessian,2.0,,"003 starts 14:39  Hessian Axis Selectivity Experiments 
 Pretty efficient. Monkey took a nap at 14:57 
-fINISH  at 15:02 24 mins 7 reps very efficient.  ",Beto-05082020-003,200805_Beto_selectivity_basic,28.0,,3.0,N:\Stimuli\2020-Hessian\beto-200805-selectivity,Beto
-,BigGAN_Hessian,3.0,,"Selectivity with hessian images. CH 20 (-0.4, 1.4). 4 blocks compllete at 1036. stop ",Beto-07082020-003,200807_Beto_selectivity_basic(1),20.0,,3.0,N:\Stimuli\2020-BigGAN\2020-08-07-Beto-01\selectivity,Beto
+fINISH  at 15:02 24 mins 7 reps very efficient.  ",Beto-05082020-003,200805_Beto_selectivity_basic,28.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200805-selectivity,Beto
+,BigGAN_Hessian,3.0,,"Selectivity with hessian images. CH 20 (-0.4, 1.4). 4 blocks compllete at 1036. stop ",Beto-07082020-003,200807_Beto_selectivity_basic(1),20.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-07-Beto-01\selectivity,Beto
 ,BigGAN_Hessian,4.0,,"Selectivity with Hess images from previous evo. Start at 1058. Plotting weird.... 
-Ch 19 (0, 2) 4 degrees. 3 blocks complete. Stop at 1120.  ",Beto-11082020-004,200811_Beto_selectivity_basic,19.0,,4.0,N:\Stimuli\2020-Hessian\beto-200811-selectivity,Beto
-,BigGAN_Hessian,5.0,,"Selectivity start at 1052.  CH 28 (-1.5, 0) 3 degrees, with Hess images. Biggan ended up evolving a white object diagonal through image (bird, dress, building) 4 blocks at 1111 ",Beto-13082020-004,200813_Beto_selectivity_basic,28.0,,3.0,N:\Stimuli\2020-Hessian\beto-200813-selectivity,Beto
+Ch 19 (0, 2) 4 degrees. 3 blocks complete. Stop at 1120.  ",Beto-11082020-004,200811_Beto_selectivity_basic,19.0,1.0,4.0,N:\Stimuli\2020-Hessian\beto-200811-selectivity,Beto
+,BigGAN_Hessian,5.0,,"Selectivity start at 1052.  CH 28 (-1.5, 0) 3 degrees, with Hess images. Biggan ended up evolving a white object diagonal through image (bird, dress, building) 4 blocks at 1111 ",Beto-13082020-004,200813_Beto_selectivity_basic,28.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200813-selectivity,Beto
 ,BigGAN_Hessian,6.0,,"Selectivity with CH 26 images. Start at 1048.  
-Ch 26 (-2, 0) 4 1. super creepy white dog or baby doll face. complete ",Beto-17082020-004,200817_Beto_selectivity_basic,26.0,,4.0,N:\Stimuli\2020-Hessian\beto-200817-selectivity,Beto
+Ch 26 (-2, 0) 4 1. super creepy white dog or baby doll face. complete ",Beto-17082020-004,200817_Beto_selectivity_basic,26.0,1.0,4.0,N:\Stimuli\2020-Hessian\beto-200817-selectivity,Beto
 ,BigGAN_Hessian,7.0,,"003 at 439 PM 
 selectivity with hessian 
 head's unstable but fixation still works 
 25 (-0.1,0) 3 
-bumpy. 4 blocks completed. 200 cc consumed so far, 448 PM, so working for not even an hour. Oof. He's gotta do at least 10 more minutes. ",Beto-18082020-003,200818_Beto_selectivity_basic,25.0,,3.0,N:\Stimuli\2020-BigGAN\2020-08-18-Beto-01\2020-08-18-16-02-08\Hess_imgs,Beto
+bumpy. 4 blocks completed. 200 cc consumed so far, 448 PM, so working for not even an hour. Oof. He's gotta do at least 10 more minutes. ",Beto-18082020-003,200818_Beto_selectivity_basic,25.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-18-Beto-01\2020-08-18-16-02-08\Hess_imgs,Beto
 ,BigGAN_Hessian,8.0,,"Trying selectivity with Heesian images. Start at 1047. 
-CH 49 (0,0) 3 degrees. Would like to get through 5 blocks. Blasting him, hes doing okay. 3 blocks in 10 minutes ",Beto-20082020-004,200820_Beto_selectivity_basic,49.0,,3.0,N:\Stimuli\2020-Hessian\beto-200820-selectivity,Beto
+CH 49 (0,0) 3 degrees. Would like to get through 5 blocks. Blasting him, hes doing okay. 3 blocks in 10 minutes ",Beto-20082020-004,200820_Beto_selectivity_basic,49.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200820-selectivity,Beto
 ,BigGAN_Hessian,9.0,,"Selectivity with Hess images. CH 52 (0, 0) 3 degrees. Start at 10:17. 
-Lets get 7 blocks. 8 blocks. Done at 1035. complete ",Beto-24082020-003,200824_Beto_selectivity_basic,52.0,,3.0,N:\Stimuli\2020-Hessian\beto-200824-selectivity,Beto
+Lets get 7 blocks. 8 blocks. Done at 1035. complete ",Beto-24082020-003,200824_Beto_selectivity_basic,52.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200824-selectivity,Beto
 ,BigGAN_Hessian,10.0,,"003 at 1140 AM 
 Biggan manifold experiment for Binxu 
 13 (-1,0) 3 
@@ -192,13 +192,13 @@ he's bumpy of course. Upped to 100 ms rew. 
 12 minutes in, 46% participation, has had ~150 cc 
 so many bumps. But he should work at least 60-90 minutes, or we'll have a bad situation. 
 He's only had around 200 cc but his protest rate is noticeablely up. I think this shows that time is the limit, not getting enough water. 
-Let's go to 12:05. That'll be around 1 hour 20 minutes ",Beto-31082020-003,200831_Beto_selectivity_basic,13.0,,3.0,N:\Stimuli\2020-BigGAN\2020-08-31-Beto-01\2020-08-31-10-52-29\Hess_imgs,Beto
+Let's go to 12:05. That'll be around 1 hour 20 minutes ",Beto-31082020-003,200831_Beto_selectivity_basic,13.0,1.0,3.0,N:\Stimuli\2020-BigGAN\2020-08-31-Beto-01\2020-08-31-10-52-29\Hess_imgs,Beto
 ,BigGAN_Hessian,11.0,,"003 at 1116 AM 
 selectivity with hessian manifold 
 5 (0,0) 3 2 
 bump at 1121 
 1123 – bump. Upped to 130 ms from 100 ms. 
-Done at 5 reps ",Beto-07092020-003,200907_Beto_selectivity_basic,5.0,,3.0,N:\Stimuli\2020-BigGAN\2020-09-07-Beto-01\2020-09-07-10-50-26\Hess_imgs,Beto
-,BigGAN_Hessian,12.0,,"Running hess images, it started at 1104. Done. Start selectivity of hess images at 11:10. CH 17 (-1.5, 0) 3 degrees. Hash. BG made a picture with two faces, one human and one dog. 2 blocks in 4 minutes. 6 blocks stop at 1127.  ",Beto-10092020-003,200910_Beto_selectivity_basic,17.0,,3.0,N:\Stimuli\2020-Hessian\beto-200910-selectivity,Beto
-,BigGAN_Hessian,13.0,,"Attempting sel. Selectivity of CH 59 Hessian images start at 1058. CH 59 (0, 0) hash. So far so good. Need 260 trials, at 185 now. One more block! Hes got it. 5 blocks complete at 1113 ",Beto-14092020-004,200914_Beto_selectivity_basic,59.0,,3.0,N:\Stimuli\2020-Hessian\beto-200914-selectivity,Beto
-,BigGAN_Hessian,14.0,,"Selectivity start at 1038. CH 29 (0, 1) 3 degrees. SU 2/5. Using BG evolution Hessian images. 6 blocks stop at 1056. complete ",Beto-17092020-003,200917_Beto_selectivity_basic,29.0,,3.0,N:\Stimuli\2020-Hessian\beto-200917-selectivity,Beto
+Done at 5 reps ",Beto-07092020-003,200907_Beto_selectivity_basic,5.0,2.0,3.0,N:\Stimuli\2020-BigGAN\2020-09-07-Beto-01\2020-09-07-10-50-26\Hess_imgs,Beto
+,BigGAN_Hessian,12.0,,"Running hess images, it started at 1104. Done. Start selectivity of hess images at 11:10. CH 17 (-1.5, 0) 3 degrees. Hash. BG made a picture with two faces, one human and one dog. 2 blocks in 4 minutes. 6 blocks stop at 1127.  ",Beto-10092020-003,200910_Beto_selectivity_basic,17.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200910-selectivity,Beto
+,BigGAN_Hessian,13.0,,"Attempting sel. Selectivity of CH 59 Hessian images start at 1058. CH 59 (0, 0) hash. So far so good. Need 260 trials, at 185 now. One more block! Hes got it. 5 blocks complete at 1113 ",Beto-14092020-004,200914_Beto_selectivity_basic,59.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200914-selectivity,Beto
+,BigGAN_Hessian,14.0,,"Selectivity start at 1038. CH 29 (0, 1) 3 degrees. SU 2/5. Using BG evolution Hessian images. 6 blocks stop at 1056. complete ",Beto-17092020-003,200917_Beto_selectivity_basic,29.0,1.0,3.0,N:\Stimuli\2020-Hessian\beto-200917-selectivity,Beto
