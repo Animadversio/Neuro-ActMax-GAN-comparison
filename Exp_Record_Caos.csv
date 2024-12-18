@@ -1,0 +1,197 @@
+ChanQual,Exp_collection,Expi,WebCam,comments,ephysFN,expControlFN,pref_chan,pref_unit,stim_size,stimuli
+,,,,"Rf mapping at 1:15
+200 ml water in tank
+Stopped after 6 block
+5 min rf mapping
+COMPLITED",Caos-06112023-001,231106_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2023\11-06-Caos-01
+,,,,"RF mapping at 1:27
+Finished at 1:33
+After 4 block
+1 degree stimuli
+COMPLITED",Caos-06112023-002,231106_Caos_rfMapper_basic(1),,,,N:\Stimuli\RFs\2023\11-06-Caos-02
+,,,,"Evolution started at 1:39 PM
+trying 71 (0 0 ) 3 1 CMAES
+Sparse PSTH, but let's see
+MU 3-4/5
+TERMINATED – Not improve in PSTH",Caos-06112023-003,231106_Caos_generate_integrated,71.0,,,N:\Stimuli\Evolutions\2023\2023-11-06-Caos-01
+,,,,"Evolution started at 1:46PM
+trying 71 (0 0 ) 3 2 CMAES
+Evolving from Hash
+added 200 ml AJ to 300 levee (400 ml added in sum)
+Stopped at 25 block
+At 2:00
+Response onset enhancement
+COMPLITED",Caos-06112023-004,231106_Caos_generate_integrated(1),71.0,,,N:\Stimuli\Evolutions\2023\2023-11-06-Caos-02
+,,,,"Occlusion at 2:05
+(0 0 ) 3
+COMPLITED",Caos-06112023-005,231106_Caos_selectivity_basic,3.0,,,N:\Stimuli\Selectivity\2023\11-06-Caos-01
+,,,,"Selectivity at 2:07
+(0 0 ) 3
+COMPLITED",Caos-06112023-006,231106_Caos_selectivity_basic(1),3.0,,,N:\Stimuli\Selectivity\2023\11-06-Caos-02
+,,,,"Reconstruction at 2:13
+(0 0 ) 3
+All channels
+Finished at 2:24
+COMPLITED",Caos-06112023-007,231106_141337_Caos_reconstruction_cosine,3.0,,,N:\Stimuli\Reconstruction\2023\2023-11-06-Caos-01
+,,,,"Reconstruction at 2:25
+(0 0 ) 3, 06
+Just V4
+Stopped at 37 block
+COMPLITED",Caos-06112023-008,231106_142438_Caos_reconstruction_cosine,3.0,,,N:\Stimuli\Reconstruction\2023\2023-11-06-Caos-02
+,,,,"Selectivity at 2:40
+Size tuning
+10 block
+-issue with the V1, IT, array
+COMPLITED",Caos-06112023-009,231106_Caos_selectivity_basic(2),,,,N:\Stimuli\Selectivity\2023\11-06-Caos-03
+,,,,"Selectivity at 2:50
+Size tuning
+17block
+COMPLITED",Caos-06112023-010,231106_Caos_selectivity_basic(3),,,,N:\Stimuli\Selectivity\2023\11-06-Caos-04
+,,,,,Caos-12022024-001,241202_142439_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-01-03-RF-Caos-01
+,BigGAN_FC6;BigGAN_Hessian,1.0,,"002 generate biggan
+ 91 (0 0) 2 2 cmaes SU 1/5
+ very suppressed SU!",Caos-12022024-002,241202_143902_Caos_generate_BigGAN,91.0,2.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44
+,BigGAN_Hessian,1.0,,"Manifold with biggan
+ 003 at 309 PM, manifold. Had 100cc water and filled up to 200cc at 3.10PM.",Caos-12022024-003,241202_150857_Caos_selectivity_basic,91.0,2.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44\Hess_imgs
+,BigGAN_FC6,,," Generate biggan
+ 93 ( 0 0 ) 2 3 CMAES SU 1/5
+ Caas-12022024-004, started recording 3.20PM, suppressed with varying ptsh quality, Big gan and deepsim evolutions above reference from early stage relative to previous expt, but deepsim still ahead by substantial margin with big gan generated images appearing to remain stuck on people and dog-like features. biggan not doing a damn thing, but deepsim doing well
+ let's try an eye site?
+ STOPPED
+ COMPLETED, DEEPSIM successful, BIGGAN not",Caos-12022024-004,241202_151831_Caos_generate_BigGAN,93.0,,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-02\2024-12-02-15-20-08
+,BigGAN_FC6;BigGAN_Hessian,2.0,,"Let's try chan 94, with hash
+ 005 biggan
+ 94 (0 0) 2 1 CMAES 5/5 hash
+ weak path3.45PM: has had 100+150cc, now down to 50cc, filling up to level of 150cc apple juice 3.46PM. Behav performance 84%. Deepsim sucks
+ Biggan won out by making doggies
+ now time to do manifold",Caos-12022024-005,241202_153847_Caos_generate_BigGAN,94.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42
+,BigGAN_Hessian,2.0,," 006 manifold
+ alas, it's all dogs
+ 006 at 356 PM
+ 350cc total fluid consumed 4.03PM, stop 410PM consumed 325cc total.",Caos-12022024-006,241202_155547_Caos_selectivity_basic,94.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42\Hess_imgs
+,,,,"Started at 2.08PM
+001RFmapper
+ lots of debugging plexon with chris, anything strange with data is related to the Parmeter changes. 71-73 channels targeted with bigGan
+.",Caos-12042024-001,241204_120239_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-01-03-RF-Caos-01
+,BigGAN_FC6;BigGAN_Hessian,3.0,,"002 biggan
+started at 218 PM
+71 (0 0) 2 2 CMAES deepsim and biggan
+psths are crap
+consumed 100cc juice
+Biggan succeeded",Caos-12042024-002,241204_141711_Caos_generate_BigGAN,71.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-01\2024-12-04-14-18-16
+,BigGAN_Hessian,3.0,,"003 at 239 PM
+manifold
+(0,0) 2
+has had around a hundred after one hour, 240 PM
+will fill up with AJ to 200cc",Caos-12042024-003,241204_143902_Caos_selectivity_basic,71.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-01\2024-12-04-14-18-16\Hess_imgs
+,selectivity_movie,,,"004 selectivity movie start at 2:50 pm (0,0) 2
+Down to 100cc, 6 blocks completed in ~5.5 minutes, 87% accuracy",Caos-12042024-004,241204_145047_Caos_selectivity_movie,,,,N:\Stimuli\Motion\2024\2024-12-04-MO-Caos-01\movies
+,selectivity_movie,,,"005 selectivity basic (movie images) start at 2:58 pm (0,0) 2
+Total 225 cc, 6 blocks completed in ~9 minutes, 89% accuracy",Caos-12042024-005,241204_145851_Caos_selectivity_basic,,,,N:\Stimuli\Motion\2024\2024-12-04-MO-Caos-01\images
+,BigGAN_FC6;BigGAN_Hessian,4.0,,"Will try another biggan
+ch 72 ( 0 0) 2 1 CMAES
+006 start at 311 PM
+doesn’t sound like much
+Down to 25, has had 100+175 = 275
+will fill up with AJ to 100
+biggan climbing
+we're running out of time, we'll have to stop soon and do manifold
+losing biggan anyway",Caos-12042024-006,241204_151045_Caos_generate_BigGAN,72.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33
+,BigGAN_Hessian,4.0,,"Running manifold
+007 at 3:30 PM
+ch 72 ( 0 0) 2 1 CMAES
+almost had 75, 350, back to 50 cc",Caos-12042024-007,241204_152944_Caos_selectivity_basic,72.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33\Hess_imgs
+,,,,"LOST ALL NOTES! DISASTER
+started with 001 rf mapping, lost the time
+153 PM per WC",Caos-12092024-001,241209_135131_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-01-03-RF-Caos-01
+,BigGAN_FC6,,,"002 2:04 PM biggan
+79 (0 0) 2 1 CMAES 5/5 hash
+psth not great
+DEEPSIM succeeded, biggan not
+Experiment: generate_BigGAN 
+Conditions: generate_BigGAN 
+Subject: Caos 
+Start time: Dec-09-2024 
+End time: Dec-09-2024 
+(Elapsed: 
+# of completed blocks: 27 
+Success rate: 77.84% (z 453 1 582) 
+Open MLpIayer for replay 
+1.4 
+1.2 
+0.8 
+0.6 
+0.4 
+0.2 
+0.05 
+0.1 
+0.15 
+0.2 
+025 ",Caos-12092024-002,241209_140318_Caos_generate_BigGAN,79.0,,2.0,N:\Stimuli\Evolutions\2024\2024-12-09-Ev-Caos-01\2024-12-09-14-03-59
+,BigGAN_FC6;BigGAN_Hessian,5.0,,"Trying biggan again with SU in 92
+92 (0 0) 2 2 CMAES SU 1/5
+started biggan at 2.23PM -003
+Ptsh good, biggan working well in evolutions
+Stopped briefly to drain juicer, started again, evolutions biggan work well still
+0b 
+Experiment: generate_BigGAN 
+Conditions: generate_BigGAN 
+Subject: Caos 
+Start time: Dec-09-2024 14:23:19 
+End time: Dec-09-2024 
+(Elapsed: 
+# of completed blocks: 22 
+Success rate: 55.96% (z 366 1 654) 
+Open MLpIayer for replay 
+0.3 
+o. 
+o. 
+0.1 
+o. 
+o. 
+005 
+0.1 
+0.15 
+0.2 
+025 
+ENTERED INTO BIGGAN",Caos-12092024-003,241209_142223_Caos_generate_BigGAN,92.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-09-Ev-Caos-02\2024-12-09-14-23-19
+,BigGAN_Hessian,5.0,,"Manifold selectivity basic started at 2.48PM -004
+92 (0 0) 2 2 CMAS 1/5
+Started 200cc, 180cc, drank 380cc total
+ENTERED INTO MANIFOLD
+Rf mapper
+biggan_evolution
+manifold",Caos-12092024-004,241209_144750_Caos_selectivity_basic,92.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-09-Ev-Caos-02\2024-12-09-14-23-19\Hess_imgs
+,,,,"RF mapping started 1.57PM
+Started 200cc water",Caos-12102024-001,241210_125535_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-01-03-RF-Caos-01
+,BigGAN_FC6;BigGAN_Hessian,6.0,,"Channel 68 potentially great channel
+Biggan run with SU channel 68
+68 (0,0),2 2 started at 1.16PM CMAS 1/5
+ENTERED INTO BIGGAN",Caos-12102024-002,241210_131541_Caos_generate_BigGAN,68.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-10-Ev-Caos-01\2024-12-10-13-16-26
+,BigGAN_Hessian,6.0,,"Manifold started at 1.41PM
+Filled up to 200cc juice, has drank 110cc at 1.42PM
+68 (0 0) 2,2 CMAS 1/5
+ENTERED INTO MANIFOLD",Caos-12102024-003,241210_134049_Caos_selectivity_basic,68.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-10-Ev-Caos-01\2024-12-10-13-16-26\Hess_imgs
+,,,,"Started biggan at 1.57PM
+Promising SU on channel 75 (0,0) 2,2
+0105 
+pas 
+Yikes
+Has drank 210cc total at 2.04PM
+Deepsim successful, biggan not. Channel appears working well.
+10 
+10 
+15 ",Caos-12102024-004,241210_135612_Caos_generate_BigGAN,,,,N:\Stimuli\Evolutions\2024\2024-12-10-Ev-Caos-02\2024-12-10-13-57-17
+,BigGAN_FC6;BigGAN_Hessian,7.0,,"Biggan MU on channel 69 (0,0) 2,1
+Started 2.18 PM
+02 
+025 
+That's more like it
+260cc total drank at 2.19PM
+ ENTERED INTO BIGGAN",Caos-12102024-005,241210_141645_Caos_generate_BigGAN,69.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-10-Ev-Caos-03\2024-12-10-14-17-59
+,BigGAN_Hessian,7.0,,"Manifold started 2.40PM
+MU on channel 69
+(0,0) 2,1
+69 (0,0) 2,1
+Drank 310cc 2.41PM, 350cc total by end of expt at block 13 start.
+ENTERED INTO MANIFOLD",Caos-12102024-006,241210_143915_Caos_selectivity_basic,69.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-10-Ev-Caos-03\2024-12-10-14-17-59\Hess_imgs
