@@ -52,7 +52,7 @@ COMPLITED",Caos-06112023-010,231106_Caos_selectivity_basic(3),,,,N:\Stimuli\Sele
  91 (0 0) 2 2 cmaes SU 1/5
  very suppressed SU!",Caos-12022024-002,241202_143902_Caos_generate_BigGAN,91.0,2.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44
 ,BigGAN_Hessian,1.0,,"Manifold with biggan
- 003 at 309 PM, manifold. Had 100cc water and filled up to 200cc at 3.10PM.",Caos-12022024-003,241202_150857_Caos_selectivity_basic,91.0,2.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44\Hess_imgs
+ 003 at 309 PM, manifold. Had 100cc water and filled up to 200cc at 3.10PM.",Caos-12022024-003,241202_150857_Caos_selectivity_basic,91.0,2.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-01\2024-12-02-14-39-44\Hess_imgs
 ,BigGAN_FC6,,," Generate biggan
  93 ( 0 0 ) 2 3 CMAES SU 1/5
  Caas-12022024-004, started recording 3.20PM, suppressed with varying ptsh quality, Big gan and deepsim evolutions above reference from early stage relative to previous expt, but deepsim still ahead by substantial margin with big gan generated images appearing to remain stuck on people and dog-like features. biggan not doing a damn thing, but deepsim doing well
@@ -68,7 +68,7 @@ COMPLITED",Caos-06112023-010,231106_Caos_selectivity_basic(3),,,,N:\Stimuli\Sele
 ,BigGAN_Hessian,2.0,," 006 manifold
  alas, it's all dogs
  006 at 356 PM
- 350cc total fluid consumed 4.03PM, stop 410PM consumed 325cc total.",Caos-12022024-006,241202_155547_Caos_selectivity_basic,94.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42\Hess_imgs
+ 350cc total fluid consumed 4.03PM, stop 410PM consumed 325cc total.",Caos-12022024-006,241202_155547_Caos_selectivity_basic,94.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-02-Ev-Caos-03\2024-12-02-15-39-42\Hess_imgs
 ,,,,"Started at 2.08PM
 001RFmapper
  lots of debugging plexon with chris, anything strange with data is related to the Parmeter changes. 71-73 channels targeted with bigGan
@@ -100,7 +100,7 @@ losing biggan anyway",Caos-12042024-006,241204_151045_Caos_generate_BigGAN,72.0,
 ,BigGAN_Hessian,4.0,,"Running manifold
 007 at 3:30 PM
 ch 72 ( 0 0) 2 1 CMAES
-almost had 75, 350, back to 50 cc",Caos-12042024-007,241204_152944_Caos_selectivity_basic,72.0,1.0,,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33\Hess_imgs
+almost had 75, 350, back to 50 cc",Caos-12042024-007,241204_152944_Caos_selectivity_basic,72.0,1.0,2.0,N:\Stimuli\Evolutions\2024\2024-12-04-Ev-Caos-02\2024-12-04-15-11-33\Hess_imgs
 ,,,,"LOST ALL NOTES! DISASTER
 started with 001 rf mapping, lost the time
 153 PM per WC",Caos-12092024-001,241209_135131_Caos_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-01-03-RF-Caos-01
