@@ -42,6 +42,7 @@ exp_mask = ExpRecord_CD.Exp_collection.str.contains('BigGAN_FC6', na=False) & ~ 
 ExpRecord_Evol = ExpRecord_CD.loc[exp_mask, :]
 print(ExpRecord_Hessian)
 print(ExpRecord_Evol)
+
 #%%
 def plot_heatmap(grouped, space, ax, CLIM):
     """Plot heatmap for a given space"""
@@ -68,11 +69,11 @@ def plot_tuning_curves(filtered_df, space, prefchan_bsl_mean, prefchan_bsl_sem, 
         
     unique_eig_ids = sorted(filtered_df['eig_id'].unique())
     num_eig_ids = len(unique_eig_ids)
-    max_cols = 3
+    max_cols = 4
     cols = min(max_cols, num_eig_ids)
     rows = math.ceil(num_eig_ids / cols)
     
-    fig_width = cols * 4.5
+    fig_width = cols * 4
     fig_height = rows * 3.5 + 0.5
     fig, axs = plt.subplots(rows, cols, figsize=(fig_width, fig_height), 
                            sharex=True, sharey=True,
@@ -103,17 +104,80 @@ def plot_tuning_curves(filtered_df, space, prefchan_bsl_mean, prefchan_bsl_sem, 
         fig.delaxes(axs[j])
 
     plt.suptitle(f'Preferred Unit Response for Different Eigenvectors {space}\n {exprow.ephysFN} | Pref Channel {prefchan_str} ')
-    plt.legend(title='Space Name', bbox_to_anchor=(1.05, 1), loc='upper left')
+    # plt.legend(title='Space Name', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     plt.show()
     return fig
 
-#%% Main analysis loop
-from neuro_data_analysis.neural_tuning_analysis_lib import organize_unit_info, \
-    calculate_neural_responses, parse_stim_info, find_full_image_paths
+
+def display_image_grid(noise_grid_img, class_grid_img, expstr):
+    """
+    Display image grids for noise and class spaces.
+
+    Parameters:
+        noise_grid_img (PIL.Image or None): Image grid for noise space.
+        class_grid_img (PIL.Image or None): Image grid for class space.
+        expstr (str): Experiment string.
+    """
+    figh = plt.figure(figsize=(20, 10))
+    plt.subplot(1, 2, 1)
+    if class_grid_img is not None:
+        plt.imshow(class_grid_img)
+    plt.axis('off')
+    plt.title('Image Grid for class space')
+    
+    plt.subplot(1, 2, 2)
+    if noise_grid_img is not None:
+        plt.imshow(noise_grid_img)
+    plt.axis('off')
+    plt.title('Image Grid for noise space')
+    
+    plt.suptitle(f'BigGAN Hessian Frame Stimuli set \n {expstr}')
+    plt.tight_layout()
+    plt.show()
+    return figh
+
+
+def display_image_grid_with_scores(noise_grid_img_score, class_grid_img_score, expstr):
+    """
+    Display image grids with scores for noise and class spaces.
+
+    Parameters:
+        noise_grid_img_score (PIL.Image or None): Image grid with scores for noise space.
+        class_grid_img_score (PIL.Image or None): Image grid with scores for class space.
+        ephysFN (str): Ephys file name.
+        prefchan_str (str): Preferred channel string.
+    """
+    figh = plt.figure(figsize=(20, 10))
+    
+    plt.subplot(1, 2, 1)
+    if class_grid_img_score is not None:
+        plt.imshow(class_grid_img_score)
+    plt.axis('off')
+    plt.title('Image Grid for class space')
+    
+    plt.subplot(1, 2, 2)
+    if noise_grid_img_score is not None:
+        plt.imshow(noise_grid_img_score)
+    plt.axis('off')
+    plt.title('Image Grid for noise space')
+    
+    plt.suptitle(f'Preferred Unit Response for Different Spaces and Eigenvectors \n {expstr}')
+    plt.tight_layout()
+    plt.show()
+    return figh
+
+#%%
+ExpRecord_Hessian_All = pd.read_csv(r"ExpRecord_BigGAN_Hessian_tuning_ABCD_w_meta.csv")
+ExpRecord_Evol_All = pd.read_csv(r"ExpRecord_BigGAN_Hessian_Evol_ABCD_w_meta.csv")
+#%% Main analysis pipeline
+from neuro_data_analysis.neural_tuning_analysis_lib import organize_unit_info, maybe_add_unit_id_to_meta, \
+    calculate_neural_responses, parse_stim_info, find_full_image_paths, load_space_images
+from core.utils.montage_utils import PIL_array_to_montage, PIL_array_to_montage_score_frame
 from core.utils.dataset_utils import ImagePathDataset
 figroot = f"E:\OneDrive - Harvard University\BigGAN_Hessian"
-for _, exprow in ExpRecord_Hessian.iterrows():
+ExpRecord_Hessian_All = ExpRecord_Hessian_All.sort_values(by=["Animal", "Expi"])
+for _, exprow in ExpRecord_Hessian_All.iterrows():
     print(exprow.ephysFN,exprow.Expi)
     figdir = join(figroot, exprow.ephysFN)
     os.makedirs(figdir, exist_ok=True)
@@ -123,23 +187,25 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     rasters = data["rasters"]
     meta = data["meta"]
     Trials = data["Trials"]
-    imageName = np.squeeze(Trials.imageName)
     stimuli_dir = exprow.stimuli
+    imageName = np.squeeze(Trials.imageName)
     # Process unit information
+    meta = maybe_add_unit_id_to_meta(meta, rasters) # for older experiments, unit_id is not in the meta file
     unit_info = organize_unit_info(meta, exprow)
     prefchan_id = unit_info["prefchan_id"]
     prefchan_str = unit_info["prefchan_str"]
+    expstr = f"{exprow.ephysFN} | Pref Channel {prefchan_str}"
     
     # Process image names
     unique_imgnames = np.unique(imageName)
-    indices_per_name = {name: np.where(imageName == name)[0] for name in unique_imgnames}
     stim_info_df = parse_stim_info(unique_imgnames)
+    indices_per_name = {name: np.where(imageName == name)[0] for name in unique_imgnames}
     stim_info_df["trial_ids"] = stim_info_df.apply(lambda row: indices_per_name[row["img_name"]], axis=1)
     uniq_img_fps = find_full_image_paths(stimuli_dir, unique_imgnames)
     
     # make the image dataset
     stimuli_dataset = ImagePathDataset(list(uniq_img_fps.values()), scores=None, img_dim=(256, 256))
-    
+
     # Calculate responses
     resp_info = calculate_neural_responses(rasters, prefchan_id)
     prefchan_resp_sgtr = resp_info["prefchan_resp_sgtr"]
@@ -158,7 +224,7 @@ for _, exprow in ExpRecord_Hessian.iterrows():
     pref_avg_resp_class_mat = pref_avg_resp_class.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
     
     # Group and plot heatmaps
-    CLIM = np.quantile(pref_avgresp_df['pref_unit_resp'], [0.01, 0.99])
+    CLIM = np.quantile(pref_avgresp_df['pref_unit_resp'], [0.02, 0.98])
     figh, axs = plt.subplots(1, 2, figsize=(13, 6))
     for ax, space in zip(axs, ['class', 'noise']):
         plot_heatmap(pref_avgresp_df, space, ax, CLIM)
@@ -172,66 +238,19 @@ for _, exprow in ExpRecord_Hessian.iterrows():
         sgtr_resp_per_space = sgtr_resp_df.query(f"space_name == '{space}'")
         fig = plot_tuning_curves(sgtr_resp_per_space, space, prefchan_bsl_mean, prefchan_bsl_sem, exprow, prefchan_str, compute_stats=True)
         saveallforms(figdir, f"preferred_unit_{space}_tuning_curve_ANOVA_py", fig)
-    break
 
+    # load the images for the noise and class spaces
+    noise_imgname_table, noise_image_array = load_space_images("noise", stim_info_df, uniq_img_fps)
+    class_imgname_table, class_image_array = load_space_images("class", stim_info_df, uniq_img_fps)
+    #%
+    noise_grid_img = PIL_array_to_montage(noise_image_array)
+    noise_grid_img_score = PIL_array_to_montage_score_frame(noise_image_array, pref_avg_resp_noise_mat.values, colormap=parula, border_size=24, clim=CLIM)
+    class_grid_img = PIL_array_to_montage(class_image_array)
+    class_grid_img_score = PIL_array_to_montage_score_frame(class_image_array, pref_avg_resp_class_mat.values, colormap=parula, border_size=24, clim=CLIM)
+    # save the images
+    fig_grid = display_image_grid(noise_grid_img, class_grid_img, expstr)
+    saveallforms(figdir, f"stimuli_grid_plot_py")
+    fig_grid_score = display_image_grid_with_scores(noise_grid_img_score, class_grid_img_score, expstr)
+    saveallforms(figdir, f"stimuli_grid_pref_resp_colorframe_py")
+    
 # %%
-def load_space_images(space, stim_info_df, uniq_img_fps):
-    """
-    Loads images for a given space and organizes them into an array.
-
-    Parameters:
-        space (str): The space name to filter the stimuli (e.g., "noise").
-        stim_info_df (pd.DataFrame): DataFrame containing stimulus information.
-        uniq_img_fps (dict): Dictionary mapping image names to their full file paths.
-
-    Returns:
-        tuple:
-            imgname_table (pd.DataFrame or None): Pivot table of image names if available, else None.
-            image_array (np.ndarray or None): Array of loaded images if available, else None.
-    """
-    space_stim_df = stim_info_df.query(f"space_name == '{space}'")
-    if space_stim_df.empty:
-        print(f"Warning: No {space} space data found")
-
-    pivot_table = space_stim_df.pivot(index='eig_id', columns='lin_dist', values='img_name')
-    print(pivot_table)
-    image_array = np.empty(pivot_table.shape, dtype=object)
-    # For each entry in the pivot table, get the image path and load the image into a new array
-    for ri, eig_id in enumerate(pivot_table.index):
-        for ci, lin_dist in enumerate(pivot_table.columns):
-            img_name = pivot_table.loc[eig_id, lin_dist]
-            img_path = uniq_img_fps.get(img_name)
-            if img_path:
-                img = Image.open(img_path)
-                image_array[ri, ci] = img
-            else:
-                print(f"Image path for {img_name} not found.")
-                image_array[ri, ci] = None
-    print(image_array.shape)
-    return pivot_table, image_array
-
-# Usage
-noise_imgname_table, noise_image_array = load_space_images("noise", stim_info_df, uniq_img_fps)
-class_imgname_table, class_image_array = load_space_images("class", stim_info_df, uniq_img_fps)
-#%%
-from core.utils.montage_utils import PIL_array_to_montage, PIL_array_to_montage_score_frame
-noise_grid_img = PIL_array_to_montage(noise_image_array)
-noise_grid_img_score = PIL_array_to_montage_score_frame(noise_image_array, pref_avg_resp_noise_mat.values, colormap=parula, border_size=24, clim=CLIM)
-class_grid_img = PIL_array_to_montage(class_image_array)
-class_grid_img_score = PIL_array_to_montage_score_frame(class_image_array, pref_avg_resp_class_mat.values, colormap=parula, border_size=24, clim=CLIM)
-
-#%%
-# Display the grid
-plt.figure(figsize=(20,10))
-plt.imshow(noise_grid_img)
-plt.axis('off')
-plt.title(f'Image Grid for noise space')
-plt.show()
-#%%
-plt.figure(figsize=(20,10))
-plt.imshow(noise_grid_img_score)
-plt.axis('off')
-plt.title(f'Image Grid for noise space')
-plt.show()
-# %%
-
