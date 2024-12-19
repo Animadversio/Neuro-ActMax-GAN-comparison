@@ -32,6 +32,7 @@ def find_full_image_paths(folder_path, image_names):
 def parse_stim_info(image_names):
     stim_info = []
     re_pattern = r'(noise|class)_eig(\d+)_lin([+-]?\d+\.\d+)'
+    stim_info = []
     for name in image_names: 
         match = re.match(re_pattern, name)
         if match:
@@ -41,8 +42,23 @@ def parse_stim_info(image_names):
             stim_info.append({"img_name": name, "space_name": space_name, "eig_id": eig_value, "lin_dist": lin_value, "hessian_img": True, })
         else:
             stim_info.append({"img_name": name, "space_name": None, "eig_id": None, "lin_dist": None, "hessian_img": False, })
-
+    
     stim_info_df = pd.DataFrame(stim_info)
+    if stim_info_df.hessian_img.sum() == 0:
+        print(f"Warning: No hessian images found for {image_names[:10]}..., try the older pattern")
+        re_pattern = r'(noise|class)_eig(\d+)_exp([+-]?\d+\.\d+)_lin([+-]?\d+\.\d+)'
+        stim_info = []
+        for name in image_names: 
+            match = re.match(re_pattern, name)
+            if match:
+                space_name = match.groups()[0]
+                eig_value = int(match.groups()[1])
+                exp_value = float(match.groups()[2])
+                lin_value = float(match.groups()[3])
+                stim_info.append({"img_name": name, "space_name": space_name, "eig_id": eig_value, "lin_dist": lin_value, "exp_value": exp_value, "hessian_img": True, })
+            else:
+                stim_info.append({"img_name": name, "space_name": None, "eig_id": None, "lin_dist": None, "exp_value": None, "hessian_img": False, })
+        stim_info_df = pd.DataFrame(stim_info)
     return stim_info_df
 
 
@@ -85,7 +101,7 @@ def parse_unit_id_from_spikeID(
     return unit_id
 
 
-def maybe_add_unit_id_to_meta(meta, rasters, INACTIVE_THRESHOLD=0.25):
+def maybe_add_unit_id_to_meta(meta, rasters, INACTIVE_THRESHOLD=1.25):
     """For older experimental meta, unit_id is not in the meta file. 
     We need to parse it from the spikeID and add it to the meta file.
     """
@@ -166,7 +182,7 @@ def load_space_images(space, stim_info_df, uniq_img_fps):
                 img = Image.open(img_path)
                 image_array[ri, ci] = img
             else:
-                print(f"Image path for {img_name} not found.")
+                # print(f"Image path for {img_name} not found.")
                 image_array[ri, ci] = None
     print(image_array.shape)
     return pivot_table, image_array
