@@ -253,7 +253,7 @@ def print_hdf5_info(obj, indent=''):
         print(f"{indent}Dataset: {obj.name}, shape {obj.shape}, type {obj.dtype}")
 
 
-
+import os
 import time
 import pickle as pkl
 from os.path import join
@@ -311,6 +311,10 @@ def batch_process_ephys(ephys_names, mat_root=mat_root, pkl_root=pkl_root, recom
     for ephys_name in ephys_names:
         if os.path.exists(join(pkl_root, f"{ephys_name}.pkl")) and not recompute:
             print(f"PKL file already exists for {ephys_name}")
+            continue
+        if not os.path.exists(join(mat_root, f"{ephys_name}_formatted.mat")):
+            print(f"MAT file does not exist for {ephys_name}")
+            #TODO: add downloading logic here
             continue
         print(f"Processing {ephys_name}...")
         data_dict = load_process_formatted_mat2dict(ephys_name, mat_root)
