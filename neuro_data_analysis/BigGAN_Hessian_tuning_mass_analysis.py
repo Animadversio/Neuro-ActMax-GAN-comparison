@@ -81,22 +81,28 @@ def plot_tuning_curves(filtered_df, space, prefchan_bsl_mean, prefchan_bsl_sem, 
     axs = axs.flatten()
     for i, eig_id in enumerate(unique_eig_ids):
         ax = axs[i]
+        breakpoint()
         subset = filtered_df[filtered_df['eig_id'] == eig_id]
-        if compute_stats:
-            # Perform ANOVA
-            model = ols('pref_unit_resp ~ C(lin_dist)', data=subset).fit()
-            anova_table = sm.stats.anova_lm(model, typ=2)
-            F_value = anova_table.loc['C(lin_dist)', 'F']
-            p_value = anova_table.loc['C(lin_dist)', 'PR(>F)']
-        else:
-            F_value = None
-            p_value = None
-        print(f"Eig ID: {eig_id} | F-value: {F_value:.4f} | p-value: {p_value:.4e}")
+        F_value = None
+        p_value = None
+        stats_str = ""
+        if compute_stats and len(subset.lin_dist.unique()) > 1:
+            # Perform ANOVA, only if there are more than 1 data point
+            try:
+                model = ols('pref_unit_resp ~ C(lin_dist)', data=subset).fit()
+                anova_table = sm.stats.anova_lm(model, typ=2)
+                F_value = anova_table.loc['C(lin_dist)', 'F']
+                p_value = anova_table.loc['C(lin_dist)', 'PR(>F)']
+                stats_str = f"F-val: {F_value:.2f} | p-val: {p_value:.1e}"
+            except Exception as e:
+                print(f"Error performing ANOVA for eig_id {eig_id}: {e}")
+                stats_str = ""
+        print(f"Eig ID: {eig_id} | {stats_str}")
         sns.lineplot(data=subset, x='lin_dist', y='pref_unit_resp', ax=ax, marker='o')
         ax.axhline(prefchan_bsl_mean, color='black', linestyle='--', label='Baseline Mean')
         ax.axhline(prefchan_bsl_mean + prefchan_bsl_sem, color='black', linestyle=':', label='Baseline SEM')
         ax.axhline(prefchan_bsl_mean - prefchan_bsl_sem, color='black', linestyle=':')
-        ax.set_title(f'Eig ID: {eig_id} | F-val: {F_value:.2f} | p-val: {p_value:.1e}')
+        ax.set_title(f'Eig ID: {eig_id} | {stats_str}')
         ax.set_xlabel('Linear Distance')
         ax.set_ylabel('Preferred Unit Response')
 
@@ -175,10 +181,14 @@ from neuro_data_analysis.neural_tuning_analysis_lib import organize_unit_info, m
     calculate_neural_responses, parse_stim_info, find_full_image_paths, load_space_images
 from core.utils.montage_utils import PIL_array_to_montage, PIL_array_to_montage_score_frame
 from core.utils.dataset_utils import ImagePathDataset
+
+#%% 
 figroot = f"E:\OneDrive - Harvard University\BigGAN_Hessian"
 ExpRecord_Hessian_All = ExpRecord_Hessian_All.sort_values(by=["Animal", "Expi"])
-for _, exprow in ExpRecord_Hessian_All.iterrows():
-    print(exprow.ephysFN,exprow.Expi)
+for rowi, exprow in ExpRecord_Hessian_All.iterrows():
+    # if rowi < 33: 
+    #     continue 
+    print("Processing: row", rowi, exprow.ephysFN, exprow.Animal, exprow.Expi)
     figdir = join(figroot, exprow.ephysFN)
     os.makedirs(figdir, exist_ok=True)
     
@@ -190,7 +200,7 @@ for _, exprow in ExpRecord_Hessian_All.iterrows():
     stimuli_dir = exprow.stimuli
     imageName = np.squeeze(Trials.imageName)
     # Process unit information
-    meta = maybe_add_unit_id_to_meta(meta, rasters) # for older experiments, unit_id is not in the meta file
+    meta = maybe_add_unit_id_to_meta(meta, rasters,) # for older experiments, unit_id is not in the meta file
     unit_info = organize_unit_info(meta, exprow)
     prefchan_id = unit_info["prefchan_id"]
     prefchan_str = unit_info["prefchan_str"]
@@ -249,8 +259,8 @@ for _, exprow in ExpRecord_Hessian_All.iterrows():
     class_grid_img_score = PIL_array_to_montage_score_frame(class_image_array, pref_avg_resp_class_mat.values, colormap=parula, border_size=24, clim=CLIM)
     # save the images
     fig_grid = display_image_grid(noise_grid_img, class_grid_img, expstr)
-    saveallforms(figdir, f"stimuli_grid_plot_py")
+    saveallforms(figdir, f"stimuli_grid_plot_py", fig_grid)
     fig_grid_score = display_image_grid_with_scores(noise_grid_img_score, class_grid_img_score, expstr)
-    saveallforms(figdir, f"stimuli_grid_pref_resp_colorframe_py")
+    saveallforms(figdir, f"stimuli_grid_pref_resp_colorframe_py", fig_grid_score)
     
 # %%
