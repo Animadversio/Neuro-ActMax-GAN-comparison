@@ -105,7 +105,7 @@ def maybe_add_unit_id_to_meta(meta, rasters, INACTIVE_THRESHOLD=1.25):
     """For older experimental meta, unit_id is not in the meta file. 
     We need to parse it from the spikeID and add it to the meta file.
     """
-    if "unit_id" in meta:
+    if "unitID" in meta:
         return meta
     chan_mean_rate = rasters.mean(axis=(0,1))  # average across 200 ms and stimuli
     active_chan = chan_mean_rate > INACTIVE_THRESHOLD

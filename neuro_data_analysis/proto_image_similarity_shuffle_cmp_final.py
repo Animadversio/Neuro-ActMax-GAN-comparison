@@ -32,6 +32,9 @@ from core.utils.stats_utils import ttest_rel_df, ttest_ind_df, ttest_ind_print, 
 from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
     compare_imgs_LPIPS, naive_featmsk, extract_featvec_cnn_featmsk
 from neuro_data_analysis.neural_data_utils import get_all_masks
+from torchmetrics.functional import pairwise_cosine_similarity
+from collections import defaultdict
+from torch.utils.data import Dataset, DataLoader
 #%%
 protosumdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSummary"
 tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
@@ -39,7 +42,7 @@ meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats_w_optimizer.csv"),
 #%%
 Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, \
     sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_act_df)
-pthresh = 0.01
+pthresh = 0.05
 bothsucmsk = (meta_act_df.p_maxinit_0 < pthresh) & (meta_act_df.p_maxinit_1 < pthresh)
 FCsucsmsk = (meta_act_df.p_maxinit_0 < pthresh)
 BGsucsmsk = (meta_act_df.p_maxinit_1 < pthresh)
@@ -51,9 +54,21 @@ cnnmodel, _ = load_featnet("resnet50_linf8",)
 fetcher_cnn = create_feature_extractor(cnnmodel, ['layer3', "layer4", "avgpool"])
 fetcher_cnn = fetcher_cnn.cuda().eval()
 #%%
-
+Anetmodel, _ = load_featnet("alexnet", )
+# get_graph_node_names(cnnmodel)
+fetcher_Anet = create_feature_extractor(Anetmodel, ['9', "11"])
+fetcher_Anet = fetcher_Anet.cuda().eval()
 #%%
-from torch.utils.data import Dataset, DataLoader
+vggmodel, _ = load_featnet("vgg16",)
+fetcher_vgg = create_feature_extractor(vggmodel, ['22', "29"])
+fetcher_vgg = fetcher_vgg.cuda().eval()
+# fetcher_vgg = create_feature_extractor(vggmodel, ['features.29', "features.31"])
+#%%
+get_graph_node_names(Anetmodel)
+#%%
+# dinov2 model
+dinonet = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+#%%
 class ListImageDataset(Dataset):
     def __init__(self, data):
         self.data = data
@@ -67,6 +82,7 @@ class ListImageDataset(Dataset):
         sample = torch.from_numpy(sample.transpose((2, 0, 1))).float()
         return sample
 
+
 def extract_feat(dataset, featnet, device="cuda", batch_size=10):
     dl = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     featnet.eval().to(device)
@@ -78,10 +94,7 @@ def extract_feat(dataset, featnet, device="cuda", batch_size=10):
     feattsr = torch.cat(feat_col, dim=0)
     return feattsr
 
-# dinov2 model
-featnet = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
 #%%
-from collections import defaultdict
 # cmp_sfx = "reevol_G"
 FC_img_col = defaultdict(list)
 BG_img_col = defaultdict(list)
@@ -100,7 +113,9 @@ for Expi in trange(1, 191):
 # turn a list of 224 224 3 numpy images into a dataset and dataloader
 # use default transform for the image, including RGB norm and resize
 img = torch.from_numpy(FC_img_col["reevol_G"][0]).permute(2, 0, 1).unsqueeze(0)
-featnet(img).shape
+dinonet(img).shape
+#%%
+img = torch.from_numpy(FC_img_col["reevol_G"][0]).permute(2, 0, 1).unsqueeze(0)
 #%%
 import scipy.ndimage as ndimage
 """create a mask center is 1, surreounded by 0.5 and then 0"""
@@ -113,7 +128,7 @@ naive_featmask_L4[3:-3, 3:-3] = 1
 cent_featmask_L4[3, 3] = 1
 naive_featmask_L3 = ndimage.zoom(naive_featmask_L4, 2, order=0)
 cent_featmask_L3 = ndimage.zoom(cent_featmask_L4, 2, order=0)
-all_featmask_L3 = np.ones((14, 14))
+all_featmask_L3 = ndimage.zoom(all_featmask_L4, 2, order=0)
 plt.figure(figsize=(10, 5))
 plt.subplot(121)
 plt.imshow(naive_featmask_L4)
@@ -132,42 +147,100 @@ cent_featmask_L4 = torch.from_numpy(cent_featmask_L4).float().to("cuda")
 cent_featmask_L3 = torch.from_numpy(cent_featmask_L3).float().to("cuda")
 all_featmask_L4 = torch.from_numpy(all_featmask_L4).float().to("cuda")
 all_featmask_L3 = torch.from_numpy(all_featmask_L3).float().to("cuda")
+cent_alex_featmask = np.zeros((13, 13))
+focus_alex_featmask = np.zeros((13, 13))
+cent_alex_featmask[6:-6, 6:-6] = 1
+focus_alex_featmask[3:-3, 3:-3] = 0.5
+focus_alex_featmask[5:-5, 5:-5] = 1
+all_alex_featmask = np.ones((13, 13))
+cent_alex_featmask = torch.from_numpy(cent_alex_featmask).float().to("cuda")
+focus_alex_featmask = torch.from_numpy(focus_alex_featmask).float().to("cuda")
+all_alex_featmask = torch.from_numpy(all_alex_featmask).float().to("cuda")
+cent_vgg_featmask = np.zeros((14, 14))
+focus_vgg_featmask = np.zeros((14, 14))
+all_vgg_featmask = np.ones((14, 14))
+cent_vgg_featmask[6:-6, 6:-6] = 1
+focus_vgg_featmask[3:-3, 3:-3] = 0.5
+focus_vgg_featmask[6:-6, 6:-6] = 1
+cent_vgg_featmask_conv4 = ndimage.zoom(cent_vgg_featmask, 2, order=0)
+focus_vgg_featmask_conv4 = ndimage.zoom(focus_vgg_featmask, 2, order=0)
+all_vgg_featmask_conv4 = ndimage.zoom(all_vgg_featmask, 2, order=0)
+cent_vgg_featmask = torch.from_numpy(cent_vgg_featmask).float().to("cuda")
+focus_vgg_featmask = torch.from_numpy(focus_vgg_featmask).float().to("cuda")
+all_vgg_featmask = torch.from_numpy(all_vgg_featmask).float().to("cuda")
+cent_vgg_featmask_conv4 = torch.from_numpy(cent_vgg_featmask_conv4).float().to("cuda")
+focus_vgg_featmask_conv4 = torch.from_numpy(focus_vgg_featmask_conv4).float().to("cuda")
+all_vgg_featmask_conv4 = torch.from_numpy(all_vgg_featmask_conv4).float().to("cuda")
 #%%
-"""Obtain feature collection for each image set"""
+sfx_list = ["reevol_G", "reevol_pix", "maxblk"]
+feature_extractors = [
+    {"extractor": fetcher_cnn, "settings": [
+        {"featmsk": naive_featmask_L3, "featkey": 'layer3', "suffix": "RNrobust_L3focus"},
+        {"featmsk": naive_featmask_L4, "featkey": 'layer4', "suffix": "RNrobust_L4focus"},
+        {"featmsk": cent_featmask_L3, "featkey": 'layer3', "suffix": "RNrobust_L3cent"},
+        {"featmsk": cent_featmask_L4, "featkey": 'layer4', "suffix": "RNrobust_L4cent"},
+        {"featmsk": all_featmask_L3, "featkey": 'layer3', "suffix": "RNrobust_L3all"},
+        {"featmsk": all_featmask_L4, "featkey": 'layer4', "suffix": "RNrobust_L4all"},
+    ]},
+    {"extractor": fetcher_Anet, "settings": [
+        {"featmsk": cent_alex_featmask, "featkey": '9', "suffix": "alex_conv4cent"},
+        {"featmsk": cent_alex_featmask, "featkey": '11', "suffix": "alex_conv5cent"},
+        {"featmsk": focus_alex_featmask, "featkey": '9', "suffix": "alex_conv4focus"},
+        {"featmsk": focus_alex_featmask, "featkey": '11', "suffix": "alex_conv5focus"},
+        {"featmsk": all_alex_featmask, "featkey": '9', "suffix": "alex_conv4all"},
+        {"featmsk": all_alex_featmask, "featkey": '11', "suffix": "alex_conv5all"},
+    ]},
+    {"extractor": fetcher_vgg, "settings": [
+        {"featmsk": cent_vgg_featmask_conv4, "featkey": '22', "suffix": "vgg_conv4cent"},
+        {"featmsk": cent_vgg_featmask, "featkey": '29', "suffix": "vgg_conv5cent"},
+        {"featmsk": focus_vgg_featmask_conv4, "featkey": '22', "suffix": "vgg_conv4focus"},
+        {"featmsk": focus_vgg_featmask, "featkey": '29', "suffix": "vgg_conv5focus"},
+        {"featmsk": all_vgg_featmask_conv4, "featkey": '22', "suffix": "vgg_conv4all"},
+        {"featmsk": all_vgg_featmask, "featkey": '29', "suffix": "vgg_conv5all"},
+        ]
+     }
+]
 FC_featvec_col = {}
 BG_featvec_col = {}
-for cmp_sfx in ["reevol_G", "reevol_pix", "maxblk"]:
-    FC_featvec_col[cmp_sfx+"_RNrobust_L3focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                  fetcher_cnn, featmsk1=naive_featmask_L3, featkey='layer3')
-    FC_featvec_col[cmp_sfx+"_RNrobust_L4focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=naive_featmask_L4, featkey='layer4')
-    FC_featvec_col[cmp_sfx+"_RNrobust_L3cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=cent_featmask_L3, featkey='layer3')
-    FC_featvec_col[cmp_sfx+"_RNrobust_L4cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=cent_featmask_L4, featkey='layer4')
-    FC_featvec_col[cmp_sfx+"_RNrobust_L3all"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=all_featmask_L3, featkey='layer3')
-    FC_featvec_col[cmp_sfx+"_RNrobust_L4all"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=all_featmask_L4, featkey='layer4')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L3focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=naive_featmask_L3, featkey='layer3')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L4focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=naive_featmask_L4, featkey='layer4')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L3cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=cent_featmask_L3, featkey='layer3')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L4cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=cent_featmask_L4, featkey='layer4')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L3all"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=all_featmask_L3, featkey='layer3')
-    BG_featvec_col[cmp_sfx+"_RNrobust_L4all"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
-                                    fetcher_cnn, featmsk1=all_featmask_L4, featkey='layer4')
-    FC_featvec_col[cmp_sfx+"_dinov2"] = extract_feat(ListImageDataset(FC_img_col[cmp_sfx]),
-                                     featnet, device="cuda", batch_size=16)
-    BG_featvec_col[cmp_sfx+"_dinov2"] = extract_feat(ListImageDataset(BG_img_col[cmp_sfx]),
-                                     featnet, device="cuda", batch_size=16)
+# Loop through settings to populate feature vector collections
+for sfx in sfx_list:
+    for extractor_info in feature_extractors:
+        extractor = extractor_info["extractor"]
+        for setting in extractor_info["settings"]:
+            key = sfx + "_" + setting["suffix"]
+            print(f"Extracting feature vector for {key}")
+            FC_featvec_col[key] = extract_featvec_cnn_featmsk(
+                FC_img_col[sfx], extractor, featmsk1=setting["featmsk"], featkey=setting["featkey"]
+            )
+            BG_featvec_col[key] = extract_featvec_cnn_featmsk(
+                BG_img_col[sfx], extractor, featmsk1=setting["featmsk"], featkey=setting["featkey"]
+            )
+#%%
+savedir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSimilarity_summary"
+pkl.dump({"FC_featvec_col": FC_featvec_col, "BG_featvec_col": BG_featvec_col},
+         open(join(savedir, "proto_img_features.pkl"), "wb"))
+
+xsimmat_col = {}
+xsim_tab = {}
+for key in FC_featvec_col.keys():
+    xsimmat_col[key] = pairwise_cosine_similarity(FC_featvec_col[key], BG_featvec_col[key]).cpu().numpy()
+    xsim_tab[key] = np.diag(xsimmat_col[key])
+xsim_tab_df = pd.DataFrame(xsim_tab)
+Expvec = []
+for exprow in meta_col:
+    Expvec.append(exprow.Expi)
+xsim_tab_df["Expi"] = Expvec
+pkl.dump(xsimmat_col, open(join(savedir, "proto_img_cross_simmat.pkl"), "wb"))
+xsim_tab_df.to_csv(join(savedir, "proto_img_cross_simtab.csv"))
+xsim_tab_df.to_csv(join(tabdir, "proto_img_cross_simtab.csv"))
+#%%
+savedir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSimilarity_summary"
+data = pkl.load(open(join(savedir, "proto_img_features.pkl"), "rb"))
+FC_featvec_col = data["FC_featvec_col"]
+BG_featvec_col = data["BG_featvec_col"]
+
 #%%
 import seaborn as sns
-from torchmetrics.functional import pairwise_cosine_similarity
 def non_diagonal_values(matrix):
     """ all off-diagonal values, (assuming matrix is not symmetric)
     For sym metrix, need to do only subdiagonal ..
@@ -185,36 +258,58 @@ def non_diagonal_values(matrix):
     non_diagonal = matrix[~np.eye(n, dtype=bool)]
     return non_diagonal
 
+
 imglabel = "reevol_pix"  #"maxblk"# "reevol_pix"  #"maxblk" # reevol_pix
 featspace = "RNrobust_L4cent"  # L4 dinov2
 # cross similarity matrix
 # xsimmat = pairwise_cosine_similarity(FC_featvec_col["reevol_G_L4"],
 #                                      BG_featvec_col["reevol_G_L4"]).cpu().numpy()
-xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel+"_"+featspace],
-                                     BG_featvec_col[imglabel+"_"+featspace]).cpu().numpy()
-# test on different masks.
-for areamsk, areaname in zip([V1msk, V4msk, ITmsk, True], ["V1", "V4", "IT", "All area"]):
-    for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
-                                ["Both success", "Any success", "None success", "All"]):
-        expmsk = validmsk & areamsk & sucsmsk
-        label = f"{areaname} {sucname}"
-        paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
-        unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
-        print(label, end="\t")
-        tval, pval, tstr = ttest_ind_print(paired_xsim, unpaired_xsim, sem=False)
-        if pval < 0.05:
-            print("**")
+for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                  "RNrobust_L3cent", "RNrobust_L4cent",
+                  "RNrobust_L3all", "RNrobust_L4all",
+                  "alex_conv4cent", "alex_conv5cent",
+                  "alex_conv4focus", "alex_conv5focus",
+                  "alex_conv4all", "alex_conv5all",
+                  "vgg_conv4cent", "vgg_conv5cent",
+                  "vgg_conv4focus", "vgg_conv5focus",
+                  "vgg_conv4all", "vgg_conv5all"]:
+    # "dinov2"]:
+    for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+        print("Image similarity comparison between paired and unpaired images.")
+        print("Image set: ", imglabel)
+        print("Feature space: ", featspace)
+        xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel + "_" + featspace],
+                                             BG_featvec_col[imglabel + "_" + featspace])
+        xsimmat = xsimmat.cpu().numpy()
+        for areamsk, areaname in zip([V1msk, V4msk, ITmsk, True], ["V1", "V4", "IT", "All area"]):
+            for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                                        ["Both success", "Any success", "None success", "All"]):
+                expmsk = validmsk & areamsk & sucsmsk
+                label = f"{areaname} {sucname}"
+                paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+                unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+                print(label, end="\t")
+                tval, pval, tstr = ttest_ind_print(paired_xsim, unpaired_xsim, sem=False)
+                if pval < 0.05:
+                    print("**")
+        print("\n" + "-" * 80)
 # extract_featvec_cnn_featmsk
 
 #%%
-"""export to a txt file"""
+"""Large scale export to a txt file"""
 from contextlib import redirect_stdout
-
 with open(join(tabdir, "proto_img_similarity_shuffle_cmp_synop.txt"), 'w') as f:
     with redirect_stdout(f):
         for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
-                              "RNrobust_L3cent", "RNrobust_L4cent",
-                              "RNrobust_L3all", "RNrobust_L4all", "dinov2"]:
+                          "RNrobust_L3cent", "RNrobust_L4cent",
+                          "RNrobust_L3all", "RNrobust_L4all",
+                          "alex_conv4cent", "alex_conv5cent",
+                          "alex_conv4focus", "alex_conv5focus",
+                          "alex_conv4all", "alex_conv5all",
+                          "vgg_conv4cent", "vgg_conv5cent",
+                          "vgg_conv4focus", "vgg_conv5focus",
+                          "vgg_conv4all", "vgg_conv5all"]:
+                          # "dinov2"]:
             for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
                 print("Image similarity comparison between paired and unpaired images.")
                 print("Image set: ", imglabel)
@@ -234,7 +329,114 @@ with open(join(tabdir, "proto_img_similarity_shuffle_cmp_synop.txt"), 'w') as f:
                         if pval < 0.05:
                             print("**")
                 print("\n"+"-"*80)
+#%%
+#%%
+for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                  "alex_conv4focus", "alex_conv5focus",
+                    "vgg_conv4focus", "vgg_conv5focus",
+                  #
+                  # "RNrobust_L3cent", "RNrobust_L4cent",
+                  # "RNrobust_L3all", "RNrobust_L4all",
+                  # "alex_conv4cent",
+                  # "alex_conv4focus", "alex_conv5focus",
+                  # "alex_conv4all", "alex_conv5all",
+                  # "vgg_conv4cent", "vgg_conv5cent",
+                  # "vgg_conv4focus", "vgg_conv5focus",
+                  # "vgg_conv4all", "vgg_conv5all"
+                  ]:
+                  # "dinov2"]:
+    for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+        print("Image similarity comparison between paired and unpaired images.")
+        print("Image set: ", imglabel)
+        print("Feature space: ", featspace)
+        xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel+"_"+featspace],
+                                             BG_featvec_col[imglabel+"_"+featspace])
+        xsimmat = xsimmat.cpu().numpy()
+        areamsk, areaname = True, "All area"
+        sucsmsk, sucname = bothsucmsk, "Both success"
+        # sucsmsk, sucname = True, "All"
+        # for areamsk, areaname in zip([V1msk, V4msk, ITmsk, True], ["V1", "V4", "IT", "All area"]):
+        #     for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+        #                                 ["Both success", "Any success", "None success", "All"]):
+        expmsk = validmsk & areamsk & sucsmsk
+        label = f"{areaname} {sucname}"
+        paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+        # unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+        print(label, end="\t")
+        # tval, pval, tstr = ttest_ind_print(paired_xsim, unpaired_xsim, sem=False)
+        # strip plot for paired and unpaired
+        # df2plot = pd.DataFrame({"value": np.concatenate([paired_xsim, unpaired_xsim]),
+        #                         "pairing": ["paired"] * len(paired_xsim) + ["unpaired"] * len(unpaired_xsim)})
+        paired_df = pd.DataFrame({"value": paired_xsim, "pairing": ["paired"] * len(paired_xsim)})
+        paired_df["area"] = ""
+        paired_df.loc[V1msk[expmsk].to_numpy(), "area"] = "V1"
+        paired_df.loc[V4msk[expmsk].to_numpy(), "area"] = "V4"
+        paired_df.loc[ITmsk[expmsk].to_numpy(), "area"] = "IT"
+        ttest_ind_print_df(paired_df, paired_df.area == "V4", paired_df.area == "IT", "value")
+#%%
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSimilarity_summary"
+for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                  "alex_conv4focus", "alex_conv5focus",
+                    "vgg_conv4focus", "vgg_conv5focus",
+                  #
+                  # "RNrobust_L3cent", "RNrobust_L4cent",
+                  # "RNrobust_L3all", "RNrobust_L4all",
+                  # "alex_conv4cent",
+                  # "alex_conv4focus", "alex_conv5focus",
+                  # "alex_conv4all", "alex_conv5all",
+                  # "vgg_conv4cent", "vgg_conv5cent",
+                  # "vgg_conv4focus", "vgg_conv5focus",
+                  # "vgg_conv4all", "vgg_conv5all"
+                  ]:
+                  # "dinov2"]:
+    for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+        print("Image similarity comparison between paired and unpaired images.")
+        print("Image set: ", imglabel)
+        print("Feature space: ", featspace)
+        xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel+"_"+featspace],
+                                             BG_featvec_col[imglabel+"_"+featspace])
+        xsimmat = xsimmat.cpu().numpy()
+        areamsk, areaname = True, "All area"
+        # sucsmsk, sucname = bothsucmsk, "Both success"
+        sucsmsk, sucname = True, "All"
+        # for areamsk, areaname in zip([V1msk, V4msk, ITmsk, True], ["V1", "V4", "IT", "All area"]):
+        #     for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+        #                                 ["Both success", "Any success", "None success", "All"]):
 
+        for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                                    ["Both success", "Any success", "None success", "All"]):
+            expmsk = validmsk & areamsk & sucsmsk
+            label = f"{areaname} {sucname}"
+            paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+            unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+            print(label, end="\t")
+            tval, pval, tstr = ttest_ind_print(paired_xsim, unpaired_xsim, sem=False)
+            # strip plot for paired and unpaired
+            df2plot = pd.DataFrame({"value": np.concatenate([paired_xsim, unpaired_xsim]),
+                                    "pairing": ["paired"] * len(paired_xsim) + ["unpaired"] * len(unpaired_xsim)})
+            paired_df = pd.DataFrame({"value": paired_xsim, "pairing": ["paired"] * len(paired_xsim)})
+            paired_df["area"] = ""
+            paired_df.loc[V1msk[expmsk].to_numpy(), "area"] = "V1"
+            paired_df.loc[V4msk[expmsk].to_numpy(), "area"] = "V4"
+            paired_df.loc[ITmsk[expmsk].to_numpy(), "area"] = "IT"
+            figh = plt.figure(figsize=[5, 6])
+            sns.violinplot(data=df2plot, x="pairing", y="value", inner="box", alpha=0.2, width=0.3)
+            sns.stripplot(data=paired_df, x="pairing", y="value", hue="area", jitter=0.2,
+                          alpha=0.5, order=["paired",], palette="Set2", dodge=True)
+            plt.title(f"{imglabel} {featspace}\n{areaname} {sucname},\n"+\
+                     tstr.replace('t','\nt'))
+                      # f" tval={tval:.3f}, pval={pval:.1e} N={expmsk.sum()}")
+            plt.ylabel("Cosine similarity")
+
+            saveallforms(figdir, f"{imglabel}_{featspace}_{areaname}_{sucname}_paired_vs_unpaired", figh)
+            plt.show()
+        # break
+        # print("\n"+"-"*80)
+#%%
+df2plot = pd.DataFrame({"value": np.concatenate([paired_xsim, unpaired_xsim]),"pairing": ["paired"]*len(paired_xsim)+["unpaired"]*len(unpaired_xsim)})
+plt.figure(figsize=[5, 6])
+sns.violinplot(data=df2plot, x="pairing", y="value", inner="box")
+plt.show()
 #%%
 paired_xsim_all = np.diag(xsimmat)
 ttest_ind(paired_xsim_all[validmsk&bothsucmsk],
@@ -246,6 +448,62 @@ plt.axis("equal")
 plt.show()
 
 
+
+
+
+
+
+#%% Scratch zone
+#%%
+"""Obtain feature collection for each image set"""
+FC_featvec_col = {}
+BG_featvec_col = {}
+for cmp_sfx in ["reevol_G", "reevol_pix", "maxblk"]:
+
+    FC_featvec_col[cmp_sfx+"_RNrobust_L3focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                  fetcher_cnn, featmsk1=naive_featmask_L3, featkey='layer3')
+    FC_featvec_col[cmp_sfx+"_RNrobust_L4focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=naive_featmask_L4, featkey='layer4')
+    FC_featvec_col[cmp_sfx+"_RNrobust_L3cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=cent_featmask_L3, featkey='layer3')
+    FC_featvec_col[cmp_sfx+"_RNrobust_L4cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=cent_featmask_L4, featkey='layer4')
+    FC_featvec_col[cmp_sfx+"_RNrobust_L3all"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=all_featmask_L3, featkey='layer3')
+    FC_featvec_col[cmp_sfx+"_RNrobust_L4all"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=all_featmask_L4, featkey='layer4')
+    FC_featvec_col[cmp_sfx+"_alex_conv4cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=cent_alex_featmask, featkey='9')
+    FC_featvec_col[cmp_sfx+"_alex_conv5cent"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=cent_alex_featmask, featkey='11')
+    FC_featvec_col[cmp_sfx+"_alex_conv4focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=focus_alex_featmask, featkey='9')
+    FC_featvec_col[cmp_sfx+"_alex_conv5focus"] = extract_featvec_cnn_featmsk(FC_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=focus_alex_featmask, featkey='11')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L3focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=naive_featmask_L3, featkey='layer3')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L4focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=naive_featmask_L4, featkey='layer4')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L3cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=cent_featmask_L3, featkey='layer3')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L4cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=cent_featmask_L4, featkey='layer4')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L3all"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=all_featmask_L3, featkey='layer3')
+    BG_featvec_col[cmp_sfx+"_RNrobust_L4all"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_cnn, featmsk1=all_featmask_L4, featkey='layer4')
+    BG_featvec_col[cmp_sfx+"_alex_conv4cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=cent_alex_featmask, featkey='9')
+    BG_featvec_col[cmp_sfx+"_alex_conv5cent"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=cent_alex_featmask, featkey='11')
+    BG_featvec_col[cmp_sfx+"_alex_conv4focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=focus_alex_featmask, featkey='9')
+    BG_featvec_col[cmp_sfx+"_alex_conv5focus"] = extract_featvec_cnn_featmsk(BG_img_col[cmp_sfx],
+                                    fetcher_Anet, featmsk1=focus_alex_featmask, featkey='11')
+    # FC_featvec_col[cmp_sfx+"_dinov2"] = extract_feat(ListImageDataset(FC_img_col[cmp_sfx]),
+    #                                  dinonet, device="cuda", batch_size=16)
+    # BG_featvec_col[cmp_sfx+"_dinov2"] = extract_feat(ListImageDataset(BG_img_col[cmp_sfx]),
+    #                                  dinonet, device="cuda", batch_size=16)
 #%%
 # naive_featmask[alphamap_full0 > 0.5] = 0.5
 # compute similarity with masks in ResNet50 layer4 layer3
