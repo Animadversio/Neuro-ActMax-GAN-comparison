@@ -25,6 +25,8 @@ from easydict import EasyDict as edict
 from scipy.stats import pearsonr, ttest_rel, ttest_ind, ttest_1samp
 from core.utils.stats_utils import ttest_rel_df, ttest_ind_df, ttest_ind_print, ttest_1samp_print, \
     ttest_rel_print, ttest_ind_print_df, ttest_rel_print_df
+from neuro_data_analysis.image_comparison_lib import compare_imgs_cnn, compare_imgs_cnn_featmsk, \
+    compare_imgs_LPIPS, naive_featmsk
 
 protosumdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSummary"
 tabdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Stats_tables"
@@ -117,7 +119,6 @@ imgdist_df_avg = imgdist_df_cat.groupby(['Expi', ]).mean().reset_index()
 #%%
 meta_imgdist_df = pd.merge(meta_act_df, imgdist_df_avg, on="Expi")
 #%%
-
 V1msk = meta_act_df.visual_area == "V1"
 V4msk = meta_act_df.visual_area == "V4"
 ITmsk = meta_act_df.visual_area == "IT"
@@ -135,7 +136,6 @@ bsl_unstable_msk = meta_act_df.ephysFN.str.contains("|".join(baseline_jump_list)
 assert bsl_unstable_msk.sum() == len(baseline_jump_list)
 bsl_stable_msk = ~bsl_unstable_msk
 validmsk = length_msk & bsl_stable_msk & spc_msk
-
 p_thresh = 0.05
 bothsucsmsk = (meta_act_df.p_maxinit_0 < p_thresh) & \
           (meta_act_df.p_maxinit_1 < p_thresh)
@@ -179,9 +179,6 @@ with open(join(tabdir, f"proto_imgsim_shufl_cmp_p{p_thresh}.txt"), 'w') as f:
                         ttest_rel_print_df(imgdist_df_avg, commonmsk & areamsk & validmsk,
                                            sfx + f'_resnet_{metric_layer}', sfx + f'_resnet_{metric_layer}_FCalt', sem=True)
                 print("")
-
-
-
 
 #%%
 for sfx in ["maxblk", "reevol_pix", "reevol_G"]:

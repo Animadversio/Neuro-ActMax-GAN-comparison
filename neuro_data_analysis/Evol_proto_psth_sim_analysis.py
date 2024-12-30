@@ -24,10 +24,12 @@ meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats.csv"), )
 _, BFEStats = load_neural_data()
 psth_col, meta_df = extract_all_evol_trajectory_psth(BFEStats)
 psth_extrap_arr, extrap_mask_arr, max_len = pad_psth_traj(psth_col)
+#%%
 Amsk, Bmsk, V1msk, V4msk, ITmsk, \
     length_msk, spc_msk, sucsmsk, \
     bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_act_df)
 bothsucmsk = (meta_act_df.p_maxinit_0 < 0.05) & (meta_act_df.p_maxinit_1 < 0.05)
+anysucmsk = (meta_act_df.p_maxinit_0 < 0.05) | (meta_act_df.p_maxinit_1 < 0.05)
 #%% Load the data
 def extract_max_act_block_psth(psth_arr):
     """
@@ -77,23 +79,28 @@ psth_dif_df = pd.DataFrame(psth_dif_col).T
 psth_dif_df['Expi'] = psth_dif_df.index
 psth_dif_df.to_csv(join(tabdir, "Evol_psth_dif_df.csv"))
 #%%
-
+psth_dif_df = pd.read_csv(join(tabdir, "Evol_psth_dif_df.csv"), index_col=0)
+#%%
 imgdist_df_orig = pd.read_csv(join(tabdir, "proto_imdist_df.csv"), index_col=0)
 imgdist_df_rep = pd.read_csv(join(tabdir, "resnet50_imgdist_df_rep00_mskchange.csv"), )
 covtsrdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\Proto_covtsr_similarity"
 cov_stat_df = pd.read_csv(join(covtsrdir, "covtsr_stat.csv"), index_col=0)
+xsim_tab_df = pd.read_csv(join(tabdir, "proto_img_cross_simtab.csv"), index_col=0)
 #%%
 imgdist_df = imgdist_df_orig.copy()
 imgdist_df = imgdist_df.merge(imgdist_df_rep, on='Expi')
 imgdist_df = imgdist_df.merge(psth_dif_df, on='Expi')
 imgdist_df = imgdist_df.merge(cov_stat_df, on='Expi')
 imgdist_df = imgdist_df.merge(meta_act_df, on='Expi')
+imgdist_df = imgdist_df.merge(xsim_tab_df, on='Expi')
 imgdist_df.to_csv(join(tabdir, "proto_imdist_psth_covstr_sim_df.csv"))
-
+#%%
+imgdist_df = pd.read_csv(join(tabdir, "proto_imdist_psth_covstr_sim_df.csv"), index_col=0)
 #%%
 from core.utils.stats_utils import test_correlation_diff_df, scatter_corr
 from scipy.stats import pearsonr, spearmanr
 def scatter_corr(df, x, y, ax=None, corrtype="pearson", **kwargs):
+    """wrapper over sns.scatterplot to add correlation coefficient and p-value to annotation. """
     if ax is None:
         ax = plt.gca()
     # ax.scatter(df[x], df[y], **kwargs)
@@ -111,7 +118,150 @@ def scatter_corr(df, x, y, ax=None, corrtype="pearson", **kwargs):
     ax.set_title(f"{x} vs. {y}\ncorr={rho:.3f} p={pval:.1e} n={validmsk.sum()}")
     return ax, rho, pval
 
+
+def test_corr_df(df, x, y, corrtype="pearson", ):
+    if corrtype.lower() == "pearson":
+        rho, pval = pearsonr(df[x], df[y], )
+    elif corrtype.lower() == "spearman":
+        rho, pval = spearmanr(df[x], df[y], )
+    else:
+        raise NotImplementedError
+    print(f"{x} vs {y}\t corr={rho:.3f} p={pval:.1e} n={len(df)} {'**' if pval < 0.05 else ''}")
+    return rho, pval
+
+
 figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\PSTH_diff_vs_img_similarity"
+#%%
+for cosine_key in ('cosine_reevol_resnet_L3_m',
+                 'cosine_reevol_resnet_L4_m',
+                 'cosine_reevol_resnet_avgpool',
+                 'cosine_reevol_alexnet_fc6',
+                 'cosine_reevol_alexnet_fc7',
+                 'cosine_reevol_vit_cls',
+                 'cosine_reevol_vit_token_m',
+                 'cosine_maxblk_resnet_L3_m',
+                 'cosine_maxblk_resnet_L4_m',
+                 'cosine_maxblk_resnet_avgpool',
+                 'cosine_maxblk_alexnet_fc6',
+                 'cosine_maxblk_alexnet_fc7',
+                 'cosine_maxblk_vit_cls',
+                 'cosine_maxblk_vit_token_m',
+                   'reevol_pix_resnet_L3',
+                   'reevol_pix_resnet_L4',
+                   'reevol_G_resnet_L3',
+                   'reevol_G_resnet_L4',
+                   ):
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "psth_MAE", )
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "act_MAE", )
+
+#%%
+for cosine_key in ('cosine_reevol_resnet_L3_m',
+                 'cosine_reevol_resnet_L4_m',
+                 'cosine_reevol_resnet_avgpool',
+                 'cosine_reevol_alexnet_fc6',
+                 'cosine_reevol_alexnet_fc7',
+                 'cosine_reevol_vit_cls',
+                 'cosine_reevol_vit_token_m',
+                 'cosine_maxblk_resnet_L3_m',
+                 'cosine_maxblk_resnet_L4_m',
+                 'cosine_maxblk_resnet_avgpool',
+                 'cosine_maxblk_alexnet_fc6',
+                 'cosine_maxblk_alexnet_fc7',
+                 'cosine_maxblk_vit_cls',
+                 'cosine_maxblk_vit_token_m',
+                   'reevol_pix_resnet_L3',
+                   'reevol_pix_resnet_L4',
+                   'reevol_G_resnet_L3',
+                   'reevol_G_resnet_L4',
+                   ):
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "psth_MAE", )
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "act_MAE", )
+
+#%%
+for cosine_key in ['reevol_G_RNrobust_L3focus', 'reevol_G_RNrobust_L4focus',
+       'reevol_G_RNrobust_L3cent', 'reevol_G_RNrobust_L4cent',
+       'reevol_G_RNrobust_L3all', 'reevol_G_RNrobust_L4all',
+       'reevol_G_alex_conv4cent', 'reevol_G_alex_conv5cent',
+       'reevol_G_alex_conv4focus', 'reevol_G_alex_conv5focus',
+       'reevol_G_alex_conv4all', 'reevol_G_alex_conv5all',
+       'reevol_G_vgg_conv4cent', 'reevol_G_vgg_conv5cent',
+       'reevol_G_vgg_conv4focus', 'reevol_G_vgg_conv5focus',
+       'reevol_G_vgg_conv4all', 'reevol_G_vgg_conv5all',
+       'reevol_pix_RNrobust_L3focus', 'reevol_pix_RNrobust_L4focus',
+       'reevol_pix_RNrobust_L3cent', 'reevol_pix_RNrobust_L4cent',
+       'reevol_pix_RNrobust_L3all', 'reevol_pix_RNrobust_L4all',
+       'reevol_pix_alex_conv4cent', 'reevol_pix_alex_conv5cent',
+       'reevol_pix_alex_conv4focus', 'reevol_pix_alex_conv5focus',
+       'reevol_pix_alex_conv4all', 'reevol_pix_alex_conv5all',
+       'reevol_pix_vgg_conv4cent', 'reevol_pix_vgg_conv5cent',
+       'reevol_pix_vgg_conv4focus', 'reevol_pix_vgg_conv5focus',
+       'reevol_pix_vgg_conv4all', 'reevol_pix_vgg_conv5all',
+       'maxblk_RNrobust_L3focus', 'maxblk_RNrobust_L4focus',
+       'maxblk_RNrobust_L3cent', 'maxblk_RNrobust_L4cent',
+       'maxblk_RNrobust_L3all', 'maxblk_RNrobust_L4all',
+       'maxblk_alex_conv4cent', 'maxblk_alex_conv5cent',
+       'maxblk_alex_conv4focus', 'maxblk_alex_conv5focus',
+       'maxblk_alex_conv4all', 'maxblk_alex_conv5all', 'maxblk_vgg_conv4cent',
+       'maxblk_vgg_conv5cent', 'maxblk_vgg_conv4focus',
+       'maxblk_vgg_conv5focus', 'maxblk_vgg_conv4all', 'maxblk_vgg_conv5all',]:
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "psth_MAE", )
+    test_corr_df(imgdist_df[validmsk & bothsucmsk], cosine_key, "act_MAE", )
+
+#%%
+imgdist_df["cosdist_reevol_resnet_L3_m"] = 1 - imgdist_df["cosine_reevol_resnet_L3_m"]
+imgdist_df["cosdist_reevol_resnet_L4_m"] = 1 - imgdist_df["cosine_reevol_resnet_L4_m"]
+imgdist_df["cosdist_reevol_resnet_avgpool"] = 1 - imgdist_df["cosine_reevol_resnet_avgpool"]
+#%%
+for actdis_var in ('psth_MAE', 'act_MAE',):# ):
+    for imgsim_var in (
+            'reevol_G_RNrobust_L3focus', 'reevol_G_RNrobust_L4focus',
+            'reevol_G_RNrobust_L3cent', 'reevol_G_RNrobust_L4cent',
+            'reevol_G_RNrobust_L3all', 'reevol_G_RNrobust_L4all',
+            'reevol_pix_RNrobust_L3cent', 'reevol_pix_RNrobust_L4cent',
+            'reevol_pix_RNrobust_L3focus', 'reevol_pix_RNrobust_L4focus',
+            'reevol_pix_RNrobust_L3all', 'reevol_pix_RNrobust_L4all',
+           'maxblk_RNrobust_L3focus', 'maxblk_RNrobust_L4focus',
+           'maxblk_RNrobust_L3cent', 'maxblk_RNrobust_L4cent',
+           'maxblk_RNrobust_L3all', 'maxblk_RNrobust_L4all',
+            'reevol_pix_vgg_conv4cent', 'reevol_pix_vgg_conv5cent',
+            'reevol_pix_vgg_conv4focus', 'reevol_pix_vgg_conv5focus',
+           'reevol_pix_alex_conv4cent', 'reevol_pix_alex_conv5cent',
+           'reevol_pix_alex_conv4focus', 'reevol_pix_alex_conv5focus',
+           'reevol_pix_alex_conv4all', 'reevol_pix_alex_conv5all',
+                   ):
+        fig = plt.figure(figsize=[4, 4])
+        ax, rho, pval = scatter_corr(imgdist_df[validmsk & bothsucmsk],
+                           imgsim_var, actdis_var,
+                           s=64, alpha=0.5, hue='visual_area')
+        plt.tight_layout()
+        saveallforms(figdir, f'{actdis_var}_vs_img_sim_{imgsim_var}_bothsucs_val_areasep',)
+        plt.show()
+#%%
+for actdis_var in ('psth_MAE', 'act_MAE', ):
+    for imgsim_var in (
+                   #  'cosine_reevol_resnet_L3_m',
+                   # 'cosdist_reevol_resnet_L3_m',
+                   # 'cosine_reevol_resnet_L4_m',
+                   # 'cosdist_reevol_resnet_L4_m',
+                   'cosine_reevol_resnet_avgpool',
+                   'cosdist_reevol_resnet_avgpool',
+                   ):
+        fig = plt.figure(figsize=[4, 4])
+        ax, rho, pval = scatter_corr(imgdist_df[validmsk & bothsucmsk],
+                           imgsim_var, actdis_var,
+                           s=64, alpha=0.5, hue='visual_area')
+        plt.tight_layout()
+        saveallforms(figdir, f'{actdis_var}_vs_img_sim_{imgsim_var}_bothsucs_val_areasep',)
+        plt.show()
+        fig = plt.figure(figsize=[4, 4])
+        ax, rho, pval = scatter_corr(imgdist_df[validmsk & bothsucmsk],
+                           actdis_var, imgsim_var,
+                           s=64, alpha=0.5, hue='visual_area')
+        plt.tight_layout()
+        saveallforms(figdir, f'{actdis_var}_vs_img_sim_{imgsim_var}_bothsucs_val_areasep_T',)
+        plt.show()
+
+
 #%%
 # test `cosine_reevol_resnet_avgpool` correlate with `psth_MAE` better than `act_MAE`
 test_correlation_diff_df(imgdist_df[validmsk & bothsucmsk],
@@ -120,6 +270,10 @@ test_correlation_diff_df(imgdist_df[validmsk & bothsucmsk],
 # test `cosine_reevol_resnet_avgpool` correlate with `psth_MAE` better than `act_MAE`
 test_correlation_diff_df(imgdist_df[validmsk & bothsucmsk & ITmsk],
              "cosine_reevol_resnet_avgpool", "psth_MAE", "act_MAE", verbose=True)
+#%%
+# test `cosine_reevol_resnet_avgpool` correlate with `psth_MAE` better than `act_MAE`
+test_correlation_diff_df(imgdist_df[validmsk & bothsucmsk & ITmsk],
+             "cosine_reevol_resnet_L4_m", "psth_MAE", "act_MAE", verbose=True)
 #%%
 fig = plt.figure(figsize=[4, 4])
 ax, rho, pval = scatter_corr(imgdist_df[validmsk & bothsucmsk],

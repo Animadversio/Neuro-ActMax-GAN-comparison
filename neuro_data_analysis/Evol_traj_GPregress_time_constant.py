@@ -55,14 +55,19 @@ def compute_time_constant(traj, bsl=0, thresh=0.632):
 
 #%%
 # compute time constant for all neurons
-thresh = 0.8
+thresh = 0.632
 timeconst_col = OrderedDict()
 for Expi, resp_arr in tqdm(resp_gpr_col.items()):
     print(f"Processing {Expi}")
     # original baseline
     bsl0 = resp_col[Expi][:, 4].mean(axis=0)
     bsl1 = resp_col[Expi][:, 5].mean(axis=0)
-    # compute time constant
+    """compute time constant, different statistics
+    * tc0: time constant from the first time point
+    * tc_cnt: time constant from the first time point, total count in number of generations, bigger than tc0 (with 0-50ms fr baseline subtraction)
+    * tc0_bsl0: time constant from the first time point, with no baseline subtraction (with 0-50ms fr baseline subtraction)
+    * tc0_bslinit: time constant from the first time point, with baseline as initial generation rate
+    """
     FC_tc0, FC_tc_cnt = compute_time_constant(resp_arr[:, 0], bsl=bsl0, thresh=thresh)  # thresh=0.632)
     BG_tc0, BG_tc_cnt = compute_time_constant(resp_arr[:, 1], bsl=bsl1, thresh=thresh)  # thresh=0.632)
     FC_tc0bsl0, FC_tc_cnt_bsl0 = compute_time_constant(resp_arr[:, 0], bsl=0, thresh=thresh)  # thresh=0.632)
@@ -78,7 +83,7 @@ for Expi, resp_arr in tqdm(resp_gpr_col.items()):
     timeconst_col[Expi] = col
 
 timeconst_df = pd.DataFrame(timeconst_col).T
-timeconst_df.to_csv(join(tabdir, "Evol_traj_time_constant_GPregress.csv"))
+# timeconst_df.to_csv(join(tabdir, "Evol_traj_time_constant_GPregress.csv"))
 #%%
 timeconst_meta_df = pd.merge(meta_df, timeconst_df, left_on="Expi", right_index=True,)
 #%%
@@ -135,9 +140,9 @@ plt.show()
 
 #%%
 plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df[FCsucsmsk&validmsk], x="visual_area", y="FC_tc1", order=["V1", "V4", "IT"],
+sns.stripplot(data=timeconst_meta_df[FCsucsmsk&validmsk], x="visual_area", y="FC_tc0", order=["V1", "V4", "IT"],
               color="blue", alpha=0.4, jitter=0.25, label="DeePSim")
-sns.stripplot(data=timeconst_meta_df[BGsucsmsk&validmsk], x="visual_area", y="BG_tc1", order=["V1", "V4", "IT"],
+sns.stripplot(data=timeconst_meta_df[BGsucsmsk&validmsk], x="visual_area", y="BG_tc0", order=["V1", "V4", "IT"],
               color="red", alpha=0.4, jitter=0.25, label="BigGAN", dodge=True)
 plt.suptitle("Time constant of optimization trajectory\n[Each succeed]")
 plt.legend()
@@ -145,9 +150,9 @@ plt.show()
 
 #%%
 plt.figure(figsize=[4, 6])
-sns.stripplot(data=timeconst_meta_df[bothsucsmsk&validmsk], x="visual_area", y="FC_tc1", order=["V1", "V4", "IT"],
+sns.stripplot(data=timeconst_meta_df[bothsucsmsk&validmsk], x="visual_area", y="FC_tc_cnt", order=["V1", "V4", "IT"],
               color="blue", alpha=0.4, jitter=0.25, label="DeePSim")
-sns.stripplot(data=timeconst_meta_df[bothsucsmsk&validmsk], x="visual_area", y="BG_tc1", order=["V1", "V4", "IT"],
+sns.stripplot(data=timeconst_meta_df[bothsucsmsk&validmsk], x="visual_area", y="BG_tc_cnt", order=["V1", "V4", "IT"],
               color="red", alpha=0.4, jitter=0.25, label="BigGAN")
 plt.suptitle("Time constant of optimization trajectory\n[Both succeed]")
 

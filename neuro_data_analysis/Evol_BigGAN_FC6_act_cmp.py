@@ -128,6 +128,8 @@ _, BFEStats = load_neural_data()
 resp_col, _ = extract_all_evol_trajectory(BFEStats, )
 resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
 #%%
+normresp_extrap_arr = resp_extrap_arr / resp_extrap_arr[:, :, 0:2].max(axis=(1,2), keepdims=True)
+#%%
 meta_act_df = pd.read_csv(join(tabdir, "meta_activation_stats_w_optimizer.csv"), index_col=False)
 meta_df = pd.read_csv(join(tabdir, "meta_stats_w_optimizer.csv"), index_col=False)
 #%%
@@ -138,14 +140,14 @@ Amsk, Bmsk, V1msk, V4msk, ITmsk, \
 # use pycharm backend
 import seaborn as sns
 import matplotlib
+import sys
+from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
 matplotlib.use("module://backend_interagg")
 #%%
 """
 Mass output testing results for all the experiments into text file, for paper writing.
 """
 # TODO:consider better testing method hierachical
-import sys
-from core.utils.stats_utils import ttest_ind_print_df, ttest_rel_print_df, ttest_ind_print, ttest_rel_print
 # thresh = 0.05
 for thresh in [0.05, 0.01, 0.001]:
     sucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
@@ -289,7 +291,7 @@ def paired_strip_plot_simple(col1, col2, msk=None, col1_err=None, col2_err=None,
     # annotate the string on top of the plot
     ax.text(offset+0.5, 1.1, f"t={tval:.3f}, P={pval:.1e}\nN={msk.sum()}",
             ha='center', va='center')
-    figh.show()
+    # figh.show()
     return figh
 
 
@@ -346,7 +348,7 @@ p_str = str(p_thresh).replace('.','')
 for succ_label, success_mask in zip(["bothsucc", "anysucc", "nonesucc", "all"],
                                     [bothsucsmsk, anysucsmsk, nonesucsmsk, True]):
     msk_general, label_general = validmsk & success_mask, f"val_{succ_label}"
-    #%%
+    #%
     """Paired strip plot of initial block activation, seperated into the three visual areas"""
     figh, ax = plt.subplots(1, 1, figsize=[8, 6])
     paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
@@ -382,6 +384,61 @@ for succ_label, success_mask in zip(["bothsucc", "anysucc", "nonesucc", "all"],
     figh.suptitle(f"Last block response comparison between DeePSim and BG across areas\n[Valid & {succ_label}, p < {p_thresh}]")
     saveallforms(outdir, f"maxnorm_endresp_cmp_{label_general}_p{p_str}_areasep", figh)
     figh.show()
+
+#%%
+"""Mass produce figures for difference success mask and p threshold, with shared y lim in two plots"""
+p_thresh = 0.05
+FCsucsmsk = meta_df.p_maxinit_0 < p_thresh
+BGsucsmsk = meta_df.p_maxinit_1 < p_thresh
+bothsucsmsk = FCsucsmsk & BGsucsmsk
+anysucsmsk = FCsucsmsk | BGsucsmsk
+nonesucsmsk = (~FCsucsmsk) & (~BGsucsmsk)
+p_str = str(p_thresh).replace('.','')
+for succ_label, success_mask in zip(["bothsucc", "anysucc", "nonesucc", "all"],
+                                    [bothsucsmsk, anysucsmsk, nonesucsmsk, True]):
+    msk_general, label_general = validmsk & success_mask, f"val_{succ_label}"
+    #%
+    """Paired strip plot of initial block activation, seperated into the three visual areas"""
+    figh, ax = plt.subplots(1, 1, figsize=[8, 6])
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=V1msk & msk_general, ax=ax, offset=0, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=V4msk & msk_general, ax=ax, offset=2, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, 0, 0], normresp_extrap_arr[:, 0, 1],
+                 col1_err=normresp_extrap_arr[:, 0, 2], col2_err=normresp_extrap_arr[:, 0, 3],
+                 msk=ITmsk & msk_general, ax=ax, offset=4, jitter_std=0.15)
+    ax.set_xticks([0, 1, 2, 3, 4, 5])
+    ax.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+    ax.set_ylabel("Max Normalized response")
+    figh.suptitle(f"Initial response comparison between DeePSim and BG across areas\n[Valid & {succ_label}, p < {p_thresh}]")
+
+    """Paired strip plot of end block activation, seperated into the three visual areas"""
+    figh2, ax2 = plt.subplots(1, 1, figsize=[8, 6])
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=V1msk & msk_general, ax=ax2, offset=0, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=V4msk & msk_general, ax=ax2, offset=2, jitter_std=0.15)
+    paired_strip_plot_simple(normresp_extrap_arr[:, -1, 0], normresp_extrap_arr[:, -1, 1],
+                col1_err=normresp_extrap_arr[:, -1, 2], col2_err=normresp_extrap_arr[:, -1, 3],
+                msk=ITmsk & msk_general, ax=ax2, offset=4, jitter_std=0.15)
+    ax2.set_xticks([0, 1, 2, 3, 4, 5])
+    ax2.set_xticklabels(["V1 DeePSim", "V1 BG", "V4 DeePSim", "V4 BG", "IT DeePSim", "IT BG"])
+    ax2.set_ylabel("Max Normalized response")
+    figh2.suptitle(f"Last block response comparison between DeePSim and BG across areas\n[Valid & {succ_label}, p < {p_thresh}]")
+    # link the two axes
+    ylim1 = ax.get_ylim()
+    ylim2 = ax2.get_ylim()
+    ylim_shared = [min(ylim1[0], ylim2[0]), max(ylim1[1], ylim2[1])]
+    ax.set_ylim(ylim_shared)
+    ax2.set_ylim(ylim_shared)
+    saveallforms(outdir, f"maxnorm_initresp_cmp_{label_general}_p{p_str}_areasep_ylinked", figh)
+    saveallforms(outdir, f"maxnorm_endresp_cmp_{label_general}_p{p_str}_areasep_ylinked", figh2)
+    figh.show()
+    figh2.show()
 
 
 #%%
