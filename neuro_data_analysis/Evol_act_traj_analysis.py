@@ -166,6 +166,8 @@ def get_all_masks(meta_df):
     return Amsk, Bmsk, V1msk, V4msk, ITmsk, length_msk, spc_msk, sucsmsk, bsl_unstable_msk, bsl_stable_msk, validmsk
 
 #%%
+from neuro_data_analysis.neural_data_lib import extract_all_evol_trajectory, pad_resp_traj
+from neuro_data_analysis.neural_data_utils import get_all_masks
 _, BFEStats = load_neural_data()
 resp_col, meta_df = extract_all_evol_trajectory(BFEStats, )
 resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
@@ -497,3 +499,8 @@ plt.tight_layout()
 saveallforms(figdir, f"both_winrate_traj_area_sep_{errtype}", figh, ["svg", "png", "pdf"])
 plt.show()
 
+#%%
+for mi, msk in enumerate([validmsk & sucsmsk & V1msk,
+                          validmsk & sucsmsk & V4msk,
+                          validmsk & sucsmsk & ITmsk]):
+    print(mi,sum(msk))

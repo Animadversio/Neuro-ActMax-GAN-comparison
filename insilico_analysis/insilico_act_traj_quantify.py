@@ -141,6 +141,7 @@ for unitname in tqdm(unitlist):
 meta_info_df = pd.DataFrame(meta_info, columns=meta.keys())
 meta_info_df.to_csv(join(figdir, "meta_info_df.csv"), index=False)
 #%%
+meta_info_df = pd.read_csv(join(figdir, "meta_info_df.csv"))
 meta_info_df.groupby(by=["netname", "layername", "RFrsz"]).count()
 #%%
 
@@ -220,74 +221,86 @@ for (netname, layername, RFrsz), df in meta_info_df.groupby(by=["netname", "laye
     # raise Exception
 #%%
 def shorten_layername(layername):
-    return layername.replace(".layer", "layer").replace(".Bottleneck", "B").replace(".Linear", "")
+    return layername.replace(".layer", "layer").replace(".Bottleneck", "B").\
+        replace(".Linear", "").replace(".SelectAdaptivePool2d","")
+
+exportfigdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\FigureSupp_EvolTraj_insilico\src"
 #%% Merged plot of all layers for each network
 netname ='resnet50_linf8'# 'resnet50' # 'resnet50_linf8'
 errtype = "sem"
-meta_info_df[meta_info_df.netname==netname].layername.unique()
-layernames = ['.layer1.Bottleneck1', '.layer2.Bottleneck3',
-       '.layer3.Bottleneck5', '.layer4.Bottleneck2', '.Linearfc']
-RFrsz = False
-figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
-for li, layername in enumerate(layernames):
-    df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
-                      & (meta_info_df.RFrsz==False)]
-    plt.sca(axs[li])
-    _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3,
-                         errtype=errtype, label="DeePSim", )
-    _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3,
-                         errtype=errtype, label="BG CholCMA")
-    _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3,
-                         errtype=errtype, label="BG HessCMA")
-    plt.title(f"{netname} {shorten_layername(layername)} {'RF resize' if RFrsz else ''}")
-    plt.ylabel("Normalized Activation")
-    plt.xlabel("Blocks")
-    if li==len(layernames)-1:
-        plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
-plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} Average Normalized Optimization trajectory")
-plt.tight_layout()
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}", figh)
-figh.show()
-for ax in axs:
-    ax.set_xlim([0, 40])
-    # ax.autoscale(enable=True, axis='y', tight=True)
-    ax.autoscale_view(tight=True, scalex=False, scaley=True)
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}_xlim40", figh)
-figh.show()
+for netname in ['resnet50_linf8', 'resnet50']:
+    meta_info_df[meta_info_df.netname==netname].layername.unique()
+    layernames = ['.layer1.Bottleneck1', '.layer2.Bottleneck3',
+           '.layer3.Bottleneck5', '.layer4.Bottleneck2', '.Linearfc']
+    RFrsz = False
+    figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*2.8, 4),
+                             sharex=True, sharey=False)
+    for li, layername in enumerate(layernames):
+        df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
+                          & (meta_info_df.RFrsz==False)]
+        plt.sca(axs[li])
+        _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3,
+                             errtype=errtype, label="DeePSim", )
+        _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3,
+                             errtype=errtype, label="BG CholCMA")
+        _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3,
+                             errtype=errtype, label="BG HessCMA")
+        plt.title(f"{shorten_layername(layername)} {'RF resize' if RFrsz else ''}")
+        if li==0:
+            plt.ylabel("Normalized Activation")
+        plt.xlabel("Blocks")
+        if li==len(layernames)-1:
+            plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
+    plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} Average Normalized Optimization trajectory")
+    plt.tight_layout()
+    saveallforms([figdir,exportfigdir], f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}", figh)
+    figh.show()
+    for ax in axs:
+        ax.set_xlim([0, 40])
+        # ax.autoscale(enable=True, axis='y', tight=True)
+        ax.autoscale_view(tight=True, scalex=False, scaley=True)
+    saveallforms([figdir,exportfigdir], f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}_xlim40", figh)
+    figh.show()
 #%%
+errtype = "sem"
 netname = 'tf_efficientnet_b6'# "tf_efficientnet_b6_ap" # 'tf_efficientnet_b6'
-meta_info_df[meta_info_df.netname==netname].layername.unique()
-layernames = ['.blocks.0', '.blocks.1', '.blocks.2', '.blocks.3', '.blocks.4',
-       '.blocks.5', '.blocks.6','.SelectAdaptivePool2dglobal_pool',
-       '.Linearclassifier']
-RFrsz = False
+for netname in ["tf_efficientnet_b6", "tf_efficientnet_b6_ap"]:
+    meta_info_df[meta_info_df.netname==netname].layername.unique()
+    layernames = ['.blocks.0', '.blocks.1', '.blocks.2', '.blocks.3', '.blocks.4',
+           '.blocks.5', '.blocks.6','.SelectAdaptivePool2dglobal_pool',
+           '.Linearclassifier']
+    RFrsz = False
+    figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*2.8, 4),
+                             sharex=True, sharey=False)
+    for li, layername in enumerate(layernames):
+        df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
+                          & (meta_info_df.RFrsz==False)]
+        plt.sca(axs[li])
+        _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3, errtype=errtype,
+                             label="DeePSim", )
+        _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3, errtype=errtype,
+                             label="BG CholCMA")
+        _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3, errtype=errtype,
+                             label="BG HessCMA")
+        plt.title(f"{shorten_layername(layername)} {'RF resize' if RFrsz else ''}")
+        if li == 0:
+            plt.ylabel("Normalized Activation")
+        plt.xlabel("Blocks")
+        if li==len(layernames)-1:
+            plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
+    plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} Average Normalized Optimization trajectory")
+    plt.tight_layout()
+    saveallforms([figdir, exportfigdir], f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}", figh)
+    figh.show()
+    for ax in axs:
+        ax.set_xlim([0, 40])
+        # ax.autoscale(enable=True, axis='y', tight=True)
+        ax.autoscale_view(tight=True, scalex=False, scaley=True)
+    saveallforms([figdir, exportfigdir], f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_{errtype}_xlim40", figh)
+    figh.show()
 
-figh, axs = plt.subplots(1, len(layernames), figsize=(len(layernames)*3.5, 4))
-for li, layername in enumerate(layernames):
-    df = meta_info_df[(meta_info_df.netname==netname) & (meta_info_df.layername==layername)
-                      & (meta_info_df.RFrsz==False)]
-    plt.sca(axs[li])
-    _shaded_errorbar_arr(normscore_mean1_col[df.index].reshape(-1, 100), color="b", alpha=0.3, errtype="std",
-                         label="DeePSim", )
-    _shaded_errorbar_arr(normscore_mean2_col[df.index].reshape(-1, 100), color="r", alpha=0.3, errtype="std",
-                         label="BG CholCMA")
-    _shaded_errorbar_arr(normscore_mean3_col[df.index].reshape(-1, 100), color="g", alpha=0.3, errtype="std",
-                         label="BG HessCMA")
-    plt.title(f"{netname} {layername} {'RF resize' if RFrsz else ''}")
-    plt.ylabel("Normalized Activation")
-    plt.xlabel("Blocks")
-    if li==len(layernames)-1:
-        plt.legend()  # ["DeePSim", "BG CholCMA", "BG HessCMA"])
-plt.suptitle(f"{netname} {'RF resize' if RFrsz else ''} Average Normalized Optimization trajectory")
-plt.tight_layout()
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std", figh)
-figh.show()
-for ax in axs:
-    ax.set_xlim([0, 40])
-    # ax.autoscale(enable=True, axis='y', tight=True)
-    ax.autoscale_view(tight=True, scalex=False, scaley=True)
-saveallforms(figdir, f"{netname}_{'_RFrsz' if RFrsz else ''}_merged_normact_cmp_std_xlim40", figh)
-figh.show()
+
+
 #%%
 netname = 'resnet50_linf8' # 'resnet50_linf8'
 for netname in [ 'resnet50_linf8', 'resnet50']:

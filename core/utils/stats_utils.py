@@ -46,7 +46,7 @@ def latexify_tststs(tval, pval, df):
     latex_stat_str = "t_{%d}=%.3f " % (df, tval) + ("p=%.1e}" % pval).replace("e", r"\times 10^{").replace("+0", "").replace("-0", "-")
     return latex_stat_str
 
-def ttest_rel_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
+def ttest_rel_print(seq1, seq2, sem=False, latex=False, nan_policy="omit", output_dof=False):
     tval, pval = ttest_rel(seq1, seq2, nan_policy=nan_policy)
     df = len(seq1) - 1
     latex_stat_str = latexify_tststs(tval, pval, df)
@@ -62,10 +62,13 @@ def ttest_rel_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
         print(latex_str)
     else:
         print(result_str)
-    return tval, pval, result_str
+    if output_dof:
+        return tval, pval, df, result_str
+    else:
+        return tval, pval, result_str
 
 
-def ttest_ind_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
+def ttest_ind_print(seq1, seq2, sem=False, latex=False, nan_policy="omit", output_dof=False):
     tval, pval = ttest_ind(seq1, seq2, nan_policy=nan_policy)
     df = len(seq1) + len(seq2) - 2
     latex_stat_str = latexify_tststs(tval, pval, df)
@@ -81,19 +84,22 @@ def ttest_ind_print(seq1, seq2, sem=False, latex=False, nan_policy="omit"):
         print(latex_str)
     else:
         print(result_str)
-    return tval, pval, result_str
+    if output_dof:
+        return tval, pval, df, result_str
+    else:
+        return tval, pval, result_str
 
 
-def ttest_rel_print_df(df, msk, col1, col2, sem=False, latex=False):
+def ttest_rel_print_df(df, msk, col1, col2, sem=False, latex=False, output_dof=False):
     if msk is None:
         msk = np.ones(len(df), dtype=bool)
     print(f"{col1} ~ {col2} (N={msk.sum()})", end=" ")
-    return ttest_rel_print(df[msk][col1], df[msk][col2], sem=sem, latex=latex)
+    return ttest_rel_print(df[msk][col1], df[msk][col2], sem=sem, latex=latex, output_dof=output_dof)
 
 
-def ttest_ind_print_df(df, msk1, msk2, col, sem=False, latex=False):
+def ttest_ind_print_df(df, msk1, msk2, col, sem=False, latex=False, output_dof=False):
     print(f"{col} (N={msk1.sum()}) ~ (N={msk2.sum()})", end=" ")
-    return ttest_ind_print(df[msk1][col], df[msk2][col], sem=sem, latex=latex)
+    return ttest_ind_print(df[msk1][col], df[msk2][col], sem=sem, latex=latex, output_dof=output_dof)
 
 
 import matplotlib.pyplot as plt

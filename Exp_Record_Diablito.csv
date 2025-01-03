@@ -1,0 +1,93 @@
+ChanQual,Exp_collection,Expi,WebCam,comments,ephysFN,expControlFN,pref_chan,pref_unit,stim_size,stimuli
+,,,,"Started expt at 1.37PM.
+rf mapper",Diablito-03122024-001,241203_133352_Diablito_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-06-03-RF-Diablito-01
+,BigGAN_FC6;BigGAN_Hessian,1.0,," 002 at 1.47PM.
+biggan
+56 (-1,0) 4 1 CMAES hash 5/5
+fairly decent psths
+both biggan and deepsim performance rapidly rising and consistently at similar levels, biggan appears to have created some wild boar-like images. Has drank 125cc at 2.0PM, filling up with 200cc juice. Biggan leveled out briefly but now rising again.
+ 
+150 
+100 
+0.5",Diablito-03122024-002,241203_134558_Diablito_generate_BigGAN,56.0,1.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-03-Ev-Diablito-01\2024-12-03-13-46-53
+,BigGAN_Hessian,1.0,,"Running manifold
+takes time, seems to hang on figures??
+003 manifold at 212 PM
+he twnt to look
+Struggling at 58%, block 6 performance at 48%, changing to next task.
+has had around 200
+finished with 6 blocks",Diablito-03122024-003,241203_141151_Diablito_selectivity_basic,56.0,1.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-03-Ev-Diablito-01\2024-12-03-13-46-53\Hess_imgs
+,,,,"Heatmaps
+pair0
+004 at 2:26 PM
+alex face and gibbon
+has had around 225 cc
+has been at this experiment for almost 10 minutes",Diablito-03122024-004,241203_142601_Diablito_rfMapper_omniplex_userloop,,,,N:\Stimuli\Heatmaps\2024\2024-11-26-HM-Caos-01
+,NatImgSelectivity,,,"Finishing with 160
+005 at 239 PM
+Finished 5 blocks in 8min, has consumed 325cc juice total. 2.50",Diablito-03122024-005,241203_143927_Diablito_selectivity_basic,,,,N:\Stimuli\2023_selectivity_imagenet\imagenet_selectivity_160_clusters
+,,,,"001 rf mapper, will do 4 blocks
+thinking 42 (-1,-1) 4  CMAES 3/5",Diablito-11122024-001,241211_125148_Diablito_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-06-03-RF-Diablito-01
+,BigGAN_FC6;BigGAN_Hessian,2.0,,"002 at 1259 PM ish
+42 (-1,-1) 4 2 CMAES 3/5
+Solid psth, in Diablito we trust
+Not nothin'
+77% performance
+started at 200 cc
+Ended at 115 PM, running manifold code
+takes a while, Binxu. In case you're reading this
+that took a long time, had to relaunch VSCODE and it was faster then",Diablito-11122024-002,241211_125829_Diablito_generate_BigGAN,42.0,2.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-11-Ev-Diablito-01\2024-12-11-12-59-09
+,BigGAN_Hessian,2.0,,"003 manifold at 129 PM, (-1,-1) 4 stimulus position
+42 (-1,-1) 4 2 CMAES 3/5
+lots of stimui, coming down to 100 cc consumed
+4 minutes, on block 3, looks like...
+~140 correct trials for 3 blocks, so not great. Maybe we can hit 6?
+43 minutes in, has had 100, filled up to 200 with FM
+he's losing interest
+we did 7",Diablito-11122024-003,241211_132910_Diablito_selectivity_basic,42.0,2.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-11-Ev-Diablito-01\2024-12-11-12-59-09\Hess_imgs
+,BigGAN_FC6;BigGAN_Hessian,3.0,,"Going for 34 (-2 0) 4 2 CMAES 4/5 hash
+004 at 144 PM
+doesn't sound as responsive as 42, but ok, nice RF
+ok psth
+Not nothin
+Performance sucks, 44%
+Finished 1.18hr, started running manifold code
+75s to generate first part of manifold",Diablito-11122024-004,241211_134400_Diablito_generate_BigGAN,34.0,2.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-11-Ev-Diablito-02\2024-12-11-13-44-38
+,BigGAN_Hessian,3.0,,"Started selectivity basic 2.17PM
+34 (-2 0) 4 2 CMAES 4/5 hash
+60% behav performance, completed 10 blocks
+Rf mapper
+rf mapper analysis
+biggan
+manifold
+trying manifold code, started at 11:09 AM, and done by...11:13, so 4 minutes
+Running manifold: the # of correct trials for one block is...44. Takes one minute with perfect performance. Oy vey",Diablito-11122024-005,241211_141636_Diablito_selectivity_basic,34.0,2.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-11-Ev-Diablito-02\2024-12-11-13-44-38\Hess_imgs
+,,,,"Rf mapper 001 at 1133 AM
+started water at 200 cc
+looks like 64 (-1,-1) 6 2 might be good
+completed",Diablito-12122024-001,241212_113243_Diablito_rfMapper_basic,,,,N:\Stimuli\RFs\2024\2024-06-03-RF-Diablito-01
+,BigGAN_FC6;BigGAN_Hessian,4.0,,"003 at 1142 AM
+64 (-1,-1) 6 2 CMAES MU 4/5
+Eh, not much happening...hey now
+I don't know, Giordano, I think the canvas is too big...too much happening for the optimizer to get a decent shot
+Fixation getting shoddy, 19 min experiment
+finished, that was about 20 minutes. Shallow climb for BigGAN, but we get what we get and we don't get upset",Diablito-12122024-003,241212_114145_Diablito_generate_BigGAN,64.0,2.0,6.0,N:\Stimuli\Evolutions\2024\2024-12-12-Ev-Diablito-01\2024-12-12-11-42-10
+,BigGAN_Hessian,4.0,,"Manifold
+64 (-1,-1) 6 2 CMAES MU 4/5
+172 images
+1212 PM Has had 100 cc water, filled up to 200 with FM
+3 blocks completed, 5 minutes in, 75% performance
+completed in 10 min",Diablito-12122024-004,241212_120703_Diablito_selectivity_basic,64.0,2.0,6.0,N:\Stimuli\Evolutions\2024\2024-12-12-Ev-Diablito-01\2024-12-12-11-42-10\Hess_imgs
+,BigGAN_FC6;BigGAN_Hessian,5.0,,"Maybe 50, (0,0) 4 deg
+005 biggan
+50 (0 0) 4 1 CMAES 5/5 hash
+Great increase, but everything getting quieter?
+he's slowing down
+will finish after manifold
+manifold code started at 1236 PM",Diablito-12122024-005,241212_121815_Diablito_generate_BigGAN,50.0,1.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-12-Ev-Diablito-02\2024-12-12-12-18-47
+,BigGAN_Hessian,5.0,,"006 at 1239 PM
+manifold for
+50 (0 0) 4 1 CMAES 5/5 hash
+perf at 64%…
+upping reward to 75 ms
+12 minutes in, 6 blocks, only ~20 cc left",Diablito-12122024-006,241212_123905_Diablito_selectivity_basic,50.0,1.0,4.0,N:\Stimuli\Evolutions\2024\2024-12-12-Ev-Diablito-02\2024-12-12-12-18-47\Hess_imgs

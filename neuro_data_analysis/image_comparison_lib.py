@@ -68,6 +68,26 @@ def compare_imgs_cnn(img1, img2, fetcher, featkey='blocks', metric='cosine'):
     return cossim_tsr
 
 
+def extract_featvec_cnn_featmsk(img1, fetcher, featmsk1=None, featkey='blocks'):
+    if isinstance(img1, list):
+        img1 = np.stack(img1, axis=0)
+    if isinstance(img1, np.ndarray):
+        if len(img1.shape) == 3:
+            img1 = torch.from_numpy(img1).permute(2, 0, 1).unsqueeze(0)
+        elif len(img1.shape) == 4:
+            img1 = torch.from_numpy(img1).permute(0, 3, 1, 2)
+    # TODO: add normalization????
+    img1 = normalize(img1)
+    with torch.no_grad():
+        feat1 = fetcher(img1.cuda())[featkey]
+
+    if featmsk1 is not None:
+        feat1vec = (feat1 * featmsk1[None, None]).sum(dim=(2, 3), keepdim=False) / featmsk1.sum()
+    else:
+        feat1vec = feat1.mean(dim=(2, 3), keepdim=False)
+    return feat1vec
+
+
 def compare_imgs_cnn_featmsk(img1, img2, fetcher, featmsk1=None, featmsk2=None, featkey='blocks', metric='cosine'):
     if featmsk1 is not None and featmsk2 is None:
         featmsk2 = featmsk1

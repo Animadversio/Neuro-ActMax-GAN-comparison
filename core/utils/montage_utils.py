@@ -327,3 +327,95 @@ def crop_all_from_montage(img, totalnum=None, imgsize=512, pad=2, autostop=True)
             break
         imgcol.append(img_crop)
     return imgcol
+
+
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+def get_first_non_none_image_size(image_array):
+    for img in image_array.flatten():
+        if img is not None:
+            return img.size
+    return (0, 0)  # Return a default size if all images are None
+
+
+# make these images as a grid. PIL to image grid
+def PIL_array_to_montage(image_array):
+    """Create a grid of images from a 2D array of PIL Images
+    
+    Args:
+        image_array: 2D numpy array of PIL Image objects
+        
+    Returns:
+        PIL Image containing the grid of images
+    """
+    # Calculate dimensions for the grid
+    n_rows, n_cols = image_array.shape
+    if n_rows == 0 or n_cols == 0:
+        return None
+    
+    img_width, img_height = get_first_non_none_image_size(image_array)
+    # Create a new blank image with space for all images
+    grid_img = Image.new('RGB', (n_cols * img_width, n_rows * img_height))
+    # Paste each image into the grid
+    for i in range(n_rows):
+        for j in range(n_cols):
+            if image_array[i,j] is not None:
+                grid_img.paste(image_array[i,j], (j * img_width, i * img_height))
+            else:
+                print(f"Warning: Image at ({i}, {j}) is None")
+            
+    return grid_img
+
+
+# make these images as a grid. PIL to image grid
+def PIL_array_to_montage_score_frame(image_array, score_array, colormap='viridis', border_size=10, clim=None):
+    """Create a grid of images from a 2D array of PIL Images with colored frames based on scores.
+    
+    Args:
+        image_array: 2D numpy array of PIL Image objects.
+        score_array: 2D numpy array of scores corresponding to each image.
+        colormap: str, name of the matplotlib colormap to use for mapping scores to colors.
+        border_size: int, size of the colored frame around each image in pixels.
+        
+    Returns:
+        PIL Image containing the grid of images with colored frames.
+    """
+    # Ensure score_array is a numpy array
+    if not isinstance(score_array, np.ndarray):
+        score_array = np.array(score_array)
+    n_rows, n_cols = image_array.shape
+    if n_rows == 0 or n_cols == 0:
+        return None
+    # Normalize scores to [0, 1] for colormap mapping
+    if clim is None:
+        clim = (np.min(score_array), np.max(score_array))
+    norm = mpl.colors.Normalize(vmin=clim[0], vmax=clim[1])
+    mapped_scores = norm(score_array)
+    # Get the colormap
+    cmap = plt.get_cmap(colormap)
+    # Map scores to colors without manual normalization
+    colors = [tuple(int(255 * c) for c in cmap(score)[:3]) for score in mapped_scores.flatten()]
+    colors = np.array(colors).reshape(score_array.shape + (3,))
+    # Calculate dimensions for the grid with borders
+    img_width, img_height = get_first_non_none_image_size(image_array)
+    bordered_width = img_width + 2 * border_size
+    bordered_height = img_height + 2 * border_size
+    # Create a new blank image with space for all images and their borders
+    grid_img = Image.new('RGB', (n_cols * bordered_width, n_rows * bordered_height))
+    # Paste each image with colored border into the grid
+    for i in range(n_rows):
+        for j in range(n_cols):
+            img = image_array[i, j]
+            if img is not None:
+                color = tuple(colors[i, j])
+                # Create a new image with border
+                bordered_img = Image.new('RGB', (bordered_width, bordered_height), color)
+                bordered_img.paste(img, (border_size, border_size))
+                # Paste the bordered image into the grid
+                grid_img.paste(bordered_img, (j * bordered_width, i * bordered_height))
+            else:
+                print(f"Warning: Image at ({i}, {j}) is None")
+    
+    return grid_img
