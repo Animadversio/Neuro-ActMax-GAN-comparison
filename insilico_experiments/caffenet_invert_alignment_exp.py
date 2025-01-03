@@ -111,10 +111,10 @@ df = pd.DataFrame(results_collection)
 df.head()
 df["final_score_"] = df["final_score"]#.map(lambda x:x.item())
 # Create a figure with 6 subplots, one for each CNN layer
-fig, axes = plt.subplots(1, 8, figsize=(20, 4.5))
+cnn_layers = df["CNN"].unique()
+fig, axes = plt.subplots(1, len(cnn_layers), figsize=(20, 4.5))
 axes = axes.flatten()
 # Get unique CNN layers
-cnn_layers = df["CNN"].unique()
 # Create a subplot for each CNN layer
 for i, cnn_layer in enumerate(cnn_layers):
     # Filter data for this CNN layer
@@ -130,10 +130,10 @@ saveallforms(evolsavedir, f"caffenet_invert_alignment_exp_pilot6_preproc_optimtu
 plt.show()
 
 # Create a figure with 6 subplots, one for each CNN layer
-fig, axes = plt.subplots(1, 6, figsize=(16, 4.5))
+cnn_layers = df["CNN"].unique()
+fig, axes = plt.subplots(1, len(cnn_layers), figsize=(16, 4.5))
 axes = axes.flatten()
 # Get unique CNN layers
-cnn_layers = df["CNN"].unique()
 # Create a subplot for each CNN layer
 for i, cnn_layer in enumerate(cnn_layers):
     # Filter data for this CNN layer
