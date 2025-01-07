@@ -75,18 +75,29 @@ class ImagePathDataset_pure(Dataset):
         return len(self.imgfps)
 
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, (int, np.integer)):
             # Handle single index
             img_path = self.imgfps[index]
-            img = Image.open(img_path)
+            img = Image.open(img_path) 
+            # TODO: Check if the image is grayscale, if so turn it into RGB
+            img = img.convert('RGB')
             imgtsr = self.transform(img)
             return imgtsr
         elif isinstance(index, slice):
             # Handle slice indexing
             data_list = [self[i] for i in range(*index.indices(len(self)))]
             return torch.stack(data_list, dim=0)
+        elif isinstance(index, (list, np.ndarray)):
+            if isinstance(index, np.ndarray) and index.dtype == bool:
+                if len(index) != len(self):
+                    raise ValueError("Boolean mask length must match the dataset length.")
+                # Handle binary mask indexing
+                index = np.where(index)[0]
+            data_list = [self[i] for i in index]
+            return torch.stack(data_list, dim=0)
         else:
-            raise TypeError("Unsupported indexing type.")
+            raise TypeError(f"Unsupported indexing type: {type(index)}. Supported types are int, slice, list, or numpy.ndarray.")
+
 
         # img = plt.imread(img_path)
         # if len(img.shape) == 2:
