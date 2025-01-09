@@ -151,6 +151,7 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
     tuning_stats_df["prefchan_bsl_sem"] = prefchan_bsl_sem.item()
     tuning_stats_df.to_csv(join(figdir, f"tuning_curves_stats_df_fill_missing.csv"), index=False)
     tuning_stats_synopsis.append(tuning_stats_df)
+    sgtr_resp_df.to_csv(join(figdir, f"single_trial_pref_unit_resp.csv"), index=False)
 #%%
 syndir = join(figroot, "synopsis")
 os.makedirs(syndir, exist_ok=True)
