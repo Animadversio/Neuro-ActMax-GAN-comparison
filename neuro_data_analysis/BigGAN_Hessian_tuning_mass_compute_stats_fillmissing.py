@@ -6,9 +6,9 @@ import os
 from os.path import join
 import re
 import math
-import pickle as pkl
 import time
 import glob
+import pickle as pkl
 from PIL import Image
 import numpy as np
 import pandas as pd
@@ -93,7 +93,8 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
     pref_avg_resp_noise = pref_avgresp_df.query(f"space_name == 'noise'")
     pref_avg_resp_noise_mat = pref_avg_resp_noise.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
     pref_avg_resp_class_mat = pref_avg_resp_class.pivot(index='eig_id', columns='lin_dist', values='pref_unit_resp')
-    
+    # origin stats 
+    sgtr_resp_at_origin = sgtr_resp_df.query(f"lin_dist == 0.0")
     tuning_stats_col = []
     for space in ["class", "noise"]:
         sgtr_resp_per_space = sgtr_resp_df.query(f"space_name == '{space}'")
@@ -102,7 +103,15 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
         for i, eig_id in enumerate(unique_eig_ids):
             subset = sgtr_resp_per_space[sgtr_resp_per_space['eig_id'] == eig_id]
             unique_lin_dists = sorted(subset.lin_dist.unique())
-            # TODO: if 0 is not in this set fetch the 0 from other eig_id
+            if 0.0 not in unique_lin_dists:
+                # if 0.0 not in this set, augment the subset with the origin stats. 
+                # TODO: design decision, augment only with the origin stats with this space or both space. 
+                # subset = pd.concat([subset, sgtr_resp_at_origin.query(f"space_name == '{space}'")])
+                subset = pd.concat([subset, sgtr_resp_at_origin])
+                unique_lin_dists = sorted(subset.lin_dist.unique())
+                # raise ValueError(f"unique_lin_dists: {unique_lin_dists}")
+            lin_dist_rep_dict = subset.groupby('lin_dist').size().to_dict()  
+            lin_dist_rep = [lin_dist_rep_dict[lin_dist] for lin_dist in unique_lin_dists]
             F_value = None
             p_value = None
             stats_str = ""
@@ -119,12 +128,14 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
                     stats_str = ""
             # find avg resp for each lin_dist
             avg_resp_per_lin_dist = subset.groupby('lin_dist').agg({'pref_unit_resp': 'mean'}).reset_index().sort_values(by='lin_dist')
+            repeat_per_lin_dist = subset.groupby('lin_dist').agg({'pref_unit_resp': 'count'}).reset_index().sort_values(by='lin_dist')
             # find lin_dist with max resp
             max_resp_lin_dist = avg_resp_per_lin_dist.loc[avg_resp_per_lin_dist['pref_unit_resp'].idxmax(), 'lin_dist']
             max_resp_val = avg_resp_per_lin_dist.loc[avg_resp_per_lin_dist['pref_unit_resp'].idxmax(), 'pref_unit_resp']
             stats_dict = {"space_name": space, "eig_id": eig_id, "F_value": F_value, "p_value": p_value, "stats_str": stats_str, 
                           "lin_dist_set": unique_lin_dists, "lin_dist_num": len(unique_lin_dists), 
                           "avg_resp_per_lin_dist": avg_resp_per_lin_dist["pref_unit_resp"].values.tolist(),
+                          "repeat_per_lin_dist": repeat_per_lin_dist["pref_unit_resp"].values.tolist(),
                           "max_resp_lin_dist": max_resp_lin_dist, "max_resp_val": max_resp_val}
             tuning_stats_col.append(stats_dict)
     
@@ -135,11 +146,17 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
     tuning_stats_df["stimuli"] = exprow.stimuli
     tuning_stats_df["prefchan"] = exprow.pref_chan
     tuning_stats_df["prefunit"] = exprow.pref_unit
+    tuning_stats_df["prefchan_str"] = prefchan_str
+    tuning_stats_df["prefchan_bsl_mean"] = prefchan_bsl_mean.item()
+    tuning_stats_df["prefchan_bsl_sem"] = prefchan_bsl_sem.item()
     tuning_stats_df.to_csv(join(figdir, f"tuning_curves_stats_df_fill_missing.csv"), index=False)
     tuning_stats_synopsis.append(tuning_stats_df)
+    sgtr_resp_df.to_csv(join(figdir, f"single_trial_pref_unit_resp.csv"), index=False)
 #%%
 syndir = join(figroot, "synopsis")
 os.makedirs(syndir, exist_ok=True)
 tuning_stats_synopsis_df = pd.concat(tuning_stats_synopsis, ignore_index=True)
 tuning_stats_synopsis_df.to_csv(join(syndir, f"ABCD_tuning_stats_synopsis_fill_missing.csv"), index=False)
 tuning_stats_synopsis_df.to_pickle(join(syndir, f"ABCD_tuning_stats_synopsis_fill_missing.pkl"))
+
+# %%

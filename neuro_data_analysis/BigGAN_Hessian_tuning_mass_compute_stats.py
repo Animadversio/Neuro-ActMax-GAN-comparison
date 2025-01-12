@@ -135,6 +135,9 @@ for rowi, exprow in tqdm(ExpRecord_Hessian_All.iterrows()):
     tuning_stats_df["stimuli"] = exprow.stimuli
     tuning_stats_df["prefchan"] = exprow.pref_chan
     tuning_stats_df["prefunit"] = exprow.pref_unit
+    tuning_stats_df["prefchan_str"] = prefchan_str
+    tuning_stats_df["prefchan_bsl_mean"] = prefchan_bsl_mean.item()
+    tuning_stats_df["prefchan_bsl_sem"] = prefchan_bsl_sem.item()
     tuning_stats_df.to_csv(join(figdir, f"tuning_curves_stats_df.csv"), index=False)
     tuning_stats_synopsis.append(tuning_stats_df)
 #%%
