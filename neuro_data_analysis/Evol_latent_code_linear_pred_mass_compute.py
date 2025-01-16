@@ -1,10 +1,13 @@
-from neuro_data_analysis.neural_data_lib import load_neural_data, load_img_resp_pairs, load_latent_codes
-from sklearn.linear_model import LinearRegression, RidgeCV
-from sklearn.model_selection import train_test_split
+import os
+import sys
+from os.path import join
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression, RidgeCV
+from sklearn.model_selection import train_test_split
+from neuro_data_analysis.neural_data_lib import load_neural_data, load_img_resp_pairs, load_latent_codes
 
 def train_linear_model(df_img_resp_latent, test_size=0.2, random_state=42, alphas=[0.01, 0.1, 1, 10], projection_matrix=None, X_key="latent_code", y_key="resp"):
     """
@@ -46,7 +49,9 @@ def train_linear_model(df_img_resp_latent, test_size=0.2, random_state=42, alpha
     print(f"Linear model R² score on train set: {train_score:.3f}")
     print(f"Linear model R² score on test set: {test_score:.3f}")
     
-    return model, train_score, test_score
+    return {"model": model, "train_score": train_score, "test_score": test_score, 
+            "X_key": X_key, "X_dim": X.shape[1], "sample_num": y.shape[0], "alpha": model.alpha_}
+
 
 
 def load_and_merge_data(BFEStats, Expi, thread_id=1, stimdrive="S:", verbose=True):
@@ -96,7 +101,7 @@ def load_and_merge_data(BFEStats, Expi, thread_id=1, stimdrive="S:", verbose=Tru
     return df_img_resp_latent
 
 
-
+# Load and preprocess images
 from torchvision.transforms import ToTensor, Resize
 from PIL import Image
 import torch
@@ -134,13 +139,14 @@ def process_images_batch_add_activations(df, caffenet, batch_size=128, layer_idx
         # Process batch
         with torch.no_grad():
             # Forward pass through caffenet up to relu6
-            batch_acts = caffenet.net[:layer_idx](batch)
+            batch_acts = caffenet(batch, preproc=True, output_layer_idx=layer_idx)
             # Store flattened activation vectors
             activations.extend(batch_acts.cpu().numpy().reshape(len(batch_fps), -1))
 
     # Add activations as new column
     df['caffenet_fc6_act'] = activations
     return df
+
 
 
 # load caffenet from 
@@ -191,19 +197,52 @@ df_img_resp_latent_thr1 = load_and_merge_data(BFEStats, Expi, thread_id=1, stimd
 df_img_resp_latent_thr0 = process_images_batch_add_activations(df_img_resp_latent_thr0, caffenet, batch_size=128, )
 df_img_resp_latent_thr1 = process_images_batch_add_activations(df_img_resp_latent_thr1, caffenet, batch_size=128, )
 
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500))
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_hess_top128)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_hess_top256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_hess_null128)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_hess_null256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_rnd256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr0, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), projection_matrix=proj_mat_rnd128)
+# Dictionary to store all results
+results = {
+    'thread0': {},
+    'thread1': {}
+}
 
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500))
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act")
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_hess_top128)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_hess_top256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_hess_null128)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_hess_null256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_rnd256)
-model, train_score, test_score = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 500), X_key="caffenet_fc6_act", projection_matrix=proj_mat_rnd128)
+# Define projection matrices and their names
+projection_configs = [
+    ('full', None),
+    ('hess_top128', proj_mat_hess_top128),
+    ('hess_top256', proj_mat_hess_top256), 
+    ('hess_null128', proj_mat_hess_null128),
+    ('hess_null256', proj_mat_hess_null256),
+    ('rnd256', proj_mat_rnd256),
+    ('rnd128', proj_mat_rnd128)
+]
+
+# Training loop for thread 0
+print("Training models for thread 0 data...")
+for proj_name, proj_matrix in projection_configs:
+    print(f"- Regression on DeePSim latent codes with projection {proj_name} ...")
+    results['thread0']["latent_"+proj_name] = train_linear_model(df_img_resp_latent_thr0, 
+                                                        test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 100), 
+                                                        projection_matrix=proj_matrix)
+
+for proj_name, proj_matrix in projection_configs:
+    print(f"- Regression on DeePSim Caffenet activations with projection {proj_name} ...")
+    results['thread0']["caffenet_fc6_act_"+proj_name] = train_linear_model(df_img_resp_latent_thr0, 
+                                                        test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 100), 
+                                                        projection_matrix=proj_matrix, X_key="caffenet_fc6_act")
+
+# Training loop for thread 1
+print("\nTraining models for thread 1 data...")
+print("- Training linear model on latent_code...")
+results['thread1']["latent_"+'full'] = train_linear_model(df_img_resp_latent_thr1, test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 100))
+# Then train all models with X_key="caffenet_fc6_act"
+for proj_name, proj_matrix in projection_configs[1:]:  # Skip 'full' as we already did it
+    print(f"- Training {proj_name} model on caffenet_fc6_act...")
+    results['thread1']["caffenet_fc6_act_"+proj_name] = train_linear_model(df_img_resp_latent_thr1, 
+                                                        test_size=0.2, random_state=42, alphas=np.logspace(-3, 12, 100), 
+                                                        X_key="caffenet_fc6_act", projection_matrix=proj_matrix )
+
+
+print("\nTraining complete! Results stored in 'results' dictionary")
+print("\nTest scores summary:")
+for thread in ['thread0', 'thread1']:
+    print(f"\n{thread} results:")
+    for proj_name in results[thread]:
+        print(f"{proj_name}: {results[thread][proj_name]['test_score']:.4f}")
