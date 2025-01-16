@@ -435,12 +435,18 @@ class Caffenet(nn.Module):
                 SDnew[name] = W
             self.net.load_state_dict(SDnew)
     
-    def forward(self, x, preproc=False, scale=1.0):
+    def forward(self, x, preproc=False, scale=1.0, output_layer_idx=None):
         if preproc:
             x = x.float() / scale * 255.0
             x = x - RGB_mean.to(x.device)
             x = x[:, [2, 1, 0], :, :]
-        return self.net(x)
+        if output_layer_idx is not None:
+            x = self.net[:output_layer_idx](x)
+        else:
+            x = self.net(x)
+        return x
+
+
 
 
 class multiZupconvGAN(nn.Module):
