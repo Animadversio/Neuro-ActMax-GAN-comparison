@@ -650,3 +650,56 @@ if __name__ == "__main__":
     #%%
     imgfps_arr, resp_arr, bsl_arr, gen_arr = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, stimdrive="S:", output_fmt="arr")
     #%%
+
+
+import re
+import numpy as np
+import pandas as pd
+
+# load the latent codes for all generations. 
+def load_latent_codes(stim_path, thread_id=1, verbose=False):
+    """Load latent codes and metadata from .mat files for a specific thread.
+    
+    Args:
+        stim_path (str): Path to directory containing .mat files
+        thread_id (int): Thread ID to load files for, 0, 1 or None
+        verbose (bool): Whether to print progress information
+        
+    Returns:
+        tuple: (latent_codes_all, image_ids_list_all, gen_vec_all, thread_i_vec_all)
+    """
+    if thread_id is None:
+        mat_files = sorted(glob.glob(os.path.join(stim_path, f"*thread*_code.mat")))
+    else:
+        mat_files = sorted(glob.glob(os.path.join(stim_path, f"*thread{thread_id:03d}_code.mat")))
+    if verbose:
+        print(f"Found {len(mat_files)} .mat files:")
+    
+    latent_codes_all = []
+    image_ids_list_all = []
+    gen_vec_all = []
+    thread_i_vec_all = []
+    
+    for f in mat_files:
+        mat_data = loadmat(f)
+        # parse the file name to get the generation number, using regex
+        block_num = int(re.search(r'block(\d+)_', f).group(1))
+        thread_num = int(re.search(r'_thread(\d+)_', f).group(1))
+        latent_codes = mat_data["codes"]
+        latent_ids = mat_data["ids"]
+        latent_ids_list = [str(val.item()) for val in latent_ids[0]]
+        latent_codes_all.append(latent_codes)
+        image_ids_list_all.extend(latent_ids_list)
+        gen_vec_all.extend([block_num for _ in range(len(latent_ids_list))])
+        thread_i_vec_all.extend([thread_num for _ in range(len(latent_ids_list))])
+
+    latent_codes_all = np.concatenate(latent_codes_all, axis=0)
+    gen_vec_all = np.array(gen_vec_all)
+    thread_i_vec_all = np.array(thread_i_vec_all)
+    
+    if verbose:
+        print("max block num: ", max(gen_vec_all))
+        print("latent_codes_all.shape: ", latent_codes_all.shape) 
+        print("num of images: ", len(image_ids_list_all))
+        
+    return latent_codes_all, image_ids_list_all, gen_vec_all, thread_i_vec_all
