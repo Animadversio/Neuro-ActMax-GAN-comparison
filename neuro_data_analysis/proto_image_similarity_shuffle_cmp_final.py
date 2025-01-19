@@ -3,6 +3,7 @@
 Updated version, doing independent test insteado paired test. fetching non pairs from the whole matrix.
 
 """
+#%%
 import os
 import torch
 import numpy as np
@@ -233,7 +234,9 @@ xsim_tab_df["Expi"] = Expvec
 pkl.dump(xsimmat_col, open(join(savedir, "proto_img_cross_simmat.pkl"), "wb"))
 xsim_tab_df.to_csv(join(savedir, "proto_img_cross_simtab.csv"))
 xsim_tab_df.to_csv(join(tabdir, "proto_img_cross_simtab.csv"))
-#%%
+
+
+#%% Reload pre-computed features
 savedir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSimilarity_summary"
 data = pkl.load(open(join(savedir, "proto_img_features.pkl"), "rb"))
 FC_featvec_col = data["FC_featvec_col"]
@@ -242,23 +245,32 @@ BG_featvec_col = data["BG_featvec_col"]
 #%%
 import seaborn as sns
 def non_diagonal_values(matrix):
-    """ all off-diagonal values, (assuming matrix is not symmetric)
-    For sym metrix, need to do only subdiagonal ..
-
+    """ Get non-diagonal entries from a matrix.
+    For symmetric matrices, returns only subdiagonal entries.
+    For non-symmetric matrices, returns all off-diagonal entries.
+    
     Example:
-        # extract diagonal values from this matrix
+        # extract diagonal values from this matrix 
         paired_xsim = np.diag(xsimmat)
-        # collect all off-diagonal values
+        # collect off-diagonal/subdiagonal values
         unpaired_xsim = non_diagonal_values(xsimmat)
 
-    :param matrix:
-    :return:
+    :param matrix: Square matrix
+    :return: Array containing off-diagonal or subdiagonal elements
     """
     n = matrix.shape[0]
-    non_diagonal = matrix[~np.eye(n, dtype=bool)]
-    return non_diagonal
+    # Test if matrix is symmetric
+    is_symmetric = np.allclose(matrix, matrix.T)
+    
+    if is_symmetric:
+        # For symmetric matrix, get only subdiagonal elements
+        tril_mask = np.tril(np.ones((n,n)), k=-1).astype(bool)
+        return matrix[tril_mask]
+    else:
+        # For non-symmetric matrix, get all off-diagonal elements
+        return matrix[~np.eye(n, dtype=bool)]
 
-
+#%%
 imglabel = "reevol_pix"  #"maxblk"# "reevol_pix"  #"maxblk" # reevol_pix
 featspace = "RNrobust_L4cent"  # L4 dinov2
 # cross similarity matrix
@@ -329,7 +341,88 @@ with open(join(tabdir, "proto_img_similarity_shuffle_cmp_synop.txt"), 'w') as f:
                         if pval < 0.05:
                             print("**")
                 print("\n"+"-"*80)
+#%% non matched pairing within an area vs matched
+
+for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+    for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                    "RNrobust_L3cent", "RNrobust_L4cent",
+                    "RNrobust_L3all", "RNrobust_L4all",
+                    "alex_conv4cent", "alex_conv5cent",
+                    "alex_conv4focus", "alex_conv5focus",
+                    "alex_conv4all", "alex_conv5all",
+                    "vgg_conv4cent", "vgg_conv5cent",
+                    "vgg_conv4focus", "vgg_conv5focus",
+                    "vgg_conv4all", "vgg_conv5all"]:
+        print("Image similarity comparison between paired and unpaired images.")
+        print("Image set: ", imglabel)
+        print("Feature space: ", featspace)
+        xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel + "_" + featspace],
+                                             BG_featvec_col[imglabel + "_" + featspace])
+        xsimmat = xsimmat.cpu().numpy()
+        for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                                    ["Both success", "Any success", "None success", "All"]):
+            label = f"Area matched {sucname}"
+            paired_xsim_cmb = []
+            unpaired_xsim_cmb = []
+            for areamsk, areaname in zip([V1msk, V4msk, ITmsk], ["V1", "V4", "IT"]):
+                expmsk = validmsk & areamsk & sucsmsk
+                paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+                unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+                paired_xsim_cmb.append(paired_xsim)
+                unpaired_xsim_cmb.append(unpaired_xsim)
+            print(label, end="\t")
+            paired_xsim_cmb = np.concatenate(paired_xsim_cmb)
+            unpaired_xsim_cmb = np.concatenate(unpaired_xsim_cmb)
+            tval, pval, tstr = ttest_ind_print(paired_xsim_cmb, unpaired_xsim_cmb, sem=False)
+            if pval < 0.05:
+                print("**")
+
+        print("\n" + "-" * 80)
+
 #%%
+
+from contextlib import redirect_stdout
+with redirect_stdout(open(join(tabdir, "proto_img_similarity_shuffle_cmp_unpaired_within_area_synop.txt"), 'w')):
+    for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+        for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                        "RNrobust_L3cent", "RNrobust_L4cent",
+                        "RNrobust_L3all", "RNrobust_L4all",
+                        "alex_conv4cent", "alex_conv5cent",
+                        "alex_conv4focus", "alex_conv5focus",
+                        "alex_conv4all", "alex_conv5all",
+                        "vgg_conv4cent", "vgg_conv5cent",
+                        "vgg_conv4focus", "vgg_conv5focus",
+                        "vgg_conv4all", "vgg_conv5all"]:
+            print("Image similarity comparison between paired and unpaired images.")
+            print("Image set: ", imglabel)
+            print("Feature space: ", featspace)
+            xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel + "_" + featspace],
+                                                BG_featvec_col[imglabel + "_" + featspace])
+            xsimmat = xsimmat.cpu().numpy()
+            for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                                        ["Both success", "Any success", "None success", "All"]):
+                label = f"Area matched {sucname}"
+                print(label, end="\t")
+                paired_xsim_cmb = []
+                unpaired_xsim_cmb = []
+                for areamsk, areaname in zip([V1msk, V4msk, ITmsk], ["V1", "V4", "IT"]):
+                    expmsk = validmsk & areamsk & sucsmsk
+                    paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+                    unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+                    print(f"per area {areaname}", end="\t")
+                    ttest_ind_print(paired_xsim, unpaired_xsim)
+                    paired_xsim_cmb.append(paired_xsim)
+                    unpaired_xsim_cmb.append(unpaired_xsim)
+                paired_xsim_cmb = np.concatenate(paired_xsim_cmb)
+                unpaired_xsim_cmb = np.concatenate(unpaired_xsim_cmb)
+                print("All area", end="\t")
+                tval, pval, tstr = ttest_ind_print(paired_xsim_cmb, unpaired_xsim_cmb, sem=False)
+                if pval < 0.05:
+                    print("**")
+
+            print("\n" + "-" * 80)
+    
+
 #%%
 for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
                   "alex_conv4focus", "alex_conv5focus",
@@ -432,9 +525,98 @@ for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
             plt.show()
         # break
         # print("\n"+"-"*80)
+
+#%% Paired and unpaired within area
+
+figdir = r"E:\OneDrive - Harvard University\Manuscript_BigGAN\Figures\ProtoSimilarity_summary"
+for featspace in ["RNrobust_L3focus", "RNrobust_L4focus",
+                  "alex_conv4focus", "alex_conv5focus",
+                    "vgg_conv4focus", "vgg_conv5focus",
+                  #
+                  # "RNrobust_L3cent", "RNrobust_L4cent",
+                  # "RNrobust_L3all", "RNrobust_L4all",
+                  # "alex_conv4cent",
+                  # "alex_conv4focus", "alex_conv5focus",
+                  # "alex_conv4all", "alex_conv5all",
+                  # "vgg_conv4cent", "vgg_conv5cent",
+                  # "vgg_conv4focus", "vgg_conv5focus",
+                  # "vgg_conv4all", "vgg_conv5all"
+                  ]:
+                  # "dinov2"]:
+    for imglabel in ["reevol_G", "reevol_pix", "maxblk"]:
+        print("Image similarity comparison between paired and unpaired images.")
+        print("Image set: ", imglabel)
+        print("Feature space: ", featspace)
+        xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel+"_"+featspace],
+                                             BG_featvec_col[imglabel+"_"+featspace])
+        xsimmat = xsimmat.cpu().numpy()
+        areamsk, areaname = True, "All area"
+        # sucsmsk, sucname = bothsucmsk, "Both success"
+        sucsmsk, sucname = True, "All"
+        label = f"Area matched pair {sucname}"
+        for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                                    ["Both success", "Any success", "None success", "All"]):
+            paired_xsim_cmb = []
+            paired_label = []
+            unpaired_xsim_cmb = []
+            unpaired_label = []
+            for areamsk, areaname in zip([V1msk, V4msk, ITmsk, ], ["V1", "V4", "IT", ]):
+                expmsk = validmsk & areamsk & sucsmsk
+                paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+                unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+                paired_xsim_cmb.append(paired_xsim)
+                paired_label.extend([areaname]*len(paired_xsim))
+                unpaired_xsim_cmb.append(unpaired_xsim)
+                unpaired_label.extend([areaname]*len(unpaired_xsim))
+            print(label, end="\t")
+            paired_xsim_cmb = np.concatenate(paired_xsim_cmb)
+            unpaired_xsim_cmb = np.concatenate(unpaired_xsim_cmb)
+            paired_df = pd.DataFrame({"value": paired_xsim_cmb, "pairing": ["paired"] * len(paired_xsim_cmb), "area": paired_label})
+            unpaired_df = pd.DataFrame({"value": unpaired_xsim_cmb, "pairing": ["unpaired"] * len(unpaired_xsim_cmb), "area": unpaired_label})
+            df2plot = pd.concat([paired_df, unpaired_df])
+            tval, pval, tstr = ttest_ind_print(paired_xsim_cmb, unpaired_xsim_cmb, sem=False)
+            # strip plot for paired and unpaired
+            figh = plt.figure(figsize=[5, 6])
+            # sns.violinplot(data=df2plot, x="pairing", y="value", inner="box", alpha=0.2, width=0.3)
+            # sns.stripplot(data=df2plot, x="pairing", y="value", hue="area", jitter=0.2,
+            #               alpha=0.5, order=["paired", "unpaired"], palette="Set2", dodge=True)
+            sns.violinplot(
+                data=df2plot,
+                x="pairing", y="value", hue="area",
+                hue_order=["IT", "V4", "V1", ],
+                alpha=0.3, width=1.0,
+                inner="box",          # No box/points inside the violin
+                cut=0,               # Keep violin tails from stretching too far
+                scale="width",       # Makes widths comparable
+                palette=["C0", "C1", "C2", ],
+                dodge=True
+            )
+            sns.stripplot(
+                data=df2plot.query("pairing == 'paired'"),
+                x="pairing", y="value", hue="area",
+                hue_order=["IT", "V4", "V1", ],
+                size=4, jitter=0.2, alpha=0.6,
+                dodge=True,
+                palette=["C0", "C1", "C2", ],
+                order=["paired", ]
+            )
+            # You may need to handle the legend so it doesn't double-list entries:
+            # plt.legend([],[], frameon=False)
+            plt.title(f"{imglabel} {featspace}\nPaired vs unpaired within area | {sucname}, \n"+\
+                     tstr.replace('t','\nt'))
+                      # f" tval={tval:.3f}, pval={pval:.1e} N={expmsk.sum()}")
+            plt.ylabel("Cosine similarity")
+            saveallforms(figdir, f"{imglabel}_{featspace}_{sucname}_allarea_matched_within_paired_vs_unpaired", figh)
+            plt.show()
+            # raise Exception("stop")
+
+#%%
+df2plot.groupby(["pairing", "area"]).count()
 #%%
 df2plot = pd.DataFrame({"value": np.concatenate([paired_xsim, unpaired_xsim]),"pairing": ["paired"]*len(paired_xsim)+["unpaired"]*len(unpaired_xsim)})
 plt.figure(figsize=[5, 6])
+
+
 sns.violinplot(data=df2plot, x="pairing", y="value", inner="box")
 plt.show()
 #%%
@@ -447,7 +629,42 @@ sns.heatmap(xsimmat)
 plt.axis("equal")
 plt.show()
 
+#%%
+imglabel = "maxblk"
+# imglabel = "reevol_pix"
+featspace = "RNrobust_L4focus"
+print("Image similarity comparison between paired and unpaired images.")
+print("Image set: ", imglabel)
+print("Feature space: ", featspace)
 
+xsimmat = pairwise_cosine_similarity(FC_featvec_col[imglabel+"_"+featspace],
+                                        BG_featvec_col[imglabel+"_"+featspace])
+xsimmat = xsimmat.cpu().numpy()
+for sucsmsk, sucname in zip([bothsucmsk, anysucsmsk, nonemsk, True],
+                            ["Both success", "Any success", "None success", "All"]):
+    label = f"Area matched pair {sucname}"
+    print(label, end="\n")
+    paired_xsim_cmb = []
+    paired_label = []
+    unpaired_xsim_cmb = []
+    unpaired_label = []
+    for areamsk, areaname in zip([V1msk, V4msk, ITmsk, ], ["V1", "V4", "IT", ]):
+        expmsk = validmsk & areamsk & sucsmsk
+        paired_xsim = np.diag(xsimmat[expmsk, :][:, expmsk])
+        unpaired_xsim = non_diagonal_values(xsimmat[expmsk, :][:, expmsk])
+        print(f"per area {areaname}", end="\t")
+        ttest_ind_print(paired_xsim, unpaired_xsim)
+        paired_xsim_cmb.append(paired_xsim)
+        paired_label.extend([areaname]*len(paired_xsim))
+        unpaired_xsim_cmb.append(unpaired_xsim)
+        unpaired_label.extend([areaname]*len(unpaired_xsim))
+    paired_xsim_cmb = np.concatenate(paired_xsim_cmb)
+    unpaired_xsim_cmb = np.concatenate(unpaired_xsim_cmb)
+    paired_df = pd.DataFrame({"value": paired_xsim_cmb, "pairing": ["paired"] * len(paired_xsim_cmb), "area": paired_label})
+    unpaired_df = pd.DataFrame({"value": unpaired_xsim_cmb, "pairing": ["unpaired"] * len(unpaired_xsim_cmb), "area": unpaired_label})
+    df2plot = pd.concat([paired_df, unpaired_df])
+    print(f"all area {sucname}", end="\t")
+    tval, pval, tstr = ttest_ind_print(paired_xsim_cmb, unpaired_xsim_cmb, sem=False)
 
 
 
