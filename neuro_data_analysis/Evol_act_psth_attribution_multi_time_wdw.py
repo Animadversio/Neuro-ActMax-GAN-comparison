@@ -55,8 +55,8 @@ def compute_center_of_mass(arr, time_vec, axis=-1):
     CoM_arr = (arr * time_vec).sum(axis=axis) / arr.sum(axis=axis)
     return CoM_arr
 
-plt.switch_backend("agg")
-plt.switch_backend("module://matplotlib_inline.backend_inline")
+# plt.switch_backend("agg")
+# plt.switch_backend("module://matplotlib_inline.backend_inline")
 # plt.switch_backend("module://backend_interagg")
 #%%
 # get the block of max activation in the evolution and compare it to the first block
@@ -72,7 +72,7 @@ CoM_last_block_tsr = []
 CoM_init_block_tsr = []
 CoM_max_block_tsr = []
 stat_dict = []
-bin_size = 10 # 5 10 20 25 50 
+bin_size = 5 # 5 10 20 25 50 
 bin_str = f"{bin_size}ms_wdw"
 for thread in range(2):
     mean_act_arr_thread = psth_extrap_arr[:, :, thread, 50:].mean(axis=-1)
@@ -183,8 +183,172 @@ for thresh in [0.01, 0.05]:
 
                 print("")
 
+
+
 #%%
+from statsmodels.stats.multitest import fdrcorrection
+thresh = 0.01  # 0.01
+for thresh in [0.01, 0.05]:
+    anysucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
+    bothsucmsk = (meta_df.p_maxinit_0 < thresh) & (meta_df.p_maxinit_1 < thresh)
+    FCsucsmsk = (meta_df.p_maxinit_0 < thresh)
+    BGsucsmsk = (meta_df.p_maxinit_1 < thresh)
+    #%
+    figh, axs = plt.subplots(1, 2, figsize=[7, 3.5], sharex=True, sharey=True)
+    time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
+    for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
+        ax = axs[i]
+        mask = area_mask & validmsk & bothsucmsk
+        diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
+        diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
+        ax.plot(time_ticks, diff_attrib[:, 0], color='b')
+        ax.fill_between(time_ticks,
+                        diff_attrib[:, 0] - diff_attrib_sem[:, 0],
+                        diff_attrib[:, 0] + diff_attrib_sem[:, 0], color='b', alpha=0.3)
+        ax.plot(time_ticks, diff_attrib[:, 1], color='r')
+        ax.fill_between(time_ticks,
+                        diff_attrib[:, 1] - diff_attrib_sem[:, 1],
+                        diff_attrib[:, 1] + diff_attrib_sem[:, 1], color='r', alpha=0.3)
+        pvals = []
+        tvals = []
+        for t in range(diff_attrib_norm_bin_tsr[mask].shape[1]):
+            tval, p = ttest_rel(diff_attrib_norm_bin_tsr[mask][:,t,0], 
+                                diff_attrib_norm_bin_tsr[mask][:,t,1])
+            pvals.append(p)
+            tvals.append(tval)
+        pvals = np.array(pvals)
+        tvals = np.array(tvals)
+        signif_orig = pvals < 0.05
+        fdr_reject, pvals_fdr = fdrcorrection(pvals, alpha=0.05)
+        signif_fdr = fdr_reject #pvals_fdr < 0.05
+        for signif, signif_str, y_offset in zip([signif_orig, signif_fdr], ["orig", "fdr"], [0, 0.1]):
+            annot_y = diff_attrib.max() * (1.15 + y_offset)
+            ax.plot(time_ticks[(tvals > 0) & signif], np.ones(np.sum((tvals > 0) & signif))*annot_y, 'b.', markersize=4)
+            ax.plot(time_ticks[(tvals < 0) & signif], np.ones(np.sum((tvals < 0) & signif))*annot_y, 'r.', markersize=4)
+        ax.axhline(0, color='k', ls='--', lw=1)
+        ax.set_title(visual_area + f" N={mask.sum()}")
+        ax.set_xlabel("Time (ms)")
+        ax.set_ylabel("Fraction of activation difference")
+        # ax.set_ylim([-0.1, 0.1])
+        ax.set_xlim([0, 200])
+    plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows [Evol succ criterion p < {thresh}]")
+    plt.tight_layout()
+    saveallforms(figdir, f"act_increase_attrib_bothsucs_thr{thresh}_{bin_str}", figh)
+    plt.show()
+
+    #%
+    thread_colors = ['b', 'r']
+    figh, axs = plt.subplots(1, 3, figsize=[9, 3.5], sharex=True, sharey=True)
+    time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
+    for i, (visual_area, area_mask) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4msk, ITmsk])):
+        ax = axs[i]
+        diff_attrib_both = np.zeros((2, diff_attrib_norm_bin_tsr.shape[1]))
+        for thread, GANname, thread_sucsmsk in zip([0, 1],
+                                                ["DeePSim", "BigGAN"],
+                                                [FCsucsmsk, BGsucsmsk]):
+
+            mask = area_mask & validmsk & thread_sucsmsk
+            diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
+            diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
+            diff_attrib_both[thread, :] = diff_attrib[:, thread]
+            ax.plot(time_ticks, diff_attrib[:, thread], color=thread_colors[thread],
+                    label=f"{GANname} N={mask.sum()}")
+            ax.fill_between(time_ticks,
+                            diff_attrib[:, thread] - diff_attrib_sem[:, thread],
+                            diff_attrib[:, thread] + diff_attrib_sem[:, thread], color=thread_colors[thread], alpha=0.3)
+        pvals = []
+        tvals = []
+        for t in range(diff_attrib_norm_bin_tsr.shape[1]):
+            tval, p = ttest_ind(diff_attrib_norm_bin_tsr[area_mask & validmsk & FCsucsmsk][:,t,0], 
+                                diff_attrib_norm_bin_tsr[area_mask & validmsk & BGsucsmsk][:,t,1])
+            pvals.append(p)
+            tvals.append(tval)
+        
+        pvals = np.array(pvals)
+        tvals = np.array(tvals)
+        signif_orig = pvals < 0.05
+        fdr_reject, pvals_fdr = fdrcorrection(pvals, alpha=0.05)
+        signif_fdr = fdr_reject # pvals_fdr < 0.05
+        for signif, signif_str, y_offset in zip([signif_orig, signif_fdr], ["orig", "fdr"], [0, 0.1]):
+            annot_y = diff_attrib_both.max() * (1.15 + y_offset)
+            ax.plot(time_ticks[(tvals > 0) & signif], np.ones(np.sum((tvals > 0) & signif))*annot_y, 'b.', markersize=4)
+            ax.plot(time_ticks[(tvals < 0) & signif], np.ones(np.sum((tvals < 0) & signif))*annot_y, 'r.', markersize=4)
+        
+        ax.axhline(0, color='k', ls='--', lw=1)
+        ax.set_title(visual_area)
+        ax.set_xlabel("Time (ms)")
+        ax.set_ylabel("Fraction of activation difference")
+        ax.set_xlim([0, 200])
+        # ax.set_ylim([-0.05, 0.30])
+        ax.legend(loc="lower right")
+    for ax in axs:
+        ax.relim()           # Re-compute the data limits
+        ax.margins(y=0.15)
+        ax.autoscale_view()  # Update the view to the new limits
+    plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows [Evol succ criterion p < {thresh}]")
+    plt.tight_layout()
+    saveallforms(figdir, f"act_increase_attrib_threadsucs_3area_thr{thresh}_{bin_str}", figh)
+    plt.show()
+
+
+    #%
+    thread_colors = ['b', 'r']
+    figh, axs = plt.subplots(1, 2, figsize=[6, 3.5], sharex=True, sharey=True)
+    time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
+    for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
+        ax = axs[i]
+        diff_attrib_both = np.zeros((2, diff_attrib_norm_bin_tsr.shape[1]))
+        for thread, GANname, thread_sucsmsk in zip([0, 1],
+                                                ["DeePSim", "BigGAN"],
+                                                [FCsucsmsk, BGsucsmsk]):
+            mask = area_mask & validmsk & thread_sucsmsk
+            diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
+            diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
+            diff_attrib_both[thread, :] = diff_attrib[:, thread]
+            ax.plot(time_ticks, diff_attrib[:, thread], color=thread_colors[thread],
+                    label=f"{GANname} N={mask.sum()}")
+            ax.fill_between(time_ticks,
+                            diff_attrib[:, thread] - diff_attrib_sem[:, thread],
+                            diff_attrib[:, thread] + diff_attrib_sem[:, thread], color=thread_colors[thread], alpha=0.3)
+        
+        pvals = []
+        tvals = []
+        for t in range(diff_attrib_norm_bin_tsr.shape[1]):
+            tval, p = ttest_ind(diff_attrib_norm_bin_tsr[area_mask & validmsk & FCsucsmsk][:,t,0], 
+                                diff_attrib_norm_bin_tsr[area_mask & validmsk & BGsucsmsk][:,t,1])
+            pvals.append(p)
+            tvals.append(tval)
+        
+        pvals = np.array(pvals)
+        tvals = np.array(tvals)
+        signif_orig = pvals < 0.05
+        fdr_reject, pvals_fdr = fdrcorrection(pvals, alpha=0.05)
+        signif_fdr = fdr_reject # pvals_fdr < 0.05
+        for signif, signif_str, y_offset in zip([signif_orig, signif_fdr], ["orig", "fdr"], [0, 0.1]):
+            annot_y = diff_attrib_both.max() * (1.15 + y_offset)
+            ax.plot(time_ticks[(tvals > 0) & signif], np.ones(np.sum((tvals > 0) & signif))*annot_y, 'b.', markersize=4)
+            ax.plot(time_ticks[(tvals < 0) & signif], np.ones(np.sum((tvals < 0) & signif))*annot_y, 'r.', markersize=4)
+        
+        ax.axhline(0, color='k', ls='--', lw=1)
+        ax.set_title(visual_area)
+        ax.set_xlabel("Time (ms)")
+        ax.set_ylabel("Fraction of activation difference")
+        ax.set_xlim([0, 200])
+        # ax.set_ylim([-0.03, 0.19])
+        ax.legend(loc="lower right")
+    for ax in axs:
+        ax.relim()           # Re-compute the data limits
+        ax.margins(y=0.15)
+        ax.autoscale_view()  # Update the view to the new limits
+    plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows [Evol succ criterion p < {thresh}]")
+    plt.tight_layout()
+    saveallforms(figdir, f"act_increase_attrib_threadsucs_thr{thresh}_{bin_str}", figh)
+    plt.show()
+# %%
+#%%
+
 """Systematic plot output of different center of mass between DeePSim and BigGAN"""
+
 for thresh in [0.01, 0.05]:  # 0.01
     anysucsmsk = (meta_df.p_maxinit_0 < thresh) | (meta_df.p_maxinit_1 < thresh)
     bothsucmsk = (meta_df.p_maxinit_0 < thresh) & (meta_df.p_maxinit_1 < thresh)
@@ -234,100 +398,3 @@ for i, (visual_area, mask1) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
 # plt.tight_layout()
 saveallforms(figdir, f"scatter_PSTH_Center_of_Mass_bothsuc_{bin_str}", figh)
 plt.show()
-
-#%%
-figh, axs = plt.subplots(1, 2, figsize=[7, 3.5], sharex=True, sharey=True)
-time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
-for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
-    ax = axs[i]
-    mask = area_mask & validmsk & bothsucmsk
-    diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
-    diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
-    ax.plot(time_ticks, diff_attrib[:, 0], color='b')
-    ax.fill_between(time_ticks,
-                    diff_attrib[:, 0] - diff_attrib_sem[:, 0],
-                    diff_attrib[:, 0] + diff_attrib_sem[:, 0], color='b', alpha=0.3)
-    ax.plot(time_ticks, diff_attrib[:, 1], color='r')
-    ax.fill_between(time_ticks,
-                    diff_attrib[:, 1] - diff_attrib_sem[:, 1],
-                    diff_attrib[:, 1] + diff_attrib_sem[:, 1], color='r', alpha=0.3)
-    ax.axhline(0, color='k', ls='--', lw=1)
-    # ax.fill_between(np.arange(0, 200), diff_attrib.mean(axis=0) - diff_attrib_sem, diff_attrib.mean(axis=0) + diff_attrib_sem, color='r', alpha=0.3)
-    ax.set_title(visual_area + f" N={mask.sum()}")
-    ax.set_xlabel("Time (ms)")
-    ax.set_ylabel("Fraction of activation difference")
-    # ax.set_ylim([-0.1, 0.1])
-    ax.set_xlim([0, 200])
-plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
-plt.tight_layout()
-saveallforms(figdir, f"act_increase_attrib_bothsucs_thr005_{bin_str}", figh)
-plt.show()
-
-
-#%%
-thread_colors = ['b', 'r']
-figh, axs = plt.subplots(1, 3, figsize=[9, 3.5], sharex=True, sharey=True)
-time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
-for i, (visual_area, area_mask) in enumerate(zip(["V1", "V4", "IT"], [V1msk, V4msk, ITmsk])):
-    ax = axs[i]
-    for thread, GANname, thread_sucsmsk in zip([0, 1],
-                                               ["DeePSim", "BigGAN"],
-                                               [FCsucsmsk, BGsucsmsk]):
-        mask = area_mask & validmsk & thread_sucsmsk
-        diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
-        diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
-        ax.plot(time_ticks, diff_attrib[:, thread], color=thread_colors[thread],
-                label=f"{GANname} N={mask.sum()}")
-        ax.fill_between(time_ticks,
-                        diff_attrib[:, thread] - diff_attrib_sem[:, thread],
-                        diff_attrib[:, thread] + diff_attrib_sem[:, thread], color=thread_colors[thread], alpha=0.3)
-    ax.axhline(0, color='k', ls='--', lw=1)
-    ax.set_title(visual_area)
-    ax.set_xlabel("Time (ms)")
-    ax.set_ylabel("Fraction of activation difference")
-    ax.set_xlim([0, 200])
-    # ax.set_ylim([-0.05, 0.30])
-    ax.legend()
-for ax in axs:
-    ax.relim()           # Re-compute the data limits
-    ax.margins(y=0.15)
-    ax.autoscale_view()  # Update the view to the new limits
-plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
-plt.tight_layout()
-saveallforms(figdir, f"act_increase_attrib_threadsucs_3area_thr005_{bin_str}", figh)
-plt.show()
-
-
-#%%
-thread_colors = ['b', 'r']
-figh, axs = plt.subplots(1, 2, figsize=[6, 3.5], sharex=True, sharey=True)
-time_ticks = np.arange(0, 200, bin_size) + bin_size / 2
-for i, (visual_area, area_mask) in enumerate(zip(["V4", "IT"], [V4msk, ITmsk])):
-    ax = axs[i]
-    for thread, GANname, thread_sucsmsk in zip([0, 1],
-                                               ["DeePSim", "BigGAN"],
-                                               [FCsucsmsk, BGsucsmsk]):
-        mask = area_mask & validmsk & thread_sucsmsk
-        diff_attrib = diff_attrib_norm_bin_tsr[mask].mean(axis=0)
-        diff_attrib_sem = diff_attrib_norm_bin_tsr[mask].std(axis=0) / np.sqrt(mask.sum())
-        ax.plot(time_ticks, diff_attrib[:, thread], color=thread_colors[thread],
-                label=f"{GANname} N={mask.sum()}")
-        ax.fill_between(time_ticks,
-                        diff_attrib[:, thread] - diff_attrib_sem[:, thread],
-                        diff_attrib[:, thread] + diff_attrib_sem[:, thread], color=thread_colors[thread], alpha=0.3)
-    ax.axhline(0, color='k', ls='--', lw=1)
-    ax.set_title(visual_area)
-    ax.set_xlabel("Time (ms)")
-    ax.set_ylabel("Fraction of activation difference")
-    ax.set_xlim([0, 200])
-    # ax.set_ylim([-0.03, 0.30])
-    ax.legend()
-for ax in axs:
-    ax.relim()           # Re-compute the data limits
-    ax.margins(y=0.15)
-    ax.autoscale_view()  # Update the view to the new limits
-plt.suptitle(f"Activation increase attributed to different {bin_size}ms time windows")
-plt.tight_layout()
-saveallforms(figdir, f"act_increase_attrib_threadsucs_thr005_{bin_str}", figh)
-plt.show()
-# %%

@@ -2,7 +2,7 @@
 Devoted to compare the trajectory of BigGAN vs DeePSim, see how many blocks can BigGAN surpass DeePSim.
 Specifically, for different time window of the neuronal response.
 """
-
+#%%
 import os
 import torch
 import seaborn as sns
@@ -121,12 +121,24 @@ for rsp_wdw in [range(0, 25), range(25, 50), range(50, 75), range(75, 100),
         saveallforms([outdir, figdir], f"maxnorm_resp_traj_{commonmsk_str}_area_sep_{wdwstr}", figh=figh)
         plt.show()
 
-#%% Reorganize
+#%% Reorganize, synopsis plot
 # wdw_col_str = "25ms_wdw"
 # rsp_wdws = [range(50, 75), range(75, 100), range(100, 125),
 #             range(125, 150), range(150, 175), range(175, 200)]
-wdw_col_str = "50ms_wdw"
-rsp_wdws = [range(0, 50), range(50, 100), range(100, 150), range(150, 200),]
+# wdw_col_str = "50ms_wdw"
+# rsp_wdws = [range(0, 50), range(50, 100), range(100, 150), range(150, 200),]
+
+
+# wdw_col_str = "10ms_wdw"
+# rsp_wdws = [range(0, 10), range(10, 20), range(20, 30), range(30, 40),
+#             range(40, 50), range(50, 60), range(60, 70), range(70, 80),
+#             range(80, 90), range(90, 100), range(100, 110), range(110, 120),
+#             range(120, 130), range(130, 140), range(140, 150), range(150, 160),
+#             range(160, 170), range(170, 180), range(180, 190), range(190, 200),]
+wdw_col_str = "20ms_wdw"
+rsp_wdws = [range(0, 20), range(20, 40), range(40, 60), range(60, 80),
+            range(80, 100), range(100, 120), range(120, 140), range(140, 160),
+            range(160, 180), range(180, 200),]
 commonmsk, commonmsk_str, commonmsk_title_str = (validmsk & bothsucsmsk,
                                                  "Valid & Both Success",
                                                  "valid_bothsucc")
