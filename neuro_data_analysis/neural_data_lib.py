@@ -503,6 +503,116 @@ def extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=range(50, 200)):
     return resp_col, meta_df
 
 
+def extract_all_evol_trajectory_dyna_multiwindow_nostats(BFEStats, rsp_wdws=[range(50, 200), range(0, 45)]):
+    """
+    Extract the evolution trajectory of all the experiments in the BFEStats list into
+    an dictionary of arrays. and a meta data dataframe
+    Here, t stats are not calculated.
+
+    Examples:
+        _, BFEStats = load_neural_data()
+        rsp_wdw = range(50, 200)
+        resp_col, meta_df = extract_all_evol_trajectory_dyna(BFEStats, rsp_wdw=rsp_wdw)
+        resp_extrap_arr, extrap_mask_arr, max_len = pad_resp_traj(resp_col)
+        Amsk, Bmsk, V1msk, V4msk, ITmsk, \
+            length_msk, spc_msk, sucsmsk, \
+            bsl_unstable_msk, bsl_stable_msk, validmsk = get_all_masks(meta_df)
+
+    :param BFEStats:
+    :return:
+        resp_col : OrderedDict of 3d array, each array is a
+                    ( generation x thread [mean0, mean1, sem0, sem1, bsl_mean0, bsl_mean1]  x time )
+                    key is the Expi
+        meta_df : DataFrame of meta data, each row is a experiment. Including t test stats.
+    """
+    # resp_col = OrderedDict()
+    resp_col_multi_wdw = [OrderedDict() for _ in rsp_wdws]
+    meta_col = OrderedDict()
+    #%
+    for Expi in range(1, len(BFEStats) + 1):
+        S = BFEStats[Expi - 1]
+        if S["evol"] is None:
+            continue
+        expstr = get_expstr(BFEStats, Expi)
+        print(expstr)
+        Animal, expdate = parse_meta(S)
+        ephysFN = S["meta"]['ephysFN']
+        prefchan = int(S['evol']['pref_chan'][0])
+        prefunit = int(S['evol']['unit_in_pref_chan'][0])
+        visual_area = area_mapping(prefchan, Animal, expdate)
+        spacenames = S['evol']['space_names']
+        space1 = spacenames[0] if isinstance(spacenames[0], str) else spacenames[0][0]
+        space2 = spacenames[1] if isinstance(spacenames[1], str) else spacenames[1][0]
+        
+        for wdwi, rsp_wdw in enumerate(rsp_wdws):
+            # load the evolution trajectory of each pair
+            resp_arr0, bsl_arr0, gen_arr0, _, _, _ = extract_evol_activation_array(S, 0, rsp_wdw=rsp_wdw)
+            resp_arr1, bsl_arr1, gen_arr1, _, _, _ = extract_evol_activation_array(S, 1, rsp_wdw=rsp_wdw)
+            # if the lAST BLOCK has < 10 images, in either thread, then remove it
+            if len(resp_arr0[-1]) < 10 or len(resp_arr1[-1]) < 10:
+                resp_arr0 = resp_arr0[:-1]
+                resp_arr1 = resp_arr1[:-1]
+                bsl_arr0 = bsl_arr0[:-1]
+                bsl_arr1 = bsl_arr1[:-1]
+                gen_arr0 = gen_arr0[:-1]
+                gen_arr1 = gen_arr1[:-1]
+
+            resp_m_traj_0 = np.array([resp.mean() for resp in resp_arr0])
+            resp_m_traj_1 = np.array([resp.mean() for resp in resp_arr1])
+            resp_sem_traj_0 = np.array([sem(resp) for resp in resp_arr0])
+            resp_sem_traj_1 = np.array([sem(resp) for resp in resp_arr1])
+            bsl_m_traj_0 = np.array([bsl.mean() for bsl in bsl_arr0])
+            bsl_m_traj_1 = np.array([bsl.mean() for bsl in bsl_arr1])
+            # stack the trajectories together
+            resp_bunch = np.stack([resp_m_traj_0, resp_m_traj_1,
+                                resp_sem_traj_0, resp_sem_traj_1,
+                                bsl_m_traj_0, bsl_m_traj_1, ], axis=1)
+            resp_col_multi_wdw[wdwi][Expi] = resp_bunch
+
+
+        # test the successfulness of the evolution
+        # ttest between the last two blocks and the first two blocks
+        # t_endinit_0, p_endinit_0 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr0[:2]))
+        # t_endinit_1, p_endinit_1 = ttest_ind(np.concatenate(resp_arr1[-2:]), np.concatenate(resp_arr1[:2]))
+        # # ttest between the max two blocks and the first two blocks
+        # max_id0 = np.argmax(resp_m_traj_0)
+        # max_id0 = np.argmax(resp_m_traj_0)
+        # max_id0 = max_id0 if max_id0 < len(resp_arr0) - 2 else len(resp_arr0) - 3
+        # t_maxinit_0, p_maxinit_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0 + 2]),
+        #                                      np.concatenate(resp_arr0[:2]))
+        # t_maxend_0, p_maxend_0 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0 + 2]),
+        #                                    np.concatenate(resp_arr0[-2:]))
+        # max_id1 = np.argmax(resp_m_traj_1)
+        # max_id1 = max_id1 if max_id1 < len(resp_arr1) - 2 else len(resp_arr1) - 3
+        # t_maxinit_1, p_maxinit_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1 + 2]),
+        #                                      np.concatenate(resp_arr1[:2]))
+        # t_maxend_1, p_maxend_1 = ttest_ind(np.concatenate(resp_arr1[max_id1:max_id1 + 2]),
+        #                                    np.concatenate(resp_arr1[-2:]))
+
+        # t_FCBG_init_01, p_FCBG_init_01 = ttest_ind(np.concatenate(resp_arr0[:2]), np.concatenate(resp_arr1[:2]))
+        # t_FCBG_end_01, p_FCBG_end_01 = ttest_ind(np.concatenate(resp_arr0[-2:]), np.concatenate(resp_arr1[-2:])) # fixed June13th
+        # t_FCBG_max_01, p_FCBG_max_01 = ttest_ind(np.concatenate(resp_arr0[max_id0:max_id0+2]), np.concatenate(resp_arr1[max_id1:max_id1+2]))
+
+        # save the meta data
+        meta_dict = edict(Animal=Animal, expdate=expdate, ephysFN=ephysFN, prefchan=prefchan, prefunit=prefunit,
+                          visual_area=visual_area, space1=space1, space2=space2, blockN=len(resp_arr0))
+        # stat_dict = edict(t_endinit_0=t_endinit_0, p_endinit_0=p_endinit_0,
+        #                 t_endinit_1=t_endinit_1, p_endinit_1=p_endinit_1,
+        #                 t_maxinit_0=t_maxinit_0, p_maxinit_0=p_maxinit_0,
+        #                 t_maxinit_1=t_maxinit_1, p_maxinit_1=p_maxinit_1,
+        #                 t_maxend_0=t_maxend_0, p_maxend_0=p_maxend_0,
+        #                 t_maxend_1=t_maxend_1, p_maxend_1=p_maxend_1,
+        #                 t_FCBG_end_01=t_FCBG_end_01, p_FCBG_end_01=p_FCBG_end_01,
+        #                 t_FCBG_max_01=t_FCBG_max_01, p_FCBG_max_01=p_FCBG_max_01,
+        #                 t_FCBG_init_01=t_FCBG_init_01, p_FCBG_init_01=p_FCBG_init_01,)
+        # meta_dict.update(stat_dict)
+
+        meta_col[Expi] = meta_dict
+
+    meta_df = pd.DataFrame.from_dict(meta_col, orient="index")
+    return resp_col_multi_wdw, meta_df
+
+
 def pad_resp_traj(resp_col):
     """
     Pad the response trajectories to the same length by extrapolating the last block with the mean of last two blocks
@@ -641,15 +751,6 @@ def pad_psth_traj(psth_col):
     #       values order: psth_m_traj_0, psth_m_traj_1, psth_sem_traj_0, psth_sem_traj_1
     # extrap_mask_arr: n_exp x n_blocks
     return psth_extrap_arr, extrap_mask_arr, max_len
-#%%
-if __name__ == "__main__":
-    BFEStats_merge, BFEStats = load_neural_data()
-    #%%
-    Expi = 12
-    imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, stimdrive="S:", output_fmt="vec")
-    #%%
-    imgfps_arr, resp_arr, bsl_arr, gen_arr = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, stimdrive="S:", output_fmt="arr")
-    #%%
 
 
 import re
@@ -703,3 +804,14 @@ def load_latent_codes(stim_path, thread_id=1, verbose=False):
         print("num of images: ", len(image_ids_list_all))
         
     return latent_codes_all, image_ids_list_all, gen_vec_all, thread_i_vec_all
+
+
+#%%
+if __name__ == "__main__":
+    BFEStats_merge, BFEStats = load_neural_data()
+    #%%
+    Expi = 12
+    imgfps, resp_vec, bsl_vec, gen_vec = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=0, stimdrive="S:", output_fmt="vec")
+    #%%
+    imgfps_arr, resp_arr, bsl_arr, gen_arr = load_img_resp_pairs(BFEStats, Expi, "Evol", thread=1, stimdrive="S:", output_fmt="arr")
+    #%%
