@@ -278,6 +278,28 @@ def extract_evol_activation_array(S, thread, rsp_wdw=range(50, 200), bsl_wdw=ran
     return resp_arr, bsl_arr, gen_arr, resp_vec, bsl_vec, gen_vec
 
 
+def extract_natref_activation_array(S, thread, rsp_wdw=range(50, 200), bsl_wdw=range(0, 45)):
+    psth_thread = S["ref"]["psth"][thread]
+    imgidx_thread = S["ref"]["idx_seq"][thread]
+    resp_arr = []
+    bsl_arr = []
+    imgidx_arr = []
+    gen_arr = []
+    for blocki in range(len(psth_thread)):
+        psth_arr = _format_psth_arr(psth_thread[blocki])  # time x images
+        resp_arr.append(psth_arr[rsp_wdw, :].mean(axis=0))
+        bsl_arr.append(psth_arr[bsl_wdw, :].mean(axis=0))
+        idx_arr = _format_idx_arr(imgidx_thread[blocki])
+        imgidx_arr.append(idx_arr)
+        gen_arr.append((blocki + 1) * np.ones_like(idx_arr))
+
+    resp_vec = np.concatenate(resp_arr, axis=0)
+    bsl_vec = np.concatenate(bsl_arr, axis=0)
+    imgidx_vec = np.concatenate(imgidx_arr, axis=0)
+    gen_vec = np.concatenate(gen_arr, axis=0)
+    return resp_arr, bsl_arr, gen_arr, resp_vec, bsl_vec, gen_vec
+
+
 def extract_evol_psth_array(S, thread, ):
     psth_thread = S["evol"]["psth"][thread]
     imgidx_thread = S["evol"]["idx_seq"][thread]
