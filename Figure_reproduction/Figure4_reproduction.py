@@ -1,20 +1,20 @@
 # %%
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 # %%
 import sys
-sys.path.append(r"/Users/binxuwang/Github/Neuro-ActMax-GAN-comparison")
+# sys.path.append(r"/Users/binxuwang/Github/Neuro-ActMax-GAN-comparison")
 import pandas as pd
 from os.path import join
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 import seaborn as sns
-from core.utils.plot_utils import saveallforms
-from neuro_data_analysis.neural_data_lib import load_neural_data, load_img_resp_pairs, load_latent_codes, pad_resp_traj
-from neuro_data_analysis.neural_data_lib import load_neural_data, extract_all_evol_trajectory, extract_all_evol_trajectory_psth, extract_evol_activation_array, pad_psth_traj, get_expstr
-from neuro_data_analysis.neural_data_utils import get_all_masks
+# from core.utils.plot_utils import saveallforms
+# from neuro_data_analysis.neural_data_lib import load_neural_data, load_img_resp_pairs, load_latent_codes, pad_resp_traj
+# from neuro_data_analysis.neural_data_lib import load_neural_data, extract_all_evol_trajectory, extract_all_evol_trajectory_psth, extract_evol_activation_array, pad_psth_traj, get_expstr
+# from neuro_data_analysis.neural_data_utils import get_all_masks
 
 # %% [markdown]
 # ### Figure 4A
